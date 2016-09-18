@@ -73,6 +73,10 @@ void doUnpacking(cCommBuffer *b, Basic802154GTSspec& a);
  *     int CAPlength;
  *     int GTSlength;
  *     Basic802154GTSspec GTSlist[];
+ *     //modificações
+ *     int vizinhosOuNodosCooperantes[];//quando enviado pelo coordenador será a lista de colaboradores selecionado e quando enviado pelos outros nodos será a lista de vizinhos
+ *     double somaSinais;
+ *     int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos
  * }
  * </pre>
  */
@@ -91,6 +95,11 @@ class Basic802154Packet : public ::MacPacket
     int GTSlength_var;
     Basic802154GTSspec *GTSlist_var; // array ptr
     unsigned int GTSlist_arraysize;
+    int *vizinhosOuNodosCooperantes_var; // array ptr
+    unsigned int vizinhosOuNodosCooperantes_arraysize;
+    double somaSinais_var;
+    int *dadosVizinho_var; // array ptr
+    unsigned int dadosVizinho_arraysize;
 
   private:
     void copy(const Basic802154Packet& other);
@@ -134,6 +143,16 @@ class Basic802154Packet : public ::MacPacket
     virtual Basic802154GTSspec& getGTSlist(unsigned int k);
     virtual const Basic802154GTSspec& getGTSlist(unsigned int k) const {return const_cast<Basic802154Packet*>(this)->getGTSlist(k);}
     virtual void setGTSlist(unsigned int k, const Basic802154GTSspec& GTSlist);
+    virtual void setVizinhosOuNodosCooperantesArraySize(unsigned int size);
+    virtual unsigned int getVizinhosOuNodosCooperantesArraySize() const;
+    virtual int getVizinhosOuNodosCooperantes(unsigned int k) const;
+    virtual void setVizinhosOuNodosCooperantes(unsigned int k, int vizinhosOuNodosCooperantes);
+    virtual double getSomaSinais() const;
+    virtual void setSomaSinais(double somaSinais);
+    virtual void setDadosVizinhoArraySize(unsigned int size);
+    virtual unsigned int getDadosVizinhoArraySize() const;
+    virtual int getDadosVizinho(unsigned int k) const;
+    virtual void setDadosVizinho(unsigned int k, int dadosVizinho);
 };
 
 inline void doPacking(cCommBuffer *b, Basic802154Packet& obj) {obj.parsimPack(b);}

@@ -22,7 +22,7 @@ OPTS=" -f -r --deep -o CastaliaBin -u Cmdenv -P $ROOT -M release"
 EXCLUDEDIRS=" -X Simulations -X out -X bin"
 
 # Use options -I -L -l to include external header files or libraries
-EXTOPTS="  -llpsolve55 -lm -ldl -lcolamd -lrt"
+EXTOPTS="  -llpsolve55 -lm -ldl -lcolamd"
 
 # Run OMNeT's opp_makemake tool with the above options
 opp_makemake $OPTS $EXCLUDEDIRS $EXTOPTS

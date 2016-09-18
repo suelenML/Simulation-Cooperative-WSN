@@ -296,18 +296,29 @@ Basic802154Packet::Basic802154Packet(const char *name, int kind) : ::MacPacket(n
     this->GTSlength_var = 0;
     GTSlist_arraysize = 0;
     this->GTSlist_var = 0;
+    vizinhosOuNodosCooperantes_arraysize = 0;
+    this->vizinhosOuNodosCooperantes_var = 0;
+    this->somaSinais_var = 0;
+    dadosVizinho_arraysize = 0;
+    this->dadosVizinho_var = 0;
 }
 
 Basic802154Packet::Basic802154Packet(const Basic802154Packet& other) : ::MacPacket(other)
 {
     GTSlist_arraysize = 0;
     this->GTSlist_var = 0;
+    vizinhosOuNodosCooperantes_arraysize = 0;
+    this->vizinhosOuNodosCooperantes_var = 0;
+    dadosVizinho_arraysize = 0;
+    this->dadosVizinho_var = 0;
     copy(other);
 }
 
 Basic802154Packet::~Basic802154Packet()
 {
     delete [] GTSlist_var;
+    delete [] vizinhosOuNodosCooperantes_var;
+    delete [] dadosVizinho_var;
 }
 
 Basic802154Packet& Basic802154Packet::operator=(const Basic802154Packet& other)
@@ -335,6 +346,17 @@ void Basic802154Packet::copy(const Basic802154Packet& other)
     GTSlist_arraysize = other.GTSlist_arraysize;
     for (unsigned int i=0; i<GTSlist_arraysize; i++)
         this->GTSlist_var[i] = other.GTSlist_var[i];
+    delete [] this->vizinhosOuNodosCooperantes_var;
+    this->vizinhosOuNodosCooperantes_var = (other.vizinhosOuNodosCooperantes_arraysize==0) ? NULL : new int[other.vizinhosOuNodosCooperantes_arraysize];
+    vizinhosOuNodosCooperantes_arraysize = other.vizinhosOuNodosCooperantes_arraysize;
+    for (unsigned int i=0; i<vizinhosOuNodosCooperantes_arraysize; i++)
+        this->vizinhosOuNodosCooperantes_var[i] = other.vizinhosOuNodosCooperantes_var[i];
+    this->somaSinais_var = other.somaSinais_var;
+    delete [] this->dadosVizinho_var;
+    this->dadosVizinho_var = (other.dadosVizinho_arraysize==0) ? NULL : new int[other.dadosVizinho_arraysize];
+    dadosVizinho_arraysize = other.dadosVizinho_arraysize;
+    for (unsigned int i=0; i<dadosVizinho_arraysize; i++)
+        this->dadosVizinho_var[i] = other.dadosVizinho_var[i];
 }
 
 void Basic802154Packet::parsimPack(cCommBuffer *b)
@@ -352,6 +374,11 @@ void Basic802154Packet::parsimPack(cCommBuffer *b)
     doPacking(b,this->GTSlength_var);
     b->pack(GTSlist_arraysize);
     doPacking(b,this->GTSlist_var,GTSlist_arraysize);
+    b->pack(vizinhosOuNodosCooperantes_arraysize);
+    doPacking(b,this->vizinhosOuNodosCooperantes_var,vizinhosOuNodosCooperantes_arraysize);
+    doPacking(b,this->somaSinais_var);
+    b->pack(dadosVizinho_arraysize);
+    doPacking(b,this->dadosVizinho_var,dadosVizinho_arraysize);
 }
 
 void Basic802154Packet::parsimUnpack(cCommBuffer *b)
@@ -374,6 +401,23 @@ void Basic802154Packet::parsimUnpack(cCommBuffer *b)
     } else {
         this->GTSlist_var = new Basic802154GTSspec[GTSlist_arraysize];
         doUnpacking(b,this->GTSlist_var,GTSlist_arraysize);
+    }
+    delete [] this->vizinhosOuNodosCooperantes_var;
+    b->unpack(vizinhosOuNodosCooperantes_arraysize);
+    if (vizinhosOuNodosCooperantes_arraysize==0) {
+        this->vizinhosOuNodosCooperantes_var = 0;
+    } else {
+        this->vizinhosOuNodosCooperantes_var = new int[vizinhosOuNodosCooperantes_arraysize];
+        doUnpacking(b,this->vizinhosOuNodosCooperantes_var,vizinhosOuNodosCooperantes_arraysize);
+    }
+    doUnpacking(b,this->somaSinais_var);
+    delete [] this->dadosVizinho_var;
+    b->unpack(dadosVizinho_arraysize);
+    if (dadosVizinho_arraysize==0) {
+        this->dadosVizinho_var = 0;
+    } else {
+        this->dadosVizinho_var = new int[dadosVizinho_arraysize];
+        doUnpacking(b,this->dadosVizinho_var,dadosVizinho_arraysize);
     }
 }
 
@@ -505,6 +549,76 @@ void Basic802154Packet::setGTSlist(unsigned int k, const Basic802154GTSspec& GTS
     this->GTSlist_var[k] = GTSlist;
 }
 
+void Basic802154Packet::setVizinhosOuNodosCooperantesArraySize(unsigned int size)
+{
+    int *vizinhosOuNodosCooperantes_var2 = (size==0) ? NULL : new int[size];
+    unsigned int sz = vizinhosOuNodosCooperantes_arraysize < size ? vizinhosOuNodosCooperantes_arraysize : size;
+    for (unsigned int i=0; i<sz; i++)
+        vizinhosOuNodosCooperantes_var2[i] = this->vizinhosOuNodosCooperantes_var[i];
+    for (unsigned int i=sz; i<size; i++)
+        vizinhosOuNodosCooperantes_var2[i] = 0;
+    vizinhosOuNodosCooperantes_arraysize = size;
+    delete [] this->vizinhosOuNodosCooperantes_var;
+    this->vizinhosOuNodosCooperantes_var = vizinhosOuNodosCooperantes_var2;
+}
+
+unsigned int Basic802154Packet::getVizinhosOuNodosCooperantesArraySize() const
+{
+    return vizinhosOuNodosCooperantes_arraysize;
+}
+
+int Basic802154Packet::getVizinhosOuNodosCooperantes(unsigned int k) const
+{
+    if (k>=vizinhosOuNodosCooperantes_arraysize) throw cRuntimeError("Array of size %d indexed by %d", vizinhosOuNodosCooperantes_arraysize, k);
+    return vizinhosOuNodosCooperantes_var[k];
+}
+
+void Basic802154Packet::setVizinhosOuNodosCooperantes(unsigned int k, int vizinhosOuNodosCooperantes)
+{
+    if (k>=vizinhosOuNodosCooperantes_arraysize) throw cRuntimeError("Array of size %d indexed by %d", vizinhosOuNodosCooperantes_arraysize, k);
+    this->vizinhosOuNodosCooperantes_var[k] = vizinhosOuNodosCooperantes;
+}
+
+double Basic802154Packet::getSomaSinais() const
+{
+    return somaSinais_var;
+}
+
+void Basic802154Packet::setSomaSinais(double somaSinais)
+{
+    this->somaSinais_var = somaSinais;
+}
+
+void Basic802154Packet::setDadosVizinhoArraySize(unsigned int size)
+{
+    int *dadosVizinho_var2 = (size==0) ? NULL : new int[size];
+    unsigned int sz = dadosVizinho_arraysize < size ? dadosVizinho_arraysize : size;
+    for (unsigned int i=0; i<sz; i++)
+        dadosVizinho_var2[i] = this->dadosVizinho_var[i];
+    for (unsigned int i=sz; i<size; i++)
+        dadosVizinho_var2[i] = 0;
+    dadosVizinho_arraysize = size;
+    delete [] this->dadosVizinho_var;
+    this->dadosVizinho_var = dadosVizinho_var2;
+}
+
+unsigned int Basic802154Packet::getDadosVizinhoArraySize() const
+{
+    return dadosVizinho_arraysize;
+}
+
+int Basic802154Packet::getDadosVizinho(unsigned int k) const
+{
+    if (k>=dadosVizinho_arraysize) throw cRuntimeError("Array of size %d indexed by %d", dadosVizinho_arraysize, k);
+    return dadosVizinho_var[k];
+}
+
+void Basic802154Packet::setDadosVizinho(unsigned int k, int dadosVizinho)
+{
+    if (k>=dadosVizinho_arraysize) throw cRuntimeError("Array of size %d indexed by %d", dadosVizinho_arraysize, k);
+    this->dadosVizinho_var[k] = dadosVizinho;
+}
+
 class Basic802154PacketDescriptor : public cClassDescriptor
 {
   public:
@@ -552,7 +666,7 @@ const char *Basic802154PacketDescriptor::getProperty(const char *propertyname) c
 int Basic802154PacketDescriptor::getFieldCount(void *object) const
 {
     cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 11+basedesc->getFieldCount(object) : 11;
+    return basedesc ? 14+basedesc->getFieldCount(object) : 14;
 }
 
 unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int field) const
@@ -575,8 +689,11 @@ unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int fi
         FD_ISEDITABLE,
         FD_ISEDITABLE,
         FD_ISARRAY | FD_ISCOMPOUND,
+        FD_ISARRAY | FD_ISEDITABLE,
+        FD_ISEDITABLE,
+        FD_ISARRAY | FD_ISEDITABLE,
     };
-    return (field>=0 && field<11) ? fieldTypeFlags[field] : 0;
+    return (field>=0 && field<14) ? fieldTypeFlags[field] : 0;
 }
 
 const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) const
@@ -599,8 +716,11 @@ const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) c
         "CAPlength",
         "GTSlength",
         "GTSlist",
+        "vizinhosOuNodosCooperantes",
+        "somaSinais",
+        "dadosVizinho",
     };
-    return (field>=0 && field<11) ? fieldNames[field] : NULL;
+    return (field>=0 && field<14) ? fieldNames[field] : NULL;
 }
 
 int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) const
@@ -618,6 +738,9 @@ int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) 
     if (fieldName[0]=='C' && strcmp(fieldName, "CAPlength")==0) return base+8;
     if (fieldName[0]=='G' && strcmp(fieldName, "GTSlength")==0) return base+9;
     if (fieldName[0]=='G' && strcmp(fieldName, "GTSlist")==0) return base+10;
+    if (fieldName[0]=='v' && strcmp(fieldName, "vizinhosOuNodosCooperantes")==0) return base+11;
+    if (fieldName[0]=='s' && strcmp(fieldName, "somaSinais")==0) return base+12;
+    if (fieldName[0]=='d' && strcmp(fieldName, "dadosVizinho")==0) return base+13;
     return basedesc ? basedesc->findField(object, fieldName) : -1;
 }
 
@@ -641,8 +764,11 @@ const char *Basic802154PacketDescriptor::getFieldTypeString(void *object, int fi
         "int",
         "int",
         "Basic802154GTSspec",
+        "int",
+        "double",
+        "int",
     };
-    return (field>=0 && field<11) ? fieldTypeStrings[field] : NULL;
+    return (field>=0 && field<14) ? fieldTypeStrings[field] : NULL;
 }
 
 const char *Basic802154PacketDescriptor::getFieldProperty(void *object, int field, const char *propertyname) const
@@ -672,6 +798,8 @@ int Basic802154PacketDescriptor::getArraySize(void *object, int field) const
     Basic802154Packet *pp = (Basic802154Packet *)object; (void)pp;
     switch (field) {
         case 10: return pp->getGTSlistArraySize();
+        case 11: return pp->getVizinhosOuNodosCooperantesArraySize();
+        case 13: return pp->getDadosVizinhoArraySize();
         default: return 0;
     }
 }
@@ -697,6 +825,9 @@ std::string Basic802154PacketDescriptor::getFieldAsString(void *object, int fiel
         case 8: return long2string(pp->getCAPlength());
         case 9: return long2string(pp->getGTSlength());
         case 10: {std::stringstream out; out << pp->getGTSlist(i); return out.str();}
+        case 11: return long2string(pp->getVizinhosOuNodosCooperantes(i));
+        case 12: return double2string(pp->getSomaSinais());
+        case 13: return long2string(pp->getDadosVizinho(i));
         default: return "";
     }
 }
@@ -721,6 +852,9 @@ bool Basic802154PacketDescriptor::setFieldAsString(void *object, int field, int 
         case 7: pp->setBSN(string2long(value)); return true;
         case 8: pp->setCAPlength(string2long(value)); return true;
         case 9: pp->setGTSlength(string2long(value)); return true;
+        case 11: pp->setVizinhosOuNodosCooperantes(i,string2long(value)); return true;
+        case 12: pp->setSomaSinais(string2double(value)); return true;
+        case 13: pp->setDadosVizinho(i,string2long(value)); return true;
         default: return false;
     }
 }

@@ -2,7 +2,7 @@
 # OMNeT++/OMNEST Makefile for Castalia
 #
 # This file was generated with the command:
-#  opp_makemake -f --deep -O out -llpsolve55 -lm -ldl -lcolamd -lrt"
+#  opp_makemake -f --deep -O out -llpsolve55 -lm -ldl -lcolamd -lrt
 #
 
 # Name of target to be created (-o option)
@@ -71,7 +71,7 @@ INCLUDE_PATH = \
 EXTRA_OBJS =
 
 # Additional libraries (-L, -l options)
-LIBS =  -llpsolve55 -lm -ldl -lcolamd -lrt"
+LIBS =  -llpsolve55 -lm -ldl -lcolamd -lrt
 
 # Output directory
 PROJECT_OUTPUT_DIR = out

@@ -299,6 +299,7 @@ Basic802154Packet::Basic802154Packet(const char *name, int kind) : ::MacPacket(n
     vizinhosOuNodosCooperantes_arraysize = 0;
     this->vizinhosOuNodosCooperantes_var = 0;
     this->somaSinais_var = 0;
+    this->energy_var = 0;
     dadosVizinho_arraysize = 0;
     this->dadosVizinho_var = 0;
 }
@@ -352,6 +353,7 @@ void Basic802154Packet::copy(const Basic802154Packet& other)
     for (unsigned int i=0; i<vizinhosOuNodosCooperantes_arraysize; i++)
         this->vizinhosOuNodosCooperantes_var[i] = other.vizinhosOuNodosCooperantes_var[i];
     this->somaSinais_var = other.somaSinais_var;
+    this->energy_var = other.energy_var;
     delete [] this->dadosVizinho_var;
     this->dadosVizinho_var = (other.dadosVizinho_arraysize==0) ? NULL : new int[other.dadosVizinho_arraysize];
     dadosVizinho_arraysize = other.dadosVizinho_arraysize;
@@ -377,6 +379,7 @@ void Basic802154Packet::parsimPack(cCommBuffer *b)
     b->pack(vizinhosOuNodosCooperantes_arraysize);
     doPacking(b,this->vizinhosOuNodosCooperantes_var,vizinhosOuNodosCooperantes_arraysize);
     doPacking(b,this->somaSinais_var);
+    doPacking(b,this->energy_var);
     b->pack(dadosVizinho_arraysize);
     doPacking(b,this->dadosVizinho_var,dadosVizinho_arraysize);
 }
@@ -411,6 +414,7 @@ void Basic802154Packet::parsimUnpack(cCommBuffer *b)
         doUnpacking(b,this->vizinhosOuNodosCooperantes_var,vizinhosOuNodosCooperantes_arraysize);
     }
     doUnpacking(b,this->somaSinais_var);
+    doUnpacking(b,this->energy_var);
     delete [] this->dadosVizinho_var;
     b->unpack(dadosVizinho_arraysize);
     if (dadosVizinho_arraysize==0) {
@@ -589,6 +593,16 @@ void Basic802154Packet::setSomaSinais(double somaSinais)
     this->somaSinais_var = somaSinais;
 }
 
+double Basic802154Packet::getEnergy() const
+{
+    return energy_var;
+}
+
+void Basic802154Packet::setEnergy(double energy)
+{
+    this->energy_var = energy;
+}
+
 void Basic802154Packet::setDadosVizinhoArraySize(unsigned int size)
 {
     int *dadosVizinho_var2 = (size==0) ? NULL : new int[size];
@@ -666,7 +680,7 @@ const char *Basic802154PacketDescriptor::getProperty(const char *propertyname) c
 int Basic802154PacketDescriptor::getFieldCount(void *object) const
 {
     cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 14+basedesc->getFieldCount(object) : 14;
+    return basedesc ? 15+basedesc->getFieldCount(object) : 15;
 }
 
 unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int field) const
@@ -691,9 +705,10 @@ unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int fi
         FD_ISARRAY | FD_ISCOMPOUND,
         FD_ISARRAY | FD_ISEDITABLE,
         FD_ISEDITABLE,
+        FD_ISEDITABLE,
         FD_ISARRAY | FD_ISEDITABLE,
     };
-    return (field>=0 && field<14) ? fieldTypeFlags[field] : 0;
+    return (field>=0 && field<15) ? fieldTypeFlags[field] : 0;
 }
 
 const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) const
@@ -718,9 +733,10 @@ const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) c
         "GTSlist",
         "vizinhosOuNodosCooperantes",
         "somaSinais",
+        "energy",
         "dadosVizinho",
     };
-    return (field>=0 && field<14) ? fieldNames[field] : NULL;
+    return (field>=0 && field<15) ? fieldNames[field] : NULL;
 }
 
 int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) const
@@ -740,7 +756,8 @@ int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) 
     if (fieldName[0]=='G' && strcmp(fieldName, "GTSlist")==0) return base+10;
     if (fieldName[0]=='v' && strcmp(fieldName, "vizinhosOuNodosCooperantes")==0) return base+11;
     if (fieldName[0]=='s' && strcmp(fieldName, "somaSinais")==0) return base+12;
-    if (fieldName[0]=='d' && strcmp(fieldName, "dadosVizinho")==0) return base+13;
+    if (fieldName[0]=='e' && strcmp(fieldName, "energy")==0) return base+13;
+    if (fieldName[0]=='d' && strcmp(fieldName, "dadosVizinho")==0) return base+14;
     return basedesc ? basedesc->findField(object, fieldName) : -1;
 }
 
@@ -766,9 +783,10 @@ const char *Basic802154PacketDescriptor::getFieldTypeString(void *object, int fi
         "Basic802154GTSspec",
         "int",
         "double",
+        "double",
         "int",
     };
-    return (field>=0 && field<14) ? fieldTypeStrings[field] : NULL;
+    return (field>=0 && field<15) ? fieldTypeStrings[field] : NULL;
 }
 
 const char *Basic802154PacketDescriptor::getFieldProperty(void *object, int field, const char *propertyname) const
@@ -799,7 +817,7 @@ int Basic802154PacketDescriptor::getArraySize(void *object, int field) const
     switch (field) {
         case 10: return pp->getGTSlistArraySize();
         case 11: return pp->getVizinhosOuNodosCooperantesArraySize();
-        case 13: return pp->getDadosVizinhoArraySize();
+        case 14: return pp->getDadosVizinhoArraySize();
         default: return 0;
     }
 }
@@ -827,7 +845,8 @@ std::string Basic802154PacketDescriptor::getFieldAsString(void *object, int fiel
         case 10: {std::stringstream out; out << pp->getGTSlist(i); return out.str();}
         case 11: return long2string(pp->getVizinhosOuNodosCooperantes(i));
         case 12: return double2string(pp->getSomaSinais());
-        case 13: return long2string(pp->getDadosVizinho(i));
+        case 13: return double2string(pp->getEnergy());
+        case 14: return long2string(pp->getDadosVizinho(i));
         default: return "";
     }
 }
@@ -854,7 +873,8 @@ bool Basic802154PacketDescriptor::setFieldAsString(void *object, int field, int 
         case 9: pp->setGTSlength(string2long(value)); return true;
         case 11: pp->setVizinhosOuNodosCooperantes(i,string2long(value)); return true;
         case 12: pp->setSomaSinais(string2double(value)); return true;
-        case 13: pp->setDadosVizinho(i,string2long(value)); return true;
+        case 13: pp->setEnergy(string2double(value)); return true;
+        case 14: pp->setDadosVizinho(i,string2long(value)); return true;
         default: return false;
     }
 }

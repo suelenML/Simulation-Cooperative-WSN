@@ -73,9 +73,10 @@ void doUnpacking(cCommBuffer *b, Basic802154GTSspec& a);
  *     int CAPlength;
  *     int GTSlength;
  *     Basic802154GTSspec GTSlist[];
- *     //modificações
+ *     //modificações Ríad
  *     int vizinhosOuNodosCooperantes[];//quando enviado pelo coordenador será a lista de colaboradores selecionado e quando enviado pelos outros nodos será a lista de vizinhos
  *     double somaSinais;
+ *     double energy;
  *     int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos
  * }
  * </pre>
@@ -98,6 +99,7 @@ class Basic802154Packet : public ::MacPacket
     int *vizinhosOuNodosCooperantes_var; // array ptr
     unsigned int vizinhosOuNodosCooperantes_arraysize;
     double somaSinais_var;
+    double energy_var;
     int *dadosVizinho_var; // array ptr
     unsigned int dadosVizinho_arraysize;
 
@@ -149,6 +151,8 @@ class Basic802154Packet : public ::MacPacket
     virtual void setVizinhosOuNodosCooperantes(unsigned int k, int vizinhosOuNodosCooperantes);
     virtual double getSomaSinais() const;
     virtual void setSomaSinais(double somaSinais);
+    virtual double getEnergy() const;
+    virtual void setEnergy(double energy);
     virtual void setDadosVizinhoArraySize(unsigned int size);
     virtual unsigned int getDadosVizinhoArraySize() const;
     virtual int getDadosVizinho(unsigned int k) const;

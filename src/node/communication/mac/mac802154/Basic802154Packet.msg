@@ -44,9 +44,10 @@ packet Basic802154Packet extends MacPacket {
 	int CAPlength;
 	int GTSlength;
 	Basic802154GTSspec GTSlist[];
-	//modificações
+	//modificações Ríad
 	int vizinhosOuNodosCooperantes[];//quando enviado pelo coordenador será a lista de colaboradores selecionado e quando enviado pelos outros nodos será a lista de vizinhos
 	double somaSinais;
+	double energy;
 	int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos
 }
 

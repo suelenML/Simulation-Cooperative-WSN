@@ -243,6 +243,7 @@ class Basic802154: public VirtualMac {
 	    void preencherDados(Basic802154Packet *macPacket);
 	    void calculaNumNodosCooperantes();
 	    void selecionaNodosSmart(Basic802154Packet *beaconPacket);
+        void selecionaNodosSmartNumVizinhos(Basic802154Packet *beaconPacket);
 	    void AtualizarVizinhaca(Basic802154Packet * pkt, double rssi);
 	    void adicionarNodoSolto(int pai, int filho);
 	    void retransmitir(Basic802154Packet *nextPacket);

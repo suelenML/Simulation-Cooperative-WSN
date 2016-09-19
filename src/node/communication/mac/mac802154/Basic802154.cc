@@ -128,11 +128,10 @@ void Basic802154::contabilizarMensagens() {
         if (nodoID != cooperacoesDoBeacon.end()) {
             cooperacoesDoBeacon.erase(nodoID);
             retransmissoesNaoEfetivas++;
-        } else {
-            retransmissoesEfetivas++;
         }
         i++;
     }
+    retransmissoesEfetivas += cooperacoesDoBeacon.size();
     cout << "até o momento foram " << retransmissoesEfetivas
             << "retransmissões efetivas\n";
     cout << "até o momento foram " << retransmissoesNaoEfetivas
@@ -182,10 +181,9 @@ void Basic802154::timerFiredCallback(int index) {
             nodosEscutados.clear();
 
             if (tempoDeBeacon == selecao) {
-                //selecionaNodosSmart(beaconPacket);
-                selecionaNodosSmartNumVizinhos(beaconPacket);
+                selecionaNodosSmart(beaconPacket);
+                //selecionaNodosSmartNumVizinhos(beaconPacket);
                 enviarNodosCooperantes(beaconPacket);
-
                 tempoDeBeacon = 0;
                 if (selecao == 20)
                     selecao = 100;
@@ -340,14 +338,14 @@ void Basic802154::timerFiredCallback(int index) {
 // método Ríad
 void Basic802154::preencherDados(Basic802154Packet *macPacket) {
     //if (cooperador) {
-        if (neigmap.size() > 0) {
+    if (neigmap.size() > 0) {
 
             unsigned i = neigmap.size();
             std::map<int, Neighborhood*>::iterator iter;
 
             macPacket->setVizinhosOuNodosCooperantesArraySize(i);
             macPacket->setSomaSinais(somaDeSinais);
-
+            macPacket->setEnergy(resMgrModule->getSpentEnergy());
             i = 0;
             for (iter = neigmap.begin(); iter != neigmap.end(); iter++) {
                 Neighborhood *nodo = iter->second;
@@ -365,10 +363,11 @@ void Basic802154::fromNetworkLayer(cPacket * pkt, int dstMacAddress) {
     Basic802154Packet *macPacket = new Basic802154Packet(
             "802.15.4 MAC data packet", MAC_LAYER_PACKET);
     //modificação Ríad
+    //
     preencherDados(macPacket);
     encapsulatePacket(macPacket, pkt);
-    macPacket->setSrcID(SELF_MAC_ADDRESS);//if connected to PAN, would have a short MAC address assigned,
-                                          //but we are not using short addresses in this model
+    macPacket->setSrcID(SELF_MAC_ADDRESS); //if connected to PAN, would have a short MAC address assigned,
+                                           //but we are not using short addresses in this model
     macPacket->setDstID(dstMacAddress);
     macPacket->setMac802154PacketType(MAC_802154_DATA_PACKET);
     macPacket->setSeqNum(seqNum++);
@@ -453,7 +452,8 @@ void Basic802154::adicionarNodoSolto(int nodoConectado, int nodoSolto) {
 
 // método Ríad
 //método que monta e resolve o probelma de otimização e escreve um arquivo .mod
-void Basic802154::selecionaNodosSmartNumVizinhos(Basic802154Packet *beaconPacket) {
+void Basic802154::selecionaNodosSmartNumVizinhos(
+        Basic802154Packet *beaconPacket) {
 
     std::string fileName("prob" + std::to_string(numeroDoProblema) + ".mod");
     char *cstr = new char[fileName.length() + 1];
@@ -473,12 +473,9 @@ void Basic802154::selecionaNodosSmartNumVizinhos(Basic802154Packet *beaconPacket
 
             } else if (primeiro) {
                 primeiro = false;
-                out
-                        <<  beta3 * nodo->numeroDevizinhos << "*x"
-                        << nodo->nodeId;
+                out << beta3 * nodo->numeroDevizinhos << "*x" << nodo->nodeId;
             } else {
-                out << "+"
-                        <<  beta3 * nodo->numeroDevizinhos << "* x"
+                out << "+" << beta3 * nodo->numeroDevizinhos << "* x"
                         << nodo->nodeId;
             }
 
@@ -553,7 +550,7 @@ void Basic802154::selecionaNodosSmartNumVizinhos(Basic802154Packet *beaconPacket
 
         char *lpName = "prob";
 
-        lp = read_LP(cstr, 0, lpName);
+        lp = read_LP(cstr, 2, lpName);
 
         if (lp == NULL) {
             fprintf(stderr, "Unable to read model\n");
@@ -687,7 +684,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
 
         char *lpName = "prob";
 
-        lp = read_LP(cstr, 0, lpName);
+        lp = read_LP(cstr, 2, lpName);
 
         if (lp == NULL) {
             fprintf(stderr, "Unable to read model\n");
@@ -724,20 +721,18 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
      * gravadas a estrutura Neighborhood.
      */
 ///pega o ID do nodo que recebeu o pacote e verifica se ele já está em neigmap
-//    cout<<"entrando no AtualizarNodos\n";
-    std::map<int, Neighborhood*>::iterator iterNeighborhood = neigmap.find(
-            pkt->getSource());
+    std::map<int, Neighborhood*>::iterator iterNeighborhood = neigmap.find(pkt->getSrcID());
     Neighborhood *nodo;
 
     unsigned vizinhos = pkt->getVizinhosOuNodosCooperantesArraySize();
 
     if (iterNeighborhood == neigmap.end()) {
         nodo = new Neighborhood();
-        nodo->nodeId = pkt->getSource();
+        nodo->nodeId = pkt->getSrcID();
         nodo->rssi = rssi / MAX_RSSI;
-        somaDeSinais+=rssi / MAX_RSSI;
-        nodo->energy=pkt->getEnergy();
-        nodo->numeroDevizinhos=vizinhos;
+        somaDeSinais += rssi / MAX_RSSI;
+        nodo->energy = pkt->getEnergy();
+        nodo->numeroDevizinhos = vizinhos;
         //atulizar soma de rssi
         if (isPANCoordinator && vizinhos > 0) {
             //atualizar lista de vinhos
@@ -746,16 +741,15 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
                 nodo->vizinhos.push_back(pkt->getVizinhosOuNodosCooperantes(i));
             }
         }
-        neigmap[pkt->getSource()] = nodo;
+        neigmap[pkt->getSrcID()] = nodo;
     } else {            //se o nodo já está na lista atualiza os dados
-
         nodo = iterNeighborhood->second;
-        somaDeSinais-=nodo->rssi;
+        somaDeSinais -= nodo->rssi;
         nodo->rssi = rssi / MAX_RSSI;
-        somaDeSinais+=rssi / MAX_RSSI;
-        nodo->energy=pkt->getEnergy();
-        nodo->numeroDevizinhos=vizinhos;
-        if (isPANCoordinator && vizinhos > 0) {
+        somaDeSinais += rssi / MAX_RSSI;
+        nodo->energy = pkt->getEnergy();
+        nodo->numeroDevizinhos = vizinhos;
+        if(isPANCoordinator && vizinhos > 0) {
             //atualizar lista de vinhos
             nodo->vizinhos.clear();
             int i;
@@ -769,7 +763,7 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
 // método Ríad
 //
 void Basic802154::souNodoCooperante(Basic802154Packet * pkt) {
-    int i = 0;
+    unsigned int i = 0;
     cooperador = false;
 
     while (pkt->getVizinhosOuNodosCooperantesArraySize() > i) {
@@ -787,15 +781,15 @@ void Basic802154::listarNodosEscutados(Basic802154Packet *rcvPacket) {
 }
 // método Ríad
 void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
-    int i;
+    unsigned int i;
 
     if (rcvPacket->getDadosVizinhoArraySize() > 0) {
-        if (historicoDeCooperacao.find(rcvPacket->getSource())
+        if (historicoDeCooperacao.find(rcvPacket->getSrcID())
                 != historicoDeCooperacao.end()) {
 
             map<int, vector<int>*>::iterator iter;
 
-            iter = historicoDeCooperacao.find(rcvPacket->getSource());
+            iter = historicoDeCooperacao.find(rcvPacket->getSrcID());
 
             vector<int>* v = iter->second;
 
@@ -813,7 +807,7 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
                 vetor->push_back(nodo);
                 cooperacoesDoBeacon[nodo] = true;
             }
-            historicoDeCooperacao[rcvPacket->getSource()] = vetor;
+            historicoDeCooperacao[rcvPacket->getSrcID()] = vetor;
         }
     }
 }
@@ -849,20 +843,19 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
         return;
     }
 
-
     //Modificação Ríad
     AtualizarVizinhaca(rcvPacket, rssi);
 
     if (isPANCoordinator) {
-        nodosEscutados.push_back(rcvPacket->getSource());
+        //nodosEscutados.push_back(rcvPacket->getSrcID());
+        listarNodosEscutados(rcvPacket);
         verificarRetransmissao(rcvPacket);
+    }else{
+        souNodoCooperante(rcvPacket);
     }
-
     if (cooperador) {
-        //Lista de id dos nodos que nodo cooperante escutou
         listarNodosEscutados(rcvPacket);
     }
-
 
     if (rcvPacket->getDstID() != SELF_MAC_ADDRESS
             && rcvPacket->getDstID() != BROADCAST_MAC_ADDRESS) {
@@ -876,6 +869,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
         //Modificação Ríad
         souNodoCooperante(rcvPacket);
+        tempoDeBeacon++;
         recvBeacons++;
 
         if (isPANCoordinator)
@@ -885,7 +879,6 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
         //cancel beacon timeout message (if present)
         cancelTimer(BEACON_TIMEOUT);
-        recvBeacons++;
 
         //this node is connected to this PAN (or will try to connect), update frame parameters
         double offset = TX_TIME(rcvPacket->getByteLength());
@@ -1199,7 +1192,7 @@ void Basic802154::attemptTransmission(const char * descr) {
 }
 // método Ríad
 void Basic802154::retransmitir(Basic802154Packet *nextPacket) {
-    if (nodosEscutados.size()>0) {
+    if (nodosEscutados.size() > 0) {
 
         vector<int>::iterator v = nodosEscutados.begin();
 
@@ -1207,15 +1200,13 @@ void Basic802154::retransmitir(Basic802154Packet *nextPacket) {
 
         nextPacket->setDadosVizinhoArraySize(nodosEscutados.size());
 
-        while (nodosEscutados.end() != v) {
-            nextPacket->setDadosVizinho(i, *v);
+        while (i<nodosEscutados.size()) {
+            nextPacket->setDadosVizinho(i, v[i]);
             i++;
-            v++;
         }
     }
     //após enviar o nome dos nodos que foram escutados a lista local é apagada
     nodosEscutados.clear();
-    //  cout << "Lista enviada!!!!!!!!!!!!!!!!!!\n";
 }
 
 // continue CSMA-CA algorithm

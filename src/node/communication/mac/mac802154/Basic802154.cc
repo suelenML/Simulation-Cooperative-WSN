@@ -116,6 +116,7 @@ void Basic802154::startup() {
 }
 // método Ríad
 //verifica quais nodos só conseguiram transmitir por retransmissão.
+//caso de dois nodos retransmitirem o mesmo nodo
 void Basic802154::contabilizarMensagens() {
     int numNodosEscutados = nodosEscutados.size();
     int i = 0;
@@ -531,6 +532,7 @@ void Basic802154::selecionaNodosSmartNumVizinhos(
             out << ">=1;\n";
         }
         out << "\n";
+
         primeiro = true;
         int i = 0;
         for (iterNeighborhood = neigmap.begin();
@@ -598,9 +600,8 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
         for (iterNeighborhood = neigmap.begin();
                 iterNeighborhood != neigmap.end(); iterNeighborhood++) {
             Neighborhood *nodo = iterNeighborhood->second;
-            if (iterNeighborhood == neigmap.begin()) {
-
-            } else if (primeiro) {
+            //verificar
+            if (primeiro) {
                 primeiro = false;
                 out
                         << (-beta1 * nodo->energy) + beta2 * nodo->somaRssi
@@ -847,12 +848,12 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
     AtualizarVizinhaca(rcvPacket, rssi);
 
     if (isPANCoordinator) {
-        //nodosEscutados.push_back(rcvPacket->getSrcID());
         listarNodosEscutados(rcvPacket);
         verificarRetransmissao(rcvPacket);
-    }else{
-        souNodoCooperante(rcvPacket);
     }
+    //else{
+    //    souNodoCooperante(rcvPacket);
+    //}
     if (cooperador) {
         listarNodosEscutados(rcvPacket);
     }
@@ -870,6 +871,9 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
         //Modificação Ríad
         souNodoCooperante(rcvPacket);
         tempoDeBeacon++;
+
+
+
         recvBeacons++;
 
         if (isPANCoordinator)

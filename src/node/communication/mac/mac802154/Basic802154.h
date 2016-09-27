@@ -194,7 +194,7 @@ class Basic802154: public VirtualMac {
 
 
 	/*----riad----*/
-	    double MAX_RSSI = 100;
+	    double MAX_RSSI = -100;
 	    double EstLoss;
 	    double DevLoss;
 	    double SamLoss;
@@ -217,10 +217,10 @@ class Basic802154: public VirtualMac {
 	    int contadordivtemp;
 	    int histnumnodoscoop;
 
-	    double beta1=1.0;
-	    double beta2=1.0;
-	    double beta3=1.0;
-	    double beta4=1.0;
+	    double beta1=-1.0;
+	    double beta2=-1.5;
+	    double beta3=-2.0;
+	    double beta4=-1.0;
 
 	    //dados que eu preciso
 	    double somaDeSinais;
@@ -233,9 +233,8 @@ class Basic802154: public VirtualMac {
 
 
 	    int numeroDeCooperacoes=0;
-
 	    int tempoDeBeacon=0;
-	    int selecao=20;
+	    int selecao=10;
 
 	    void contabilizarMensagens();
 	    void listarNodosEscutados(Basic802154Packet *rcvPacket);

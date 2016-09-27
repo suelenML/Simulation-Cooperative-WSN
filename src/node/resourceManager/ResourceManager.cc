@@ -139,6 +139,12 @@ double ResourceManager::getSpentEnergy(void)
 	return (initialEnergy - remainingEnergy);
 }
 
+//modificação ríad
+double ResourceManager::getInitialEnergy(void){
+    Enter_Method("getInitialEnergy()");
+    return initialEnergy;
+}
+
 double ResourceManager::getCPUClockDrift(void)
 {
 	Enter_Method("getCPUClockDrift(void)");

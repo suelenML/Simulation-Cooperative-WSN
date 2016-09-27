@@ -346,7 +346,7 @@ void Basic802154::preencherDados(Basic802154Packet *macPacket) {
         macPacket->setVizinhosOuNodosCooperantesArraySize(i);
         macPacket->setSomaSinais(somaDeSinais);
         macPacket->setEnergy(
-                resMgrModule->getSpentEnergy()
+                resMgrModule->getRemainingEnergy()
                         / resMgrModule->getInitialEnergy());
         i = 0;
         for (iter = neigmap.begin(); iter != neigmap.end(); iter++) {
@@ -708,7 +708,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
             for (iterNeighborhood = neigmap.begin();
                     iterNeighborhood != neigmap.end(); iterNeighborhood++) {
                 Neighborhood *nodo = iterNeighborhood->second;
-
+                //cout<<resultado_lp[j]<<"\n";
                 if (resultado_lp[j] == 1) {
                     nodosColaboradores.push_back(nodo->nodeId);
                 }

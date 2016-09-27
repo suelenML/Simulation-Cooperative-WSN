@@ -61,6 +61,7 @@ class ResourceManager: public CastaliaModule {
 	void RamFree(int numBytes);
 	//modificação ríad
 	double getInitialEnergy(void);
+	double getRemainingEnergy(void);
 };
 
 #endif				// _RESOURCEGENERICMANAGER_H_

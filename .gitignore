@@ -23,7 +23,6 @@ libptpsim.so
 # Executables
 *.exe
 *.out
-*.app
 
 #pasta com arquivos binários
 /out

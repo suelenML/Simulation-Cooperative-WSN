@@ -30,6 +30,16 @@ void StaticGTS802154::startup() {
 	baseSlot = par("baseSlotDuration");
 	minCap = par("minCAPLength");
 	frameOrder = par("frameOrder");
+	cout<<"------------GTS------------------\n";
+	cout<<"requestGTS: "<< requestGTS<<"\n";
+	cout<<"gtsOnly: "<< gtsOnly <<"\n";
+	cout<<"totalSlots: "<< totalSlots<<"\n";
+	cout<<"minCap: "<<minCap <<"\n";
+	cout<<"frameOrder: "<< frameOrder<<"\n";
+	cout<<"------------------------------\n";
+
+
+
 	return Basic802154::startup();
 }
 
@@ -62,8 +72,10 @@ int StaticGTS802154::gtsRequest_hub(Basic802154Packet *gtsPkt) {
 	//node not found, or requested slots changed
 	if (total >= 7 || (CAPlength - gtsPkt->getGTSlength()) *
 	    baseSlot * (1 << frameOrder) < minCap) {
+	    cout<<"Não alocou o GTS\n";
 		trace() << "GTS request from " << gtsPkt->getSrcID() <<
 		    " cannot be acocmodated";
+
 		return 0;
 	}
 	
@@ -72,6 +84,7 @@ int StaticGTS802154::gtsRequest_hub(Basic802154Packet *gtsPkt) {
 	totalGTS += newGTSspec.length;
 	newGTSspec.owner = gtsPkt->getSrcID();
 	GTSlist.push_back(newGTSspec);
+	cout<< "Alocou um GTS\n";
 	return newGTSspec.length;
 }
 

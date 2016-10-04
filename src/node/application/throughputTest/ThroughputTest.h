@@ -32,6 +32,12 @@ class ThroughputTest: public VirtualApplication {
 	int recipientId;
 	string recipientAddress;
 	
+	//Suelen
+	int numpacketsReceived;
+
+
+
+
 	//variables below are used to determine the packet delivery rates.	
 	int numNodes;
 	map<long,int> packetsReceived;
@@ -50,6 +56,11 @@ class ThroughputTest: public VirtualApplication {
 	int getPacketsReceived(int addr) { return packetsReceived[addr]; }
 	int getBytesReceived(int addr) { return bytesReceived[addr]; }
 	
+	//Suelen
+	int getNumPacketsReceived(){ return numpacketsReceived; }
+
+
+
 };
 
 #endif				// _THROUGHPUTTEST_APPLICATIONMODULE_H_

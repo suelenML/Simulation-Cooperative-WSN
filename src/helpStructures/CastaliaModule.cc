@@ -118,7 +118,7 @@ void CastaliaModule::collectOutputNocheck(const char *descr, int index,
 		return;
 	i->second.byIndex[index].data[label] += amt;
 }
-//Suelen
+//Suelen nseri este método para poder passar um inteiro
 void CastaliaModule::collectOutputInt(const char *descr, int index, const char *label, int amt)
 {
     if (index < 0)

@@ -29,12 +29,16 @@ void ThroughputTest::startup()
 	packetsReceived.clear();
 	bytesReceived.clear();
 
+	// Suelen
+	numpacketsReceived=0;
+
 	if (packet_spacing > 0 && recipientAddress.compare(SELF_NETWORK_ADDRESS) != 0)
 		setTimer(SEND_PACKET, packet_spacing + startupDelay);
 	else
 		trace() << "Not sending packets";
 
 	declareOutput("Packets received per node");
+	declareOutput("Total Packets received -- Coordenador");
 }
 
 void ThroughputTest::fromNetworkLayer(ApplicationPacket * rcvPacket,
@@ -50,6 +54,7 @@ void ThroughputTest::fromNetworkLayer(ApplicationPacket * rcvPacket,
 			collectOutput("Packets received per node", sourceId);
 			packetsReceived[sourceId]++;
 			bytesReceived[sourceId] += rcvPacket->getByteLength();
+
 		} else {
 			trace() << "Packet #" << sequenceNumber << " from node " << source <<
 				" exceeded delay limit of " << delayLimit << "s";
@@ -61,6 +66,13 @@ void ThroughputTest::fromNetworkLayer(ApplicationPacket * rcvPacket,
 		fwdPacket->setByteLength(0);
 		toNetworkLayer(fwdPacket, recipientAddress.c_str());
 	}
+	//Pacotes Recebidos---Suelen
+	numpacketsReceived=0;
+	for (int i = 0; i < numNodes; i++) {
+	    numpacketsReceived = numpacketsReceived + packetsReceived[i];
+	}
+	collectOutputInt("Total Packets received -- Coordenador",0,"Total", getNumPacketsReceived());
+
 }
 
 void ThroughputTest::timerFiredCallback(int index)
@@ -92,6 +104,7 @@ void ThroughputTest::finishSpecific() {
 	declareOutput("Packets reception rate");
 	declareOutput("Packets loss rate");
 
+
 	cTopology *topo;	// temp variable to access packets received by other nodes
 	topo = new cTopology("topo");
 	topo->extractByNedTypeName(cStringTokenizer("node.Node").asVector());
@@ -106,11 +119,14 @@ void ThroughputTest::finishSpecific() {
 				float rate = (float)packetsReceived[i]/packetsSent;
 				collectOutput("Packets reception rate", i, "total", rate);
 				collectOutput("Packets loss rate", i, "total", 1-rate);
+
 			}
 
 			bytesDelivered += appModule->getBytesReceived(self);
 		}
+
 	}
+
 	delete(topo);
 
 	if (packet_rate > 0 && bytesDelivered > 0) {
@@ -118,4 +134,8 @@ void ThroughputTest::finishSpecific() {
 		declareOutput("Energy nJ/bit");
 		collectOutput("Energy nJ/bit","",energy);
 	}
+
+
 }
+
+

@@ -119,7 +119,6 @@ void CastaliaModule::collectOutputNocheck(const char *descr, int index,
 	i->second.byIndex[index].data[label] += amt;
 }
 //Suelen
-
 void CastaliaModule::collectOutputInt(const char *descr, int index, const char *label, int amt)
 {
     if (index < 0)

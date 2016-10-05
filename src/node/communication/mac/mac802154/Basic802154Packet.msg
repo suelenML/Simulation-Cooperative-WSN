@@ -49,5 +49,6 @@ packet Basic802154Packet extends MacPacket {
 	double somaSinais;
 	double energy;
 	int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos
+	short numnodos;// fazer isso no do lu
 }
 

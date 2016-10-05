@@ -255,6 +255,7 @@ void Basic802154::timerFiredCallback(int index) {
             trace() << "Missed beacon from PAN " << associatedPAN
                     << ", will wake up to receive next beacon in "
                     << beaconInterval * symbolLen - guardTime * 3 << " seconds";
+            cout<< "Beacon Perdido \n";
             setMacState(MAC_STATE_SLEEP);
             toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
             setTimer(FRAME_START, beaconInterval * symbolLen - guardTime * 3);
@@ -952,6 +953,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
         if (associationRequest_hub(rcvPacket)) {
             trace() << "Accepting association request from "
                     << rcvPacket->getSrcID();
+            cout<< "Nodo "<< rcvPacket->getSrcID()<<"Associado \n";
             // update associatedDevices and reply with an ACK
             associatedDevices[rcvPacket->getSrcID()] = true;
             Basic802154Packet *ackPacket = new Basic802154Packet(
@@ -1181,6 +1183,10 @@ void Basic802154::attemptTransmission(const char * descr) {
         if (macState == MAC_STATE_GTS) {
             trace() << "Transmitting [" << currentPacket->getName()
                     << "] in GTS";
+            trace() << "Transmitting Nodo [" << currentPacket->getSrcID()
+                                << "] in GTS";
+            cout << "Nodo [" << currentPacket->getSource()
+                                           << "] Transmitindo no GTS\n";
             transmitCurrentPacket();
         } else if (macState == MAC_STATE_CAP && currentPacketGtsOnly == false) {
             trace() << "Transmitting [" << currentPacket->getName()
@@ -1280,7 +1286,7 @@ void Basic802154::transmitCurrentPacket() {
         retransmitir(currentPacket);
         setTimer(currentPacketResponse > 0 ? ACK_TIMEOUT : ATTEMPT_TX, txTime);
         toRadioLayer(currentPacket->dup());
-        toRadioLayer(createRadioCommand(SET_STATE, TX));
+        toRadioLayer(createRadioCommand(SET_STATE, TX));// realiza a transmissão
     } else {
         //transmission not allowed
         trace() << "txTime " << txTime << " CAP:"

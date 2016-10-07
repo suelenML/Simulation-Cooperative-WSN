@@ -24,6 +24,7 @@ void StaticGTS802154::startup() {
 	GTSlist.clear(); totalGTS = 0; assignedGTS = 0;
 	requestGTS = par("requestGTS");
 	gtsOnly = par("gtsOnly");
+	//userelay = par("userelay");
 
 	// other parameters are from Basic802154, need to read them for GTS scheduling
 	totalSlots = par("numSuperframeSlots"); 	

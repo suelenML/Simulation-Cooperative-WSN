@@ -55,7 +55,9 @@ simple Basic802154 like node.communication.mac.iMac {
 
     //Número máximo de filhos a serem associados
     int maxChild = default (255); // maximo permitido por default
-
+	
+	//Suelen 
+	bool userelay = default(false);
  gates:
 	output toNetworkModule;
 	output toRadioModule;

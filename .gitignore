@@ -21,3 +21,6 @@ libptpsim.so
 *.out
 
 /out
+/Castalia
+/CastaliaBin
+/CastaliaBin

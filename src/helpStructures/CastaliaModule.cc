@@ -118,6 +118,21 @@ void CastaliaModule::collectOutputNocheck(const char *descr, int index,
 		return;
 	i->second.byIndex[index].data[label] += amt;
 }
+//Suelen inseri este método para poder passar um inteiro
+void CastaliaModule::collectOutputInt(const char *descr, int index, const char *label, int amt)
+{
+    if (index < 0)
+        opp_error("Negative output index not permitted");
+    collectOutputAdd(descr, index, label, amt);
+}
+//Suelen
+void CastaliaModule::collectOutputAdd(const char *descr, int index, const char *label, int amt)
+{
+    simpleOutputMapType::iterator i = simpleoutputs.find(descr);
+    if (i == simpleoutputs.end())
+        return;
+    i->second.byIndex[index].data[label] = amt;
+}
 
 void CastaliaModule::collectOutput(const char *descr, int index, const char *label)
 {

@@ -24,6 +24,7 @@ void StaticGTS802154::startup() {
 	GTSlist.clear(); totalGTS = 0; assignedGTS = 0;
 	requestGTS = par("requestGTS");
 	gtsOnly = par("gtsOnly");
+	//userelay = par("userelay");
 
 	// other parameters are from Basic802154, need to read them for GTS scheduling
 	totalSlots = par("numSuperframeSlots"); 	
@@ -70,21 +71,33 @@ int StaticGTS802154::gtsRequest_hub(Basic802154Packet *gtsPkt) {
 	}
 	
 	//node not found, or requested slots changed
-	if (total >= 7 || (CAPlength - gtsPkt->getGTSlength()) *
-	    baseSlot * (1 << frameOrder) < minCap) {
-	    cout<<"Não alocou o GTS\n";
-		trace() << "GTS request from " << gtsPkt->getSrcID() <<
-		    " cannot be acocmodated";
+//	if (total >= 7 || (CAPlength - gtsPkt->getGTSlength()) *
+//	    baseSlot * (1 << frameOrder) < minCap) {
+//	    cout<<"Não alocou o GTS\n";
+//		trace() << "GTS request from " << gtsPkt->getSrcID() <<
+//		    " cannot be acocmodated";
+//
+//		return 0;
+//	}
 
-		return 0;
-	}
-	
+	if ((CAPlength - gtsPkt->getGTSlength()) *
+	        baseSlot * (1 << frameOrder) < minCap) {
+	        cout<<"Não alocou o GTS\n"<< (CAPlength - gtsPkt->getGTSlength()) *
+	                baseSlot * (1 << frameOrder)<< "\n";
+	        trace() << "GTS request from " << gtsPkt->getSrcID() <<
+	            " cannot be acocmodated";
+
+	        return 0;
+	    }
+	cout<<"Alocou o GTS: -- variavel de conferencia: "<< (CAPlength - gtsPkt->getGTSlength()) *
+	                    baseSlot * (1 << frameOrder)<< "\n";
 	Basic802154GTSspec newGTSspec;
 	newGTSspec.length = gtsPkt->getGTSlength();
 	totalGTS += newGTSspec.length;
 	newGTSspec.owner = gtsPkt->getSrcID();
 	GTSlist.push_back(newGTSspec);
-	cout<< "Alocou um GTS\n";
+	cout<< "Alocou um GTS: "<< newGTSspec.owner <<"\n";
+	trace()<< "Alocou um GTS ";
 	return newGTSspec.length;
 }
 
@@ -99,6 +112,8 @@ void StaticGTS802154::prepareBeacon_hub(Basic802154Packet *beaconPacket) {
 		if (CAPlength > GTSlist[i].length) {
 			CAPlength -= GTSlist[i].length;
 			GTSlist[i].start = CAPlength + 1;
+			//cout<<"GTS["<<GTSlist[i].owner<<"] inicia no slot: "<< CAPlength + 1  << "\n";
+			//cout <<"Tamanho CAP: "<< CAPlength << "\n";
 			beaconPacket->setGTSlist(i, GTSlist[i]);
 		} else {
 			trace() << "Internal ERROR: GTS list corrupted";

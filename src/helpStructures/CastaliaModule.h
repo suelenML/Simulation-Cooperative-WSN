@@ -74,6 +74,7 @@ class CastaliaModule: public virtual cSimpleModule {
 	classPointersType classPointers;
 
 	void collectOutputNocheck(const char *, int, const char *, double);
+	void collectOutputAdd(const char *, int, const char *, int);
 	void collectHistogramNocheck(const char *, int, double);
 
  protected:
@@ -89,7 +90,13 @@ class CastaliaModule: public virtual cSimpleModule {
 	void collectOutput(const char *, int);
 	void collectOutput(const char *, int, const char *);
 	void collectOutput(const char *, int, const char *, double);
+	//Suelen
+	void collectOutputInt(const char *, int, const char *, int);
 
+
+	void collectOutputInt(const char *descr,const char *label, int amt){
+	    collectOutputAdd(descr, -1, label, amt);
+	}
 	void collectOutput(const char *descr) {
 		collectOutputNocheck(descr, -1, "", 1);
 	}

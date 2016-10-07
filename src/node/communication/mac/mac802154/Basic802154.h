@@ -160,6 +160,11 @@ class Basic802154: public VirtualMac {
     int maxChild;
     int nchildren; //guarda o número de nodes associados
 
+
+    /* ------------SUELEN----------------*/
+    //Conta o número de beacons perdidos
+    int beaconsPerdidos;
+
   protected:
 
 	/*--- Interface functions of the 802.15.4 MAC ---*/
@@ -258,6 +263,9 @@ class Basic802154: public VirtualMac {
 	    std::map<int, vector<int>*> historicoDeCooperacao;
 	    std::map<int, vector<int>*> listaDeNodosSoltos;//são nodos que não conseguiram trocar ms com o coordenador
 	    std::map<int, Neighborhood*> neigmap;
+
+	    /*----------------SUELEN------------------*/
+	    bool userelay= false;
 
 };
 

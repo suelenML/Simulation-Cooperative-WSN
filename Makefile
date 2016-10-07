@@ -1,12 +1,12 @@
 #
-# OMNeT++/OMNEST Makefile for Castalia
+# OMNeT++/OMNEST Makefile for CastaliaBin
 #
 # This file was generated with the command:
 #  opp_makemake -f --deep -O out -llpsolve55 -lm -ldl -lcolamd -lrt
 #
 
 # Name of target to be created (-o option)
-TARGET = Castalia$(EXE_SUFFIX)
+TARGET = CastaliaBin$(EXE_SUFFIX)
 
 # User interface (uncomment one) (-u option)
 USERIF_LIBS = $(ALL_ENV_LIBS) # that is, $(TKENV_LIBS) $(CMDENV_LIBS)
@@ -16,24 +16,6 @@ USERIF_LIBS = $(ALL_ENV_LIBS) # that is, $(TKENV_LIBS) $(CMDENV_LIBS)
 # C++ include paths (with -I)
 INCLUDE_PATH = \
     -I. \
-    -ISimulations \
-    -ISimulations/BANtest \
-    -ISimulations/BridgeTest \
-    -ISimulations/Parameters \
-    -ISimulations/Parameters/MAC \
-    -ISimulations/Parameters/PhysicalProcess \
-    -ISimulations/Parameters/Radio \
-    -ISimulations/Parameters/SensorDevice \
-    -ISimulations/Parameters/WirelessChannel \
-    -ISimulations/Parameters/WirelessChannel/BANmodels \
-    -ISimulations/connectivityMap \
-    -ISimulations/radioTest \
-    -ISimulations/simpleAggregation \
-    -ISimulations/simulacao \
-    -ISimulations/testeRiad \
-    -ISimulations/valuePropagation \
-    -ISimulations/valueReporting \
-    -Ibin \
     -Isrc \
     -Isrc/helpStructures \
     -Isrc/node \
@@ -81,9 +63,10 @@ O = $(PROJECT_OUTPUT_DIR)/$(CONFIGNAME)/$(PROJECTRELATIVE_PATH)
 
 # Object files for local .cc and .msg files
 OBJS = \
+    $O/src/helpStructures/CastaliaModule.o \
     $O/src/helpStructures/TimerService.o \
     $O/src/helpStructures/DebugInfoWriter.o \
-    $O/src/helpStructures/CastaliaModule.o \
+    $O/src/helpStructures/TimerService.o \
     $O/src/node/application/VirtualApplication.o \
     $O/src/node/application/bridgeTest/BridgeTest.o \
     $O/src/node/application/connectivityMap/ConnectivityMap.o \
@@ -94,14 +77,14 @@ OBJS = \
     $O/src/node/communication/mac/VirtualMac.o \
     $O/src/node/communication/mac/baselineBanMac/BaselineBANMac.o \
     $O/src/node/communication/mac/bypassMac/BypassMAC.o \
+    $O/src/node/communication/mac/mac802154/Neighbor.o \
     $O/src/node/communication/mac/mac802154/Neighborhood.o \
     $O/src/node/communication/mac/mac802154/Basic802154.o \
-    $O/src/node/communication/mac/mac802154/Neighbor.o \
     $O/src/node/communication/mac/mac802154/staticGTS802154/StaticGTS802154.o \
     $O/src/node/communication/mac/tMac/TMAC.o \
     $O/src/node/communication/mac/tunableMac/TunableMAC.o \
-    $O/src/node/communication/radio/RadioSupportFunctions.o \
     $O/src/node/communication/radio/Radio.o \
+    $O/src/node/communication/radio/RadioSupportFunctions.o \
     $O/src/node/communication/routing/VirtualRouting.o \
     $O/src/node/communication/routing/bypassRouting/BypassRouting.o \
     $O/src/node/communication/routing/multipathRingsRouting/MultipathRingsRouting.o \
@@ -112,8 +95,8 @@ OBJS = \
     $O/src/node/sensorManager/SensorManager.o \
     $O/src/physicalProcess/carsPhysicalProcess/CarsPhysicalProcess.o \
     $O/src/physicalProcess/customizablePhysicalProcess/CustomizablePhysicalProcess.o \
-    $O/src/wirelessChannel/defaultChannel/WirelessChannel.o \
     $O/src/wirelessChannel/defaultChannel/WirelessChannelTemporal.o \
+    $O/src/wirelessChannel/defaultChannel/WirelessChannel.o \
     $O/src/wirelessChannel/traceChannel/TraceChannel.o \
     $O/src/helpStructures/TimerServiceMessage_m.o \
     $O/src/node/application/ApplicationPacket_m.o \
@@ -227,26 +210,8 @@ msgheaders: $(MSGFILES:.msg=_m.h)
 clean:
 	$(qecho) Cleaning...
 	$(Q)-rm -rf $O
-	$(Q)-rm -f Castalia Castalia.exe libCastalia.so libCastalia.a libCastalia.dll libCastalia.dylib
+	$(Q)-rm -f CastaliaBin CastaliaBin.exe libCastaliaBin.so libCastaliaBin.a libCastaliaBin.dll libCastaliaBin.dylib
 	$(Q)-rm -f ./*_m.cc ./*_m.h
-	$(Q)-rm -f Simulations/*_m.cc Simulations/*_m.h
-	$(Q)-rm -f Simulations/BANtest/*_m.cc Simulations/BANtest/*_m.h
-	$(Q)-rm -f Simulations/BridgeTest/*_m.cc Simulations/BridgeTest/*_m.h
-	$(Q)-rm -f Simulations/Parameters/*_m.cc Simulations/Parameters/*_m.h
-	$(Q)-rm -f Simulations/Parameters/MAC/*_m.cc Simulations/Parameters/MAC/*_m.h
-	$(Q)-rm -f Simulations/Parameters/PhysicalProcess/*_m.cc Simulations/Parameters/PhysicalProcess/*_m.h
-	$(Q)-rm -f Simulations/Parameters/Radio/*_m.cc Simulations/Parameters/Radio/*_m.h
-	$(Q)-rm -f Simulations/Parameters/SensorDevice/*_m.cc Simulations/Parameters/SensorDevice/*_m.h
-	$(Q)-rm -f Simulations/Parameters/WirelessChannel/*_m.cc Simulations/Parameters/WirelessChannel/*_m.h
-	$(Q)-rm -f Simulations/Parameters/WirelessChannel/BANmodels/*_m.cc Simulations/Parameters/WirelessChannel/BANmodels/*_m.h
-	$(Q)-rm -f Simulations/connectivityMap/*_m.cc Simulations/connectivityMap/*_m.h
-	$(Q)-rm -f Simulations/radioTest/*_m.cc Simulations/radioTest/*_m.h
-	$(Q)-rm -f Simulations/simpleAggregation/*_m.cc Simulations/simpleAggregation/*_m.h
-	$(Q)-rm -f Simulations/simulacao/*_m.cc Simulations/simulacao/*_m.h
-	$(Q)-rm -f Simulations/testeRiad/*_m.cc Simulations/testeRiad/*_m.h
-	$(Q)-rm -f Simulations/valuePropagation/*_m.cc Simulations/valuePropagation/*_m.h
-	$(Q)-rm -f Simulations/valueReporting/*_m.cc Simulations/valueReporting/*_m.h
-	$(Q)-rm -f bin/*_m.cc bin/*_m.h
 	$(Q)-rm -f src/*_m.cc src/*_m.h
 	$(Q)-rm -f src/helpStructures/*_m.cc src/helpStructures/*_m.h
 	$(Q)-rm -f src/node/*_m.cc src/node/*_m.h
@@ -286,7 +251,7 @@ cleanall: clean
 
 depend:
 	$(qecho) Creating dependencies...
-	$(Q)$(MAKEDEPEND) $(INCLUDE_PATH) -f Makefile -P\$$O/ -- $(MSG_CC_FILES)  ./*.cc Simulations/*.cc Simulations/BANtest/*.cc Simulations/BridgeTest/*.cc Simulations/Parameters/*.cc Simulations/Parameters/MAC/*.cc Simulations/Parameters/PhysicalProcess/*.cc Simulations/Parameters/Radio/*.cc Simulations/Parameters/SensorDevice/*.cc Simulations/Parameters/WirelessChannel/*.cc Simulations/Parameters/WirelessChannel/BANmodels/*.cc Simulations/connectivityMap/*.cc Simulations/radioTest/*.cc Simulations/simpleAggregation/*.cc Simulations/simulacao/*.cc Simulations/testeRiad/*.cc Simulations/valuePropagation/*.cc Simulations/valueReporting/*.cc bin/*.cc src/*.cc src/helpStructures/*.cc src/node/*.cc src/node/application/*.cc src/node/application/bridgeTest/*.cc src/node/application/connectivityMap/*.cc src/node/application/simpleAggregation/*.cc src/node/application/throughputTest/*.cc src/node/application/valuePropagation/*.cc src/node/application/valueReporting/*.cc src/node/communication/*.cc src/node/communication/mac/*.cc src/node/communication/mac/baselineBanMac/*.cc src/node/communication/mac/bypassMac/*.cc src/node/communication/mac/mac802154/*.cc src/node/communication/mac/mac802154/staticGTS802154/*.cc src/node/communication/mac/tMac/*.cc src/node/communication/mac/tunableMac/*.cc src/node/communication/radio/*.cc src/node/communication/routing/*.cc src/node/communication/routing/bypassRouting/*.cc src/node/communication/routing/multipathRingsRouting/*.cc src/node/mobilityManager/*.cc src/node/mobilityManager/lineMobilityManager/*.cc src/node/mobilityManager/noMobilityManager/*.cc src/node/resourceManager/*.cc src/node/sensorManager/*.cc src/physicalProcess/*.cc src/physicalProcess/carsPhysicalProcess/*.cc src/physicalProcess/customizablePhysicalProcess/*.cc src/wirelessChannel/*.cc src/wirelessChannel/defaultChannel/*.cc src/wirelessChannel/traceChannel/*.cc
+	$(Q)$(MAKEDEPEND) $(INCLUDE_PATH) -f Makefile -P\$$O/ -- $(MSG_CC_FILES)  ./*.cc src/*.cc src/helpStructures/*.cc src/node/*.cc src/node/application/*.cc src/node/application/bridgeTest/*.cc src/node/application/connectivityMap/*.cc src/node/application/simpleAggregation/*.cc src/node/application/throughputTest/*.cc src/node/application/valuePropagation/*.cc src/node/application/valueReporting/*.cc src/node/communication/*.cc src/node/communication/mac/*.cc src/node/communication/mac/baselineBanMac/*.cc src/node/communication/mac/bypassMac/*.cc src/node/communication/mac/mac802154/*.cc src/node/communication/mac/mac802154/staticGTS802154/*.cc src/node/communication/mac/tMac/*.cc src/node/communication/mac/tunableMac/*.cc src/node/communication/radio/*.cc src/node/communication/routing/*.cc src/node/communication/routing/bypassRouting/*.cc src/node/communication/routing/multipathRingsRouting/*.cc src/node/mobilityManager/*.cc src/node/mobilityManager/lineMobilityManager/*.cc src/node/mobilityManager/noMobilityManager/*.cc src/node/resourceManager/*.cc src/node/sensorManager/*.cc src/physicalProcess/*.cc src/physicalProcess/carsPhysicalProcess/*.cc src/physicalProcess/customizablePhysicalProcess/*.cc src/wirelessChannel/*.cc src/wirelessChannel/defaultChannel/*.cc src/wirelessChannel/traceChannel/*.cc
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 $O/src/helpStructures/CastaliaModule.o: src/helpStructures/CastaliaModule.cc \

@@ -26,6 +26,9 @@ class StaticGTS802154: public Basic802154 {
 	int assignedGTS,requestGTS,totalGTS,totalSlots,baseSlot,minCap,frameOrder;
 	bool gtsOnly;
 
+	//SUELEN VARIÁVEIS
+	vector<Basic802154GTSspec> GTSlistCopy;
+
 	virtual void startup();
 	virtual int gtsRequest_hub(Basic802154Packet *);
 	virtual void prepareBeacon_hub(Basic802154Packet *);
@@ -33,6 +36,11 @@ class StaticGTS802154: public Basic802154 {
 	virtual void assignedGTS_node(int);
 	virtual bool acceptNewPacket(Basic802154Packet *);
 	virtual void transmissionOutcome(Basic802154Packet *, bool, string);
+
+	//SUELEN MÉTODOS
+	virtual int gtsRequest_hubRetransmissao(int, int);
+	virtual void ordenaListGTS(Basic802154Packet *);
+	virtual void copiaGTSSemRetransmissao();
 };
 
 #endif	//STATIC_GTS_802154

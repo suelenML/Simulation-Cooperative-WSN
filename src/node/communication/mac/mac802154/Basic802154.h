@@ -164,6 +164,7 @@ class Basic802154: public VirtualMac {
     /* ------------SUELEN----------------*/
     //Conta o número de beacons perdidos
     int beaconsPerdidos;
+    Basic802154Packet *copyBeacon;
 
   protected:
 
@@ -239,7 +240,7 @@ class Basic802154: public VirtualMac {
 
 	    int numeroDeCooperacoes=0;
 	    int tempoDeBeacon=0;
-	    int selecao=10;
+	    int selecao=0;
 
 	    void contabilizarMensagens();
 	    void listarNodosEscutados(Basic802154Packet *rcvPacket);
@@ -255,17 +256,18 @@ class Basic802154: public VirtualMac {
 	    void enviarNodosCooperantes(Basic802154Packet *beaconPacket);
 
 
-	    int retransmissoesEfetivas=0;
-	    int retransmissoesNaoEfetivas=0;
+	    int retransmissoesEfetivas=0; // que o coordenador escutou apenas por retransmissão
+	    int retransmissoesNaoEfetivas=0; // que o coordenador escutou na transmissão direta e que foi por retransmissão também
 	    vector<int> nodosColaboradores;//aqui serão armazenados os ids dos nodos colaboradores.
 	    std::vector<int> nodosEscutados;
-	    std::map<int,bool> cooperacoesDoBeacon;
+	    std::map<int,bool> cooperacoesDoBeacon; // guarda as msg's que chegaram por cooperaçao
 	    std::map<int, vector<int>*> historicoDeCooperacao;
 	    std::map<int, vector<int>*> listaDeNodosSoltos;//são nodos que não conseguiram trocar ms com o coordenador
-	    std::map<int, Neighborhood*> neigmap;
+	    std::map<int, Neighborhood*> neigmap; // Acho que são todos os nodos da rede
 
 	    /*----------------SUELEN------------------*/
 	    bool userelay= false;
+	    int retransmissao;
 
 };
 

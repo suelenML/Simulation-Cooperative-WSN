@@ -58,6 +58,7 @@ simple Basic802154 like node.communication.mac.iMac {
 	
 	//Suelen 
 	bool userelay = default(false);
+	int selecao = default(10);
  gates:
 	output toNetworkModule;
 	output toRadioModule;

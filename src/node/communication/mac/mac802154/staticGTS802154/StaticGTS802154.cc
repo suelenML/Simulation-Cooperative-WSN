@@ -21,7 +21,7 @@ Define_Module(StaticGTS802154);
  ***/
 void StaticGTS802154::startup() {
 	// initialise GTS-specific parameters
-	GTSlist.clear(); totalGTS = 0; assignedGTS = 0;
+	GTSlist.clear(); totalGTS = 0; assignedGTS = 0; GTSlistCopy.clear();
 	requestGTS = par("requestGTS");
 	gtsOnly = par("gtsOnly");
 	//userelay = par("userelay");
@@ -57,6 +57,7 @@ int StaticGTS802154::gtsRequest_hub(Basic802154Packet *gtsPkt) {
 	int total = 0;
 	for (i = GTSlist.begin(); i != GTSlist.end(); i++) {
 		total++;
+		cout<< "GTS Length Na Lista: "<<i->length << " GTS Length Do Pacote: " <<gtsPkt->getGTSlength()<< "\n";
 		if (i->owner == gtsPkt->getSrcID()) {
 			if (i->length == gtsPkt->getGTSlength()) {
 				return i->length;
@@ -96,6 +97,8 @@ int StaticGTS802154::gtsRequest_hub(Basic802154Packet *gtsPkt) {
 	totalGTS += newGTSspec.length;
 	newGTSspec.owner = gtsPkt->getSrcID();
 	GTSlist.push_back(newGTSspec);
+	GTSlistCopy.push_back(newGTSspec);
+	//copiaGTSSemRetransmissao();
 	cout<< "Alocou um GTS: "<< newGTSspec.owner <<"\n";
 	trace()<< "Alocou um GTS ";
 	return newGTSspec.length;
@@ -107,13 +110,41 @@ int StaticGTS802154::gtsRequest_hub(Basic802154Packet *gtsPkt) {
  ***/
 void StaticGTS802154::prepareBeacon_hub(Basic802154Packet *beaconPacket) {
 	int CAPlength = totalSlots;
+	//SUELEN
+	// Retrira os cooperantes anteriores
+	GTSlist.clear();
+    // Deixa a lista de GTS apenas com os nodos transmissores
+    vector<Basic802154GTSspec>::iterator iter;
+    for (iter = GTSlistCopy.begin(); iter != GTSlistCopy.end(); iter++) {
+       GTSlist.push_back(*iter);
+    }
+    if(beaconPacket->getVizinhosOuNodosCooperantesArraySize()>0){
+            /*for (int k = 0; k < (int)GTSlist.size(); k++) {
+                cout<< "Lista GTS Depois de copiar****Básico*****["<<k<<"]: "<<GTSlist[k].owner<<"\n";
+            }*/
+
+            // Atribui slot GTS para retransmissores
+            for (int j = 0; j < (int) beaconPacket->getVizinhosOuNodosCooperantesArraySize(); j++){
+               gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
+            }
+
+           /* for (int k = 0; k < (int)GTSlist.size(); k++) {
+                cout<< "Lista GTS Antes Ordenar["<<k<<"]: "<<GTSlist[k].owner<<"\n";
+            }*/
+            // Ao inserir os slots para os cooperantes eles acabam ficando antes das transmissoes, por isso ordemo para deixar ele para o fim.
+           ordenaListGTS(beaconPacket);
+
+    }
+
+
 	beaconPacket->setGTSlistArraySize(GTSlist.size());
 	for (int i = 0; i < (int)GTSlist.size(); i++) {
 		if (CAPlength > GTSlist[i].length) {
 			CAPlength -= GTSlist[i].length;
+			cout<<"GTSlist["<<i<<"].length;"<< GTSlist[i].length<<"\n";
 			GTSlist[i].start = CAPlength + 1;
-			//cout<<"GTS["<<GTSlist[i].owner<<"] inicia no slot: "<< CAPlength + 1  << "\n";
-			//cout <<"Tamanho CAP: "<< CAPlength << "\n";
+			cout<<"GTS["<<GTSlist[i].owner<<"] inicia no slot: "<< CAPlength + 1  << "\n";
+			cout <<"Tamanho CAP: "<< CAPlength << "\n";
 			beaconPacket->setGTSlist(i, GTSlist[i]);
 		} else {
 			trace() << "Internal ERROR: GTS list corrupted";
@@ -123,7 +154,12 @@ void StaticGTS802154::prepareBeacon_hub(Basic802154Packet *beaconPacket) {
 			break;
 		}
 	}
+
 	beaconPacket->setCAPlength(CAPlength);
+
+	/*for (int i = 0; i < (int)GTSlist.size(); i++) {
+	    cout<< "Lista GTS["<<i<<"]: "<<GTSlist[i].owner<<"\n";
+	}*/
 }
 
 /***
@@ -184,3 +220,60 @@ void StaticGTS802154::timerFiredCallback(int index) {
 	}
 }
 */
+
+int StaticGTS802154::gtsRequest_hubRetransmissao(int id, int length) {
+    //Length of CAP after lengths of all GTS slots are subtracted
+    int CAPlength = totalSlots;
+
+    //GTSlist.clear();
+    if ((CAPlength - length) *
+            baseSlot * (1 << frameOrder) < minCap) {
+            cout<<"Não alocou o GTS\n"<< (CAPlength - length) *
+                    baseSlot * (1 << frameOrder)<< "\n";
+            trace() << "GTS request from " << id <<
+                " cannot be acocmodated";
+
+            return 0;
+        }
+    cout<<"Alocou o GTS: Retransmissão: -- variavel de conferencia: "<< (CAPlength - length) *
+                        baseSlot * (1 << frameOrder)<< "\n";
+    Basic802154GTSspec newGTSspec;
+    newGTSspec.length = length;
+    totalGTS += newGTSspec.length;
+    newGTSspec.owner = id;
+    GTSlist.push_back(newGTSspec);
+    cout<< "Alocou um GTS Retransmissao: "<< newGTSspec.owner <<"\n";
+    trace()<< "Alocou um GTS retransmissao";
+
+   /* for (int i = 0; i < (int)GTSlist.size(); i++) {
+           cout<< "Lista GTS depois de inserir["<<i<<"]: "<<GTSlist[i].owner<<"\n";
+       }*/
+    return newGTSspec.length;
+}
+
+void StaticGTS802154::ordenaListGTS(Basic802154Packet *beaconPacket) {
+    beaconPacket->setGTSlistArraySize(GTSlist.size());
+    int j = 0;
+    Basic802154GTSspec aux;
+        for (int i = 0; i < ((int)GTSlist.size())/2; i++) {
+            j = GTSlist.size() - i -1;
+            aux = GTSlist[i];
+            GTSlist[i] = GTSlist[j];
+            GTSlist[j]=aux;
+        }
+        /*for (int i = 0; i < (int)GTSlist.size(); i++) {
+             cout<< "Lista GTS Depois de ordenar["<<i<<"]: "<<GTSlist[i].owner<<"\n";
+         }*/
+}
+
+void StaticGTS802154::copiaGTSSemRetransmissao(){
+
+    vector<Basic802154GTSspec>::iterator i;
+    for (i = GTSlist.begin(); i != GTSlist.end(); i++) {
+        GTSlistCopy.push_back(*i);
+    }
+
+    /*for (int i = 0; i < (int)GTSlist.size(); i++) {
+            cout<< "Lista GTS Basico["<<i<<"]: "<<GTSlistCopy[i].owner<<"\n";
+        }*/
+}

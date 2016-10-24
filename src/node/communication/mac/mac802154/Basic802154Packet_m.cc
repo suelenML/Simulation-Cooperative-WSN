@@ -68,6 +68,7 @@ Basic802154GTSspec::Basic802154GTSspec()
     owner = 0;
     start = 0;
     length = 0;
+    retransmissor = 0;
 }
 
 void doPacking(cCommBuffer *b, Basic802154GTSspec& a)
@@ -75,6 +76,7 @@ void doPacking(cCommBuffer *b, Basic802154GTSspec& a)
     doPacking(b,a.owner);
     doPacking(b,a.start);
     doPacking(b,a.length);
+    doPacking(b,a.retransmissor);
 }
 
 void doUnpacking(cCommBuffer *b, Basic802154GTSspec& a)
@@ -82,6 +84,7 @@ void doUnpacking(cCommBuffer *b, Basic802154GTSspec& a)
     doUnpacking(b,a.owner);
     doUnpacking(b,a.start);
     doUnpacking(b,a.length);
+    doUnpacking(b,a.retransmissor);
 }
 
 class Basic802154GTSspecDescriptor : public cClassDescriptor
@@ -131,7 +134,7 @@ const char *Basic802154GTSspecDescriptor::getProperty(const char *propertyname) 
 int Basic802154GTSspecDescriptor::getFieldCount(void *object) const
 {
     cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 3+basedesc->getFieldCount(object) : 3;
+    return basedesc ? 4+basedesc->getFieldCount(object) : 4;
 }
 
 unsigned int Basic802154GTSspecDescriptor::getFieldTypeFlags(void *object, int field) const
@@ -146,8 +149,9 @@ unsigned int Basic802154GTSspecDescriptor::getFieldTypeFlags(void *object, int f
         FD_ISEDITABLE,
         FD_ISEDITABLE,
         FD_ISEDITABLE,
+        FD_ISEDITABLE,
     };
-    return (field>=0 && field<3) ? fieldTypeFlags[field] : 0;
+    return (field>=0 && field<4) ? fieldTypeFlags[field] : 0;
 }
 
 const char *Basic802154GTSspecDescriptor::getFieldName(void *object, int field) const
@@ -162,8 +166,9 @@ const char *Basic802154GTSspecDescriptor::getFieldName(void *object, int field) 
         "owner",
         "start",
         "length",
+        "retransmissor",
     };
-    return (field>=0 && field<3) ? fieldNames[field] : NULL;
+    return (field>=0 && field<4) ? fieldNames[field] : NULL;
 }
 
 int Basic802154GTSspecDescriptor::findField(void *object, const char *fieldName) const
@@ -173,6 +178,7 @@ int Basic802154GTSspecDescriptor::findField(void *object, const char *fieldName)
     if (fieldName[0]=='o' && strcmp(fieldName, "owner")==0) return base+0;
     if (fieldName[0]=='s' && strcmp(fieldName, "start")==0) return base+1;
     if (fieldName[0]=='l' && strcmp(fieldName, "length")==0) return base+2;
+    if (fieldName[0]=='r' && strcmp(fieldName, "retransmissor")==0) return base+3;
     return basedesc ? basedesc->findField(object, fieldName) : -1;
 }
 
@@ -188,8 +194,9 @@ const char *Basic802154GTSspecDescriptor::getFieldTypeString(void *object, int f
         "int",
         "int",
         "int",
+        "bool",
     };
-    return (field>=0 && field<3) ? fieldTypeStrings[field] : NULL;
+    return (field>=0 && field<4) ? fieldTypeStrings[field] : NULL;
 }
 
 const char *Basic802154GTSspecDescriptor::getFieldProperty(void *object, int field, const char *propertyname) const
@@ -232,6 +239,7 @@ std::string Basic802154GTSspecDescriptor::getFieldAsString(void *object, int fie
         case 0: return long2string(pp->owner);
         case 1: return long2string(pp->start);
         case 2: return long2string(pp->length);
+        case 3: return bool2string(pp->retransmissor);
         default: return "";
     }
 }
@@ -249,6 +257,7 @@ bool Basic802154GTSspecDescriptor::setFieldAsString(void *object, int field, int
         case 0: pp->owner = string2long(value); return true;
         case 1: pp->start = string2long(value); return true;
         case 2: pp->length = string2long(value); return true;
+        case 3: pp->retransmissor = string2bool(value); return true;
         default: return false;
     }
 }
@@ -302,7 +311,6 @@ Basic802154Packet::Basic802154Packet(const char *name, int kind) : ::MacPacket(n
     this->energy_var = 0;
     dadosVizinho_arraysize = 0;
     this->dadosVizinho_var = 0;
-    this->numnodos_var = 0;
 }
 
 Basic802154Packet::Basic802154Packet(const Basic802154Packet& other) : ::MacPacket(other)
@@ -360,7 +368,6 @@ void Basic802154Packet::copy(const Basic802154Packet& other)
     dadosVizinho_arraysize = other.dadosVizinho_arraysize;
     for (unsigned int i=0; i<dadosVizinho_arraysize; i++)
         this->dadosVizinho_var[i] = other.dadosVizinho_var[i];
-    this->numnodos_var = other.numnodos_var;
 }
 
 void Basic802154Packet::parsimPack(cCommBuffer *b)
@@ -384,7 +391,6 @@ void Basic802154Packet::parsimPack(cCommBuffer *b)
     doPacking(b,this->energy_var);
     b->pack(dadosVizinho_arraysize);
     doPacking(b,this->dadosVizinho_var,dadosVizinho_arraysize);
-    doPacking(b,this->numnodos_var);
 }
 
 void Basic802154Packet::parsimUnpack(cCommBuffer *b)
@@ -426,7 +432,6 @@ void Basic802154Packet::parsimUnpack(cCommBuffer *b)
         this->dadosVizinho_var = new int[dadosVizinho_arraysize];
         doUnpacking(b,this->dadosVizinho_var,dadosVizinho_arraysize);
     }
-    doUnpacking(b,this->numnodos_var);
 }
 
 int Basic802154Packet::getMac802154PacketType() const
@@ -637,16 +642,6 @@ void Basic802154Packet::setDadosVizinho(unsigned int k, int dadosVizinho)
     this->dadosVizinho_var[k] = dadosVizinho;
 }
 
-short Basic802154Packet::getNumnodos() const
-{
-    return numnodos_var;
-}
-
-void Basic802154Packet::setNumnodos(short numnodos)
-{
-    this->numnodos_var = numnodos;
-}
-
 class Basic802154PacketDescriptor : public cClassDescriptor
 {
   public:
@@ -694,7 +689,7 @@ const char *Basic802154PacketDescriptor::getProperty(const char *propertyname) c
 int Basic802154PacketDescriptor::getFieldCount(void *object) const
 {
     cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 16+basedesc->getFieldCount(object) : 16;
+    return basedesc ? 15+basedesc->getFieldCount(object) : 15;
 }
 
 unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int field) const
@@ -721,9 +716,8 @@ unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int fi
         FD_ISEDITABLE,
         FD_ISEDITABLE,
         FD_ISARRAY | FD_ISEDITABLE,
-        FD_ISEDITABLE,
     };
-    return (field>=0 && field<16) ? fieldTypeFlags[field] : 0;
+    return (field>=0 && field<15) ? fieldTypeFlags[field] : 0;
 }
 
 const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) const
@@ -750,9 +744,8 @@ const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) c
         "somaSinais",
         "energy",
         "dadosVizinho",
-        "numnodos",
     };
-    return (field>=0 && field<16) ? fieldNames[field] : NULL;
+    return (field>=0 && field<15) ? fieldNames[field] : NULL;
 }
 
 int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) const
@@ -774,7 +767,6 @@ int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) 
     if (fieldName[0]=='s' && strcmp(fieldName, "somaSinais")==0) return base+12;
     if (fieldName[0]=='e' && strcmp(fieldName, "energy")==0) return base+13;
     if (fieldName[0]=='d' && strcmp(fieldName, "dadosVizinho")==0) return base+14;
-    if (fieldName[0]=='n' && strcmp(fieldName, "numnodos")==0) return base+15;
     return basedesc ? basedesc->findField(object, fieldName) : -1;
 }
 
@@ -802,9 +794,8 @@ const char *Basic802154PacketDescriptor::getFieldTypeString(void *object, int fi
         "double",
         "double",
         "int",
-        "short",
     };
-    return (field>=0 && field<16) ? fieldTypeStrings[field] : NULL;
+    return (field>=0 && field<15) ? fieldTypeStrings[field] : NULL;
 }
 
 const char *Basic802154PacketDescriptor::getFieldProperty(void *object, int field, const char *propertyname) const
@@ -865,7 +856,6 @@ std::string Basic802154PacketDescriptor::getFieldAsString(void *object, int fiel
         case 12: return double2string(pp->getSomaSinais());
         case 13: return double2string(pp->getEnergy());
         case 14: return long2string(pp->getDadosVizinho(i));
-        case 15: return long2string(pp->getNumnodos());
         default: return "";
     }
 }
@@ -894,7 +884,6 @@ bool Basic802154PacketDescriptor::setFieldAsString(void *object, int field, int 
         case 12: pp->setSomaSinais(string2double(value)); return true;
         case 13: pp->setEnergy(string2double(value)); return true;
         case 14: pp->setDadosVizinho(i,string2long(value)); return true;
-        case 15: pp->setNumnodos(string2long(value)); return true;
         default: return false;
     }
 }

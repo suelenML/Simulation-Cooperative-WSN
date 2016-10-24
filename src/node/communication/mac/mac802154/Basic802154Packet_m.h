@@ -50,13 +50,14 @@ struct Basic802154GTSspec
     int owner;
     int start;
     int length;
+    bool retransmissor;
 };
 
 void doPacking(cCommBuffer *b, Basic802154GTSspec& a);
 void doUnpacking(cCommBuffer *b, Basic802154GTSspec& a);
 
 /**
- * Class generated from <tt>src/node/communication/mac/mac802154/Basic802154Packet.msg:33</tt> by nedtool.
+ * Class generated from <tt>src/node/communication/mac/mac802154/Basic802154Packet.msg:34</tt> by nedtool.
  * <pre>
  * packet Basic802154Packet extends MacPacket
  * {
@@ -78,7 +79,7 @@ void doUnpacking(cCommBuffer *b, Basic802154GTSspec& a);
  *     double somaSinais;
  *     double energy;
  *     int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos
- *     short numnodos;// fazer isso no do lu
+ * 	//short numnodos;// fazer isso no do lu
  * }
  * </pre>
  */
@@ -103,7 +104,6 @@ class Basic802154Packet : public ::MacPacket
     double energy_var;
     int *dadosVizinho_var; // array ptr
     unsigned int dadosVizinho_arraysize;
-    short numnodos_var;
 
   private:
     void copy(const Basic802154Packet& other);
@@ -159,8 +159,6 @@ class Basic802154Packet : public ::MacPacket
     virtual unsigned int getDadosVizinhoArraySize() const;
     virtual int getDadosVizinho(unsigned int k) const;
     virtual void setDadosVizinho(unsigned int k, int dadosVizinho);
-    virtual short getNumnodos() const;
-    virtual void setNumnodos(short numnodos);
 };
 
 inline void doPacking(cCommBuffer *b, Basic802154Packet& obj) {obj.parsimPack(b);}

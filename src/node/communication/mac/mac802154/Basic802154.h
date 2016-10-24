@@ -60,6 +60,7 @@ enum Mac802154Timers {
 	SLEEP_START = 6,
 	FRAME_START = 7,
 	BACK_TO_SETUP = 8,
+	GTS_RETRANS = 9,
 };
 
 class Basic802154: public VirtualMac {
@@ -164,7 +165,17 @@ class Basic802154: public VirtualMac {
     /* ------------SUELEN----------------*/
     //Conta o número de beacons perdidos
     int beaconsPerdidos;
-    Basic802154Packet *copyBeacon;
+    simtime_t GTSstartRetrans;             // Absolute time of the start of GTS of retransmission period for current node
+    simtime_t GTSendRetrans;               // Absolute time of the end of GTS of retransmission period for current node
+    simtime_t GTSlengthRetrans;            // length of the GTS of retransmission period for current node
+    Basic802154Packet *packetRetransmitir; // os pacotes para serem retransmitidos serão duplicados;
+    queue< Basic802154Packet* > listRetransmitir; // Lista que armazena os pacotes a serem retransmitidos;
+
+
+
+
+
+
 
   protected:
 

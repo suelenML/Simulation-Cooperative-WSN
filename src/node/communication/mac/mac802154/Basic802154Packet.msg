@@ -28,6 +28,7 @@ struct Basic802154GTSspec {
 	int owner;
 	int start;
 	int length;
+	bool retransmissor;
 }
 
 packet Basic802154Packet extends MacPacket {
@@ -49,6 +50,6 @@ packet Basic802154Packet extends MacPacket {
 	double somaSinais;
 	double energy;
 	int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos
-	short numnodos;// fazer isso no do lu
+	//short numnodos;// fazer isso no do lu
 }
 

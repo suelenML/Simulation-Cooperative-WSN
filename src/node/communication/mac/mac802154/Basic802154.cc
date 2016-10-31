@@ -32,6 +32,12 @@ void Basic802154::startup() {
     //Suelen
     beaconsPerdidos = 0;
     packetRetransmitir = NULL;
+    inicioGTSRetrans = -1;
+    GTSstartRetrans = 0;
+    GTSendRetrans = 0;
+    GTSlengthRetrans = 0;
+    primeiraRetrans = 0;
+    irDormir = 0;
 
 
     isPANCoordinator = par("isPANCoordinator");
@@ -132,6 +138,13 @@ void Basic802154::startup() {
 void Basic802154::contabilizarMensagens() {
     int numNodosEscutados = nodosEscutados.size();
     int i = 0;
+
+    cout<<"Sou Nodo: "<<SELF_MAC_ADDRESS<<"\n";
+    cout<<"tamanho cooperacoes beacon: "<<cooperacoesDoBeacon.size()<<"\n";
+
+    for(int j=0;j<numNodosEscutados;j++){
+        cout<<"NodoEscutado["<<j<<"]: "<<nodosEscutados[j]<<"\n";
+    }
     while (i < numNodosEscutados) {
 
         int nodoEscutado = nodosEscutados[i];
@@ -147,6 +160,7 @@ void Basic802154::contabilizarMensagens() {
         }
         i++;
     }
+
     retransmissoesEfetivas += cooperacoesDoBeacon.size();
     cout << "até o momento foram " << retransmissoesEfetivas
             << "retransmissões efetivas\n";
@@ -227,6 +241,7 @@ void Basic802154::timerFiredCallback(int index) {
             sentBeacons++;
 
             trace() << "Transmitting [PAN beacon packet] now, BSN = " << macBSN;
+            cout<< "Transmitting [PAN beacon packet] now, BSN = " << macBSN<< "\n";
             setMacState(MAC_STATE_CAP);
             toRadioLayer(beaconPacket);
             toRadioLayer(createRadioCommand(SET_STATE, TX));
@@ -236,8 +251,9 @@ void Basic802154::timerFiredCallback(int index) {
             currentFrameStart = getClock() + phyDelayRx2Tx;
             setTimer(FRAME_START, beaconInterval * symbolLen);
         } else {	// if not a PAN coordinator, then wait for beacon
+            //cout<<"Setar RX: "<< SELF_MAC_ADDRESS<<"\n";
             toRadioLayer(createRadioCommand(SET_STATE, RX));
-            setTimer(BEACON_TIMEOUT, guardTime * 3);
+            setTimer(BEACON_TIMEOUT, guardTime * 7);
         }
         break;
     }
@@ -263,15 +279,23 @@ void Basic802154::timerFiredCallback(int index) {
                 startedGTS_node();
                 break;
             }else{
-                // set a timer to go to sleep after this GTS slot ends
-                setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
-                // inform the decision layer that GTS has started
-                startedGTS_node();
+                if(primeiraRetrans > 0){
+                    // set a timer to go to sleep after this GTS slot ends
+                    setTimer(SLEEP_START, primeiraRetrans - simTime());
+
+                     // inform the decision layer that GTS has started
+                    startedGTS_node();
                 break;
+                }else{
+                    double x = 0;
+                     // set a timer to go to sleep after this GTS slot ends
+                     setTimer(SLEEP_START, irDormir - simTime());
+                    // inform the decision layer that GTS has started
+                    startedGTS_node();
+                    break;
+                }
             }
         }
-
-
         // set a timer to go to sleep after this GTS slot ends
         setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
 
@@ -284,7 +308,7 @@ void Basic802154::timerFiredCallback(int index) {
     case BEACON_TIMEOUT: {
         lostBeacons++;
         if (lostBeacons >= maxLostBeacons) {
-            trace() << "Lost synchronisation with PAN " << associatedPAN;
+            //trace() << "Lost synchronisation with PAN " << associatedPAN;
             setMacState(MAC_STATE_SETUP);
             associatedPAN = -1;
             desyncTimeStart = getClock();
@@ -292,15 +316,13 @@ void Basic802154::timerFiredCallback(int index) {
             if (currentPacket)
                 clearCurrentPacket("No PAN");
         } else if (associatedPAN != -1) {
-            trace() << "Missed beacon from PAN " << associatedPAN
-                    << ", will wake up to receive next beacon in "
-                    << beaconInterval * symbolLen - guardTime * 3 << " seconds";
+            //trace() << "Missed beacon from PAN " << associatedPAN<< ", will wake up to receive next beacon in "<< beaconInterval * symbolLen - guardTime * 7 << " seconds";
             beaconsPerdidos ++;
 
-            cout<< "Beacon Perdido: "<< beaconsPerdidos<< "\n";
+            cout<< "Beacon Perdido NODO: "<< SELF_MAC_ADDRESS<<"\n";
             setMacState(MAC_STATE_SLEEP);
             toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
-            setTimer(FRAME_START, beaconInterval * symbolLen - guardTime * 3);
+            setTimer(FRAME_START, beaconInterval * symbolLen - guardTime * 7);
         }
         break;
     }
@@ -349,7 +371,7 @@ void Basic802154::timerFiredCallback(int index) {
             setTimer(PERFORM_CCA, phyDelayForValidCS);
         } else {
             //Clear Channel Assesment (CCA) pin is not valid at all (radio is sleeping?)
-            trace() << "ERROR: isChannelClear() called when radio is not ready";
+            //trace() << "ERROR: isChannelClear() called when radio is not ready";
             toRadioLayer(createRadioCommand(SET_STATE, RX));
         }
         break;
@@ -392,16 +414,12 @@ void Basic802154::timerFiredCallback(int index) {
            packetRetrans->setDstID(0);
            packetRetrans->setByteLength(COMMAND_PKT_SIZE);
            retransmitir(packetRetrans);
-           cout<<"Sou o Nodo: "<<SELF_MAC_ADDRESS << "Retransmitidos\n";
-           for(int i=0;i< packetRetrans->getDadosVizinhoArraySize();i++){
-               cout<<"Enviando dadosVizinhos["<<i<<"]: "<<packetRetrans->getDadosVizinho(i)<<"\n";
-               }
+           //cout<<"Sou o Nodo: "<<SELF_MAC_ADDRESS << "Retransmitidos\n";
+//           for(int i=0;i< packetRetrans->getDadosVizinhoArraySize();i++){
+//               cout<<"Enviando dadosVizinhos["<<i<<"]: "<<packetRetrans->getDadosVizinho(i)<<"\n";
+//               }
 
            transmitPacket(packetRetrans);
-
-
-
-
 
            // set a timer to go to sleep after this GTS slot ends
            setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
@@ -491,8 +509,7 @@ void Basic802154::finishSpecific() {
         } else if (iter->first.find("NoPAN") != string::npos) {
             collectOutput("Packet breakdown", "Failed, no PAN", iter->second);
         } else {
-            trace() << "Unknown packet breakdonw category: " << iter->first
-                    << " with " << iter->second << " packets";
+            //trace() << "Unknown packet breakdonw category: " << iter->first<< " with " << iter->second << " packets";
         }
     }
 
@@ -650,12 +667,14 @@ void Basic802154::selecionaNodosSmartNumVizinhos(
             primeiro = true;
             //limpando lista de colaboradores
             nodosColaboradores.clear();
+            //cout<<"Selecao de Cooperantes\n";
             for (iterNeighborhood = neigmap.begin();
                     iterNeighborhood != neigmap.end(); iterNeighborhood++) {
                 Neighborhood *nodo = iterNeighborhood->second;
 
                 if (resultado_lp[j] == 1) {
                     nodosColaboradores.push_back(nodo->nodeId);
+                    //cout<<"- : "<<nodo->nodeId <<"\n";
                 }
                 j++;
 
@@ -877,13 +896,70 @@ void Basic802154::souNodoCooperante(Basic802154Packet * pkt) {
 }
 // método Ríad
 void Basic802154::listarNodosEscutados(Basic802154Packet *rcvPacket) {
-    nodosEscutados.push_back(rcvPacket->getSrcID()); // insere nos nodos escutados
-    //cout<<"Inserindo Escutado: "<< nodosEscutados.front() <<"\n";
+    int repetido = 0;
+    for(int i=0; i< nodosEscutados.size();i++){
+        if(nodosEscutados[i] == rcvPacket->getSrcID()){
+            repetido = 1;
+            break;
+        }
+    }
+     if(repetido == 0 && rcvPacket->getSrcID() != 0){
+        nodosEscutados.push_back(rcvPacket->getSrcID()); // insere nos nodos escutados
+        //cout<<"Inserindo Escutado: "<< nodosEscutados.front() <<"\n";
+     }
 }
+/*
+void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
+    int i = 0,j = 0,repetido = 0;
+    vector<int> *vetor = new vector<int>;
+    if (rcvPacket->getDadosVizinhoArraySize() > 0) {
+        if (historicoDeCooperacao.find(rcvPacket->getSrcID())
+                        != historicoDeCooperacao.end()) {
+
+            map<int, vector<int>*>::iterator iter;
+            iter = historicoDeCooperacao.find(rcvPacket->getSrcID());
+            vector<int>* v = iter->second;
+
+            for(i = 0;i < rcvPacket->getDadosVizinhoArraySize();i++){
+                for(j = 0;j < nodosEscutados.size();j++){
+                    if(nodosEscutados[j] == rcvPacket->getDadosVizinho(i)){
+                        repetido = 1;
+                        break;
+                    }
+                }
+                if(repetido==0){
+                   cooperacoesDoBeacon[rcvPacket->getDadosVizinho(i)] = true;
+                   v->push_back(rcvPacket->getDadosVizinho(i));
+                }
+            }
+        }else{
+           for(i = 0;i < rcvPacket->getDadosVizinhoArraySize();i++){
+                for(j = 0;j < nodosEscutados.size();j++){
+                    if(nodosEscutados[j] == rcvPacket->getDadosVizinho(i)){
+                        repetido = 1;
+                        break;
+                    }
+                }
+                if(repetido==0){
+                   cooperacoesDoBeacon[rcvPacket->getDadosVizinho(i)] = true;
+                   vetor->push_back(rcvPacket->getDadosVizinho(i));
+                }
+            }
+           historicoDeSucesso[rcvPacket->getSrcID()] = vetor;
+        }
+    }
+}
+*/
+
+
 // método Ríad
 void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
     unsigned int i;
-
+    cout<<"Tamanho getDadosVizinhos: "<< rcvPacket->getDadosVizinhoArraySize() <<"\n";
+    cout<<"Escutados do Nodo: "<< rcvPacket->getSrcID()<<"\n";
+    for(int k= 0;k<cooperacoesDoBeacon.size();k++){
+        cout<<"coop beacon: "<<k<<"\n";
+    }
     if (rcvPacket->getDadosVizinhoArraySize() > 0) {
         if (historicoDeCooperacao.find(rcvPacket->getSrcID())
                 != historicoDeCooperacao.end()) {
@@ -897,6 +973,7 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
             for (i = 0; i < rcvPacket->getDadosVizinhoArraySize(); i++) {
                 int nodo = rcvPacket->getDadosVizinho(i);
                 v->push_back(nodo);
+                cout<<"nodo: "<< nodo<<"\n";
                 cooperacoesDoBeacon[nodo] = true;
             }
 
@@ -906,10 +983,17 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
             for (i = 0; i < rcvPacket->getDadosVizinhoArraySize(); i++) {
                 int nodo = rcvPacket->getDadosVizinho(i);
                 vetor->push_back(nodo);
+                cout<<"nodo: "<< nodo<<"\n";
                 cooperacoesDoBeacon[nodo] = true;
             }
             historicoDeCooperacao[rcvPacket->getSrcID()] = vetor;
         }
+
+        for(int k= 0;k<cooperacoesDoBeacon.size();k++){
+                cout<<"coop beacon depois: "<<k<<"\n";
+            }
+
+
     }
 }
 
@@ -1000,11 +1084,22 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
         GTSstartRetrans = 0;
         GTSendRetrans = 0;
         GTSlengthRetrans = 0;
-        //SUELEN
-        cout<<"Beacon Recebido no Nodo:"<<SELF_MAC_ADDRESS << "\n";
-        int teste = rcvPacket->getVizinhosOuNodosCooperantesArraySize();
-        cout<< "Este Beacon informa que tem "<< teste<< " Nodos Cooperantes\n";
 
+        //Suelen
+        if(userelay){
+            primeiraRetrans = 0;
+            irDormir = 0;
+            inicioGTSRetrans = rcvPacket->getSlotInicioRetrans();
+
+            //SUELEN
+            cout<<"Beacon Recebido no Nodo:"<<SELF_MAC_ADDRESS << "\n";
+            int teste = rcvPacket->getVizinhosOuNodosCooperantesArraySize();
+            cout<< "Este Beacon informa que tem "<< teste<< " Nodos Cooperantes\n";
+                if((int) rcvPacket->getGTSlistArraySize()>0 && rcvPacket->getVizinhosOuNodosCooperantesArraySize()>0){
+                    // seta o tempo de inicio das retransmissões
+                    primeiraRetrans = ((rcvPacket->getGTSlist(inicioGTSRetrans).start - 1)* baseSlotDuration * (1 << frameOrder) * symbolLen) + getClock();
+                }
+        }
 
         for (int i = 0; i < (int) rcvPacket->getGTSlistArraySize(); i++) {
             if (rcvPacket->getGTSlist(i).owner == SELF_MAC_ADDRESS) {
@@ -1036,10 +1131,17 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                 GTSlength = GTSend - GTSstart;
                 trace() << "GTS slot from " << getClock() + GTSstart << " to "
                         << getClock() + GTSend << " length " << GTSlength;
-                //cout << "Nodo "<< rcvPacket->getGTSlist(i).owner  <<" Usa o GTS slot from " << getClock() + GTSstart << " to "<< getClock() + GTSend << " length " << GTSlength<< "\n";
+                cout << "Nodo "<< rcvPacket->getGTSlist(i).owner  <<" Usa o GTS slot from " << getClock() + GTSstart << " to "<< getClock() + GTSend << " length " << GTSlength<< "\n";
 
-                }
+                  }
 
+              }
+        }
+        //Suelen
+        if(userelay){
+            if((int) rcvPacket->getGTSlistArraySize()>0){
+                irDormir = (((rcvPacket->getGTSlist(0).start - 1) * baseSlotDuration * (1 << frameOrder) * symbolLen)
+                        + (rcvPacket->getGTSlist(0).length * baseSlotDuration * (1 << frameOrder) * symbolLen) +getClock());
             }
         }
 
@@ -1102,10 +1204,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
             toRadioLayer(createRadioCommand(SET_STATE, TX));
             setTimer(ATTEMPT_TX, TX_TIME(ACK_PKT_SIZE));
         } else {
-            trace() << "Denied association request from "
-                    << rcvPacket->getSrcID()
-                    << ". Maximum number of children was reached = "
-                    << nchildren;
+            //trace() << "Denied association request from "<< rcvPacket->getSrcID()<< ". Maximum number of children was reached = " << nchildren;
             // Need to send a packet to deny the reuqest.
             // But current implementation always accepts them
         }
@@ -1152,26 +1251,25 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
         // data frame
     case MAC_802154_DATA_PACKET: {
-        cout<<"Eu sou o: "<< SELF_MAC_ADDRESS<< "\n";
+        //cout<<"Eu sou o: "<< SELF_MAC_ADDRESS<< "\n";
 
         if (isNotDuplicatePacket(rcvPacket)) {
             dataReceived_hub(rcvPacket);
             toNetworkLayer(decapsulatePacket(rcvPacket));
         } else {
-            trace() << "Packet [" << rcvPacket->getName() << "] from node "
-                    << rcvPacket->getSrcID() << " is a duplicate";
+            //trace() << "Packet [" << rcvPacket->getName() << "] from node "<< rcvPacket->getSrcID() << " is a duplicate";
         }
 
         // If the frame was sent to broadcast address, nothing else needs to be done
         if (rcvPacket->getDstID() == BROADCAST_MAC_ADDRESS)
             break;
 
-        if(rcvPacket->getDadosVizinhoArraySize()>0){
-            cout<<"recebi por cooperacao:\n";
-            for(int i=0;i<rcvPacket->getDadosVizinhoArraySize();i++){
-                cout<<"dadosvizinhos["<<i<<"]: "<< rcvPacket->getDadosVizinho(i)<<"\n";
-            }
-        }
+//        if(rcvPacket->getDadosVizinhoArraySize()>0){
+//            cout<<"recebi por cooperacao:\n";
+//            for(int i=0;i<rcvPacket->getDadosVizinhoArraySize();i++){
+//                cout<<"dadosvizinhos["<<i<<"]: "<< rcvPacket->getDadosVizinho(i)<<"\n";
+//            }
+//        }
 
         // otherwise, generate and send an ACK
         Basic802154Packet *ackPacket = new Basic802154Packet("Ack packet",
@@ -1190,15 +1288,14 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
     }
 
     default: {
-        trace() << "WARNING: unknown packet type received ["
-                << rcvPacket->getName() << "]";
+        //trace() << "WARNING: unknown packet type received ["<< rcvPacket->getName() << "]";
     }
     }
 }
 
 void Basic802154::handleAckPacket(Basic802154Packet * rcvPacket) {
     if (currentPacket == NULL) {
-        trace() << "WARNING received ACK packet while currentPacket == NULL";
+        //trace() << "WARNING received ACK packet while currentPacket == NULL";
         return;
     }
 
@@ -1242,8 +1339,7 @@ void Basic802154::handleAckPacket(Basic802154Packet * rcvPacket) {
     }
 
     default: {
-        trace() << "WARNING: received unexpected ACK to packet ["
-                << currentPacket->getName() << "]";
+        //trace() << "WARNING: received unexpected ACK to packet ["<< currentPacket->getName() << "]";
         break;
     }
     }
@@ -1265,8 +1361,7 @@ void Basic802154::clearCurrentPacket(const char * s, bool success) {
         else
             packetBreak["Broadcast"]++;
     }
-    trace() << "Transmission outcome for [" << currentPacket->getName() << "]: "
-            << currentPacketHistory;
+    //trace() << "Transmission outcome for [" << currentPacket->getName() << "]: "<< currentPacketHistory;
 
 // transmissionOutcome callback below might request another transmission by
 // calling transmitPacket(). Therefore, we save and clear the currentPacket
@@ -1287,8 +1382,7 @@ void Basic802154::clearCurrentPacket(const char * s, bool success) {
 void Basic802154::transmitPacket(Basic802154Packet *pkt, int retries,
         bool state, double limit) {
     clearCurrentPacket();
-    trace() << "transmitPacket([" << pkt->getName() << "]," << retries << ","
-            << state << "," << limit << ")";
+    //trace() << "transmitPacket([" << pkt->getName() << "]," << retries << ","<< state << "," << limit << ")";
    // cout<< "transmitPacket([" << pkt->getName() << "]," << retries << ","<< state << "," << limit << ")\n";
 
     currentPacket = pkt;
@@ -1312,7 +1406,7 @@ void Basic802154::attemptTransmission(const char * descr) {
     cancelTimer(ATTEMPT_TX);
     if (macState == MAC_STATE_SLEEP || macState == MAC_STATE_SETUP)
         return;
-    trace() << "Attempt transmission, description: " << descr;
+    //trace() << "Attempt transmission, description: " << descr;
 
 // if a packet already queued for transmission - check avaliable retries and delay
     if (currentPacket
@@ -1330,25 +1424,22 @@ void Basic802154::attemptTransmission(const char * descr) {
                     << "] in GTS";
             trace() << "Transmitting Nodo [" << currentPacket->getSrcID()
                                 << "] in GTS";
-            cout << "Nodo [" << currentPacket->getSrcID()
-                             << "] Transmitindo no GTS\n";
+            cout << "Nodo [" << currentPacket->getSrcID()<< "] Transmitindo no GTS\n";
 
 
             transmitCurrentPacket();
         } else if (macState == MAC_STATE_CAP && currentPacketGtsOnly == false) {
-            trace() << "Transmitting [" << currentPacket->getName()
-                    << "] in CAP, starting CSMA_CA";
+            //trace() << "Transmitting [" << currentPacket->getName()<< "] in CAP, starting CSMA_CA";
             NB = 0;
             CW = enableSlottedCSMA ? 2 : 1;
             BE = batteryLifeExtention ?
                     (macMinBE < 2 ? macMinBE : 2) : macMinBE;
             performCSMACA();
         } else {
-            trace()
-                    << "Skipping transmission attempt in CAP due to GTSonly flag";
+            //trace() << "Skipping transmission attempt in CAP due to GTSonly flag";
         }
     } else {
-        trace() << "Nothing to transmit";
+        //trace() << "Nothing to transmit";
         //cout<<"Nothing to transmit\n";
     }
 }
@@ -1364,7 +1455,7 @@ void Basic802154::retransmitir(Basic802154Packet *nextPacket) {
 
         while (i < nodosEscutados.size()) {
             nextPacket->setDadosVizinho(i, v[i]);
-            //cout<<"Escutado: "<< v[i];
+            cout<<"Escutado: "<< v[i]<<"\n";
             i++;
         }
     }
@@ -1389,8 +1480,7 @@ void Basic802154::performCSMACA() {
         CCAtime += backoffBoundary;
     }
 
-    trace() << "CSMA/CA random backoff value: " << rnd << ", in " << CCAtime
-            << " seconds";
+    //trace() << "CSMA/CA random backoff value: " << rnd << ", in " << CCAtime << " seconds";
 
 //set a timer to perform carrier sense after calculated time
     setTimer(PERFORM_CCA, CCAtime);
@@ -1399,8 +1489,7 @@ void Basic802154::performCSMACA() {
 /* Transmit a packet by sending it to the radio */
 void Basic802154::transmitCurrentPacket() {
     if (currentPacket == NULL) {
-        trace()
-                << "WARNING: transmitCurrentPacket() called while currentPacket == NULL";
+        //trace()<< "WARNING: transmitCurrentPacket() called while currentPacket == NULL";
         return;
     }
 
@@ -1431,6 +1520,9 @@ void Basic802154::transmitCurrentPacket() {
         currentPacketRetries--;
         trace() << "Transmitting [" << currentPacket->getName()
                 << "] now, remaining attempts " << currentPacketRetries;
+        //cout << "Nodo [" << currentPacket->getSrcID()<< "] Transmitindo no GTS\n";
+        cout << "Transmitting [" << currentPacket->getName()
+                        << "] now, remaining attempts " << currentPacketRetries<< "\n";
         if(userelay){//Suelen
         //Modificação Ríad
             //retransmitir(currentPacket);
@@ -1443,11 +1535,8 @@ void Basic802154::transmitCurrentPacket() {
         toRadioLayer(createRadioCommand(SET_STATE, TX));// realiza a transmissão
     } else {
         //transmission not allowed
-        trace() << "txTime " << txTime << " CAP:"
-                << (currentFrameStart + CAPend - getClock()) << " GTS:"
-                << (currentFrameStart + GTSend - getClock());
-        trace() << "Transmission of [" << currentPacket->getName()
-                << "] stopped, not enough time";
+        trace() << "txTime " << txTime << " CAP:"<< (currentFrameStart + CAPend - getClock()) << " GTS:"<< (currentFrameStart + GTSend - getClock());
+        trace() << "Transmission of [" << currentPacket->getName()<< "] stopped, not enough time";
     }
 }
 
@@ -1455,9 +1544,7 @@ void Basic802154::transmitCurrentPacket() {
 // current packet, it is saved (appended) to the final packet history
 void Basic802154::collectPacketHistory(const char *s) {
     if (!currentPacket) {
-        trace()
-                << "WARNING: collectPacketState called while currentPacket==NULL, string:"
-                << s;
+        //trace()                << "WARNING: collectPacketState called while currentPacket==NULL, string:"                << s;
         return;
     }
     if (currentPacketHistory.size()) {

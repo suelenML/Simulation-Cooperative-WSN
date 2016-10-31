@@ -79,7 +79,7 @@ void doUnpacking(cCommBuffer *b, Basic802154GTSspec& a);
  *     double somaSinais;
  *     double energy;
  *     int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos
- * 	//short numnodos;// fazer isso no do lu
+ *     int slotInicioRetrans;// posição do GTS em que inicia a retransmisso
  * }
  * </pre>
  */
@@ -104,6 +104,7 @@ class Basic802154Packet : public ::MacPacket
     double energy_var;
     int *dadosVizinho_var; // array ptr
     unsigned int dadosVizinho_arraysize;
+    int slotInicioRetrans_var;
 
   private:
     void copy(const Basic802154Packet& other);
@@ -159,6 +160,8 @@ class Basic802154Packet : public ::MacPacket
     virtual unsigned int getDadosVizinhoArraySize() const;
     virtual int getDadosVizinho(unsigned int k) const;
     virtual void setDadosVizinho(unsigned int k, int dadosVizinho);
+    virtual int getSlotInicioRetrans() const;
+    virtual void setSlotInicioRetrans(int slotInicioRetrans);
 };
 
 inline void doPacking(cCommBuffer *b, Basic802154Packet& obj) {obj.parsimPack(b);}

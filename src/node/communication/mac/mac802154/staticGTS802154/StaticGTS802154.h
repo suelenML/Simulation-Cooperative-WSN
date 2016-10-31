@@ -40,6 +40,7 @@ class StaticGTS802154: public Basic802154 {
 	//SUELEN MÉTODOS
 	virtual int gtsRequest_hubRetransmissao(int, int);
 	virtual void ordenaListGTS(Basic802154Packet *);
+	virtual void TempoNodosNaoCoopDormir(Basic802154Packet *beaconPacket);
 	//virtual void copiaGTSSemRetransmissao();
 };
 

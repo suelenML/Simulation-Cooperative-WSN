@@ -66,7 +66,7 @@ void Radio::handleMessage(cMessage * msg)
 			 * the signal in the received signals list with reduced (spill over) power
 			 */
 			if (wcMsg->getCarrierFreq() != carrierFreq){
-				trace() << "START signal ignored, different carrier freq";
+				//trace() << "START signal ignored, different carrier freq";
 				break;
 			}
 
@@ -313,13 +313,12 @@ void Radio::handleMessage(cMessage * msg)
 
 			int totalSize = macPkt->getByteLength() + PhyFrameOverhead;
 			if (maxPhyFrameSize != 0 && totalSize > maxPhyFrameSize) {
-				trace() << "WARNING: MAC sent to Radio an oversized packet (" <<
-					macPkt->getByteLength() + PhyFrameOverhead << " bytes) packet dropped";
+				//trace() << "WARNING: MAC sent to Radio an oversized packet (" << macPkt->getByteLength() + PhyFrameOverhead << " bytes) packet dropped";
 				break;
 			}
 
 			if ((int)radioBuffer.size() < bufferSize) {
-				trace() << "Buffered [" << macPkt->getName() << "] from MAC layer";
+				//trace() << "Buffered [" << macPkt->getName() << "] from MAC layer";
 				radioBuffer.push(macPkt);
 				// we use return instead of break that leads to message deletion at the end
 				// to avoid unnecessary message duplication
@@ -330,7 +329,7 @@ void Radio::handleMessage(cMessage * msg)
 				fullBuffMsg->setRadioControlMessageKind(RADIO_BUFFER_FULL);
 				sendDelayed(fullBuffMsg, PROCESSING_DELAY, "toMacModule");
 				stats.bufferOverflow++;
-				trace() << "WARNING: Buffer FULL, discarding [" << macPkt->getName() << "] from MAC layer";
+				//trace() << "WARNING: Buffer FULL, discarding [" << macPkt->getName() << "] from MAC layer";
 			}
 			break;
 		}
@@ -491,7 +490,7 @@ void Radio::handleRadioControlCommand(RadioControlCommand * radioCmd)
 
 		case SET_CARRIER_FREQ:{
 			carrierFreq = radioCmd->getParameter();
-			trace() << "Changed carrier frequency to " << carrierFreq << " MHz";
+			//trace() << "Changed carrier frequency to " << carrierFreq << " MHz";
 			/* The only measure we take is to clear the receivedSignals list,
 			 * as these signals are not valid anymore and in fact could wrongly
 			 * create intereference with newly coming signals.
@@ -502,19 +501,19 @@ void Radio::handleRadioControlCommand(RadioControlCommand * radioCmd)
 
 		case SET_CCA_THRESHOLD:{
 			CCAthreshold = radioCmd->getParameter();
-			trace() << "Changed CCA threshold to " << CCAthreshold << " dBm";
+			//trace() << "Changed CCA threshold to " << CCAthreshold << " dBm";
 			break;
 		}
 
 		case SET_CS_INTERRUPT_ON:{
 			carrierSenseInterruptEnabled = true;
-			trace() << "CS interrupt tunrned ON";
+			//trace() << "CS interrupt tunrned ON";
 			break;
 		}
 
 		case SET_CS_INTERRUPT_OFF:{
 			carrierSenseInterruptEnabled = false;
-			trace() << "CS interrupt tunrned OFF";
+			//trace() << "CS interrupt tunrned OFF";
 			break;
 		}
 
@@ -535,7 +534,7 @@ void Radio::handleRadioControlCommand(RadioControlCommand * radioCmd)
 void Radio::delayStateTransition(simtime_t delay)
 {
 	if (stateTransitionMsg!=NULL) {
-		trace() << "WARNING: command to change to a new state was received before previous state transition was completed";
+		//trace() << "WARNING: command to change to a new state was received before previous state transition was completed";
 		cancelAndDelete(stateTransitionMsg);
 	}
 	stateTransitionMsg = new cMessage("Complete state transition", RADIO_ENTER_STATE);
@@ -715,7 +714,7 @@ void Radio::updateTotalPowerReceived()
 		newElement.power_dBm = addPower_dBm(it1->power_dBm, newElement.power_dBm);
 		if (it1->bitErrors != ALL_ERRORS) {
 			stats.RxFailedNoRxState++;
-			trace() << "Just entered RX, existing signal from node " << it1->ID << " cannot be received";
+			//trace() << "Just entered RX, existing signal from node " << it1->ID << " cannot be received";
 			it1->bitErrors = ALL_ERRORS;
 		}
 	}
@@ -978,16 +977,15 @@ void Radio::readIniFileParameters(void)
 
 	string startingMode = par("mode");
 	RXmode = parseRxMode(startingMode);
-	trace() << "Initialized RX mode to " << RXmode->name;
+	//trace() << "Initialized RX mode to " << RXmode->name;
 
 	string startingTxPower = par("TxOutputPower");
 	TxLevel = parseTxLevel(startingTxPower);
-	trace() << "Initialized TX power output to " << TxLevel->txOutputPower <<
-			" dBm, consuming " << TxLevel->txPowerConsumed << " mW";
+	//trace() << "Initialized TX power output to " << TxLevel->txOutputPower <<" dBm, consuming " << TxLevel->txPowerConsumed << " mW";
 
 	string defaultSleepLevel = par("sleepLevel");
 	sleepLevel = parseSleepLevel(defaultSleepLevel);
-	trace() << "Default sleep level initialized to " << sleepLevel->name;
+	//trace() << "Default sleep level initialized to " << sleepLevel->name;
 
 	string startingState = par("state");
 	state = RX;
@@ -1371,10 +1369,9 @@ int Radio::parseFloat(const char *c, double *dst)
 void Radio::ReceivedSignalDebug(const char *description)
 {
 	list<ReceivedSignal_type>::iterator it1;
-	trace() << "*** RECEIVED SIGNALS LIST DEBUG AT " << description << " ***";
+	//trace() << "*** RECEIVED SIGNALS LIST DEBUG AT " << description << " ***";
 	for (it1 = receivedSignals.begin(); it1 != receivedSignals.end(); it1++) {
-		trace() << "ID:" << it1->ID << ", power:" << it1->power_dBm << ", crIntrf:" <<
-				it1->currentInterference << ", bitErr:" << it1->bitErrors;
+		//trace() << "ID:" << it1->ID << ", power:" << it1->power_dBm << ", crIntrf:" << it1->currentInterference << ", bitErr:" << it1->bitErrors;
 	}
 }
 

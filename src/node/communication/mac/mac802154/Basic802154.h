@@ -170,6 +170,9 @@ class Basic802154: public VirtualMac {
     simtime_t GTSlengthRetrans;            // length of the GTS of retransmission period for current node
     Basic802154Packet *packetRetransmitir; // os pacotes para serem retransmitidos serão duplicados;
     queue< Basic802154Packet* > listRetransmitir; // Lista que armazena os pacotes a serem retransmitidos;
+    int inicioGTSRetrans;
+    simtime_t primeiraRetrans;
+    simtime_t irDormir;
 
 
 
@@ -272,13 +275,14 @@ class Basic802154: public VirtualMac {
 	    vector<int> nodosColaboradores;//aqui serão armazenados os ids dos nodos colaboradores.
 	    std::vector<int> nodosEscutados;
 	    std::map<int,bool> cooperacoesDoBeacon; // guarda as msg's que chegaram por cooperaçao
-	    std::map<int, vector<int>*> historicoDeCooperacao;
+	    std::map<int, vector<int>*> historicoDeCooperacao; // pelo que entendi salva o id do nodo e um vetor com os nodos que ele escutou
 	    std::map<int, vector<int>*> listaDeNodosSoltos;//são nodos que não conseguiram trocar ms com o coordenador
 	    std::map<int, Neighborhood*> neigmap; // Acho que são todos os nodos da rede
 
 	    /*----------------SUELEN------------------*/
 	    bool userelay= false;
 	    int retransmissao;
+	    std::map<int, vector<int>*> historicoDeSucesso;
 
 };
 

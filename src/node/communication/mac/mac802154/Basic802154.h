@@ -63,6 +63,12 @@ enum Mac802154Timers {
 	GTS_RETRANS = 9,
 };
 
+//struct  MENSAGENS_ESCUTADAS {
+//    int idNodo;
+//    int idMens;
+//
+//};
+
 class Basic802154: public VirtualMac {
  private:
     /*--- A map from int value of state to its description (used in debug) ---*/
@@ -256,7 +262,7 @@ class Basic802154: public VirtualMac {
 	    int tempoDeBeacon=0;
 	    int selecao=0;
 
-	    void contabilizarMensagens();
+	    //void contabilizarMensagens();
 	    void listarNodosEscutados(Basic802154Packet *rcvPacket);
 	    void souNodoCooperante(Basic802154Packet * pkt);
 	    void preencherDados(Basic802154Packet *macPacket);
@@ -273,16 +279,19 @@ class Basic802154: public VirtualMac {
 	    int retransmissoesEfetivas=0; // que o coordenador escutou apenas por retransmissão
 	    int retransmissoesNaoEfetivas=0; // que o coordenador escutou na transmissão direta e que foi por retransmissão também
 	    vector<int> nodosColaboradores;//aqui serão armazenados os ids dos nodos colaboradores.
-	    std::vector<int> nodosEscutados;
+	    //std::vector<int> nodosEscutados;
+	    std::vector<MENSAGENS_ESCUTADAS> nodosEscutados;
 	    std::map<int,bool> cooperacoesDoBeacon; // guarda as msg's que chegaram por cooperaçao
-	    std::map<int, vector<int>*> historicoDeCooperacao; // pelo que entendi salva o id do nodo e um vetor com os nodos que ele escutou
+	    //std::map<int, vector<int>*> historicoDeCooperacao; // pelo que entendi salva o id do nodo e um vetor com os nodos que ele escutou
+	    std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeCooperacao; // pelo que entendi salva o id do nodo e um vetor com os nodos que ele escutou
 	    std::map<int, vector<int>*> listaDeNodosSoltos;//são nodos que não conseguiram trocar ms com o coordenador
 	    std::map<int, Neighborhood*> neigmap; // Acho que são todos os nodos da rede
 
 	    /*----------------SUELEN------------------*/
 	    bool userelay= false;
-	    int retransmissao;
-	    std::map<int, vector<int>*> historicoDeSucesso;
+	    //int retransmissao;
+	    //std::map<int, vector<int>*> historicoDeSucesso;
+	    int utilidadeCoop;
 
 };
 

@@ -289,6 +289,214 @@ void *Basic802154GTSspecDescriptor::getFieldStructPointer(void *object, int fiel
     }
 }
 
+MENSAGENS_ESCUTADAS::MENSAGENS_ESCUTADAS()
+{
+    idMens = 0;
+    idNodo = 0;
+}
+
+void doPacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a)
+{
+    doPacking(b,a.idMens);
+    doPacking(b,a.idNodo);
+}
+
+void doUnpacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a)
+{
+    doUnpacking(b,a.idMens);
+    doUnpacking(b,a.idNodo);
+}
+
+class MENSAGENS_ESCUTADASDescriptor : public cClassDescriptor
+{
+  public:
+    MENSAGENS_ESCUTADASDescriptor();
+    virtual ~MENSAGENS_ESCUTADASDescriptor();
+
+    virtual bool doesSupport(cObject *obj) const;
+    virtual const char *getProperty(const char *propertyname) const;
+    virtual int getFieldCount(void *object) const;
+    virtual const char *getFieldName(void *object, int field) const;
+    virtual int findField(void *object, const char *fieldName) const;
+    virtual unsigned int getFieldTypeFlags(void *object, int field) const;
+    virtual const char *getFieldTypeString(void *object, int field) const;
+    virtual const char *getFieldProperty(void *object, int field, const char *propertyname) const;
+    virtual int getArraySize(void *object, int field) const;
+
+    virtual std::string getFieldAsString(void *object, int field, int i) const;
+    virtual bool setFieldAsString(void *object, int field, int i, const char *value) const;
+
+    virtual const char *getFieldStructName(void *object, int field) const;
+    virtual void *getFieldStructPointer(void *object, int field, int i) const;
+};
+
+Register_ClassDescriptor(MENSAGENS_ESCUTADASDescriptor);
+
+MENSAGENS_ESCUTADASDescriptor::MENSAGENS_ESCUTADASDescriptor() : cClassDescriptor("MENSAGENS_ESCUTADAS", "")
+{
+}
+
+MENSAGENS_ESCUTADASDescriptor::~MENSAGENS_ESCUTADASDescriptor()
+{
+}
+
+bool MENSAGENS_ESCUTADASDescriptor::doesSupport(cObject *obj) const
+{
+    return dynamic_cast<MENSAGENS_ESCUTADAS *>(obj)!=NULL;
+}
+
+const char *MENSAGENS_ESCUTADASDescriptor::getProperty(const char *propertyname) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    return basedesc ? basedesc->getProperty(propertyname) : NULL;
+}
+
+int MENSAGENS_ESCUTADASDescriptor::getFieldCount(void *object) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    return basedesc ? 2+basedesc->getFieldCount(object) : 2;
+}
+
+unsigned int MENSAGENS_ESCUTADASDescriptor::getFieldTypeFlags(void *object, int field) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getFieldTypeFlags(object, field);
+        field -= basedesc->getFieldCount(object);
+    }
+    static unsigned int fieldTypeFlags[] = {
+        FD_ISEDITABLE,
+        FD_ISEDITABLE,
+    };
+    return (field>=0 && field<2) ? fieldTypeFlags[field] : 0;
+}
+
+const char *MENSAGENS_ESCUTADASDescriptor::getFieldName(void *object, int field) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getFieldName(object, field);
+        field -= basedesc->getFieldCount(object);
+    }
+    static const char *fieldNames[] = {
+        "idMens",
+        "idNodo",
+    };
+    return (field>=0 && field<2) ? fieldNames[field] : NULL;
+}
+
+int MENSAGENS_ESCUTADASDescriptor::findField(void *object, const char *fieldName) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    int base = basedesc ? basedesc->getFieldCount(object) : 0;
+    if (fieldName[0]=='i' && strcmp(fieldName, "idMens")==0) return base+0;
+    if (fieldName[0]=='i' && strcmp(fieldName, "idNodo")==0) return base+1;
+    return basedesc ? basedesc->findField(object, fieldName) : -1;
+}
+
+const char *MENSAGENS_ESCUTADASDescriptor::getFieldTypeString(void *object, int field) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getFieldTypeString(object, field);
+        field -= basedesc->getFieldCount(object);
+    }
+    static const char *fieldTypeStrings[] = {
+        "int",
+        "int",
+    };
+    return (field>=0 && field<2) ? fieldTypeStrings[field] : NULL;
+}
+
+const char *MENSAGENS_ESCUTADASDescriptor::getFieldProperty(void *object, int field, const char *propertyname) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getFieldProperty(object, field, propertyname);
+        field -= basedesc->getFieldCount(object);
+    }
+    switch (field) {
+        default: return NULL;
+    }
+}
+
+int MENSAGENS_ESCUTADASDescriptor::getArraySize(void *object, int field) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getArraySize(object, field);
+        field -= basedesc->getFieldCount(object);
+    }
+    MENSAGENS_ESCUTADAS *pp = (MENSAGENS_ESCUTADAS *)object; (void)pp;
+    switch (field) {
+        default: return 0;
+    }
+}
+
+std::string MENSAGENS_ESCUTADASDescriptor::getFieldAsString(void *object, int field, int i) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getFieldAsString(object,field,i);
+        field -= basedesc->getFieldCount(object);
+    }
+    MENSAGENS_ESCUTADAS *pp = (MENSAGENS_ESCUTADAS *)object; (void)pp;
+    switch (field) {
+        case 0: return long2string(pp->idMens);
+        case 1: return long2string(pp->idNodo);
+        default: return "";
+    }
+}
+
+bool MENSAGENS_ESCUTADASDescriptor::setFieldAsString(void *object, int field, int i, const char *value) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->setFieldAsString(object,field,i,value);
+        field -= basedesc->getFieldCount(object);
+    }
+    MENSAGENS_ESCUTADAS *pp = (MENSAGENS_ESCUTADAS *)object; (void)pp;
+    switch (field) {
+        case 0: pp->idMens = string2long(value); return true;
+        case 1: pp->idNodo = string2long(value); return true;
+        default: return false;
+    }
+}
+
+const char *MENSAGENS_ESCUTADASDescriptor::getFieldStructName(void *object, int field) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getFieldStructName(object, field);
+        field -= basedesc->getFieldCount(object);
+    }
+    switch (field) {
+        default: return NULL;
+    };
+}
+
+void *MENSAGENS_ESCUTADASDescriptor::getFieldStructPointer(void *object, int field, int i) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getFieldStructPointer(object, field, i);
+        field -= basedesc->getFieldCount(object);
+    }
+    MENSAGENS_ESCUTADAS *pp = (MENSAGENS_ESCUTADAS *)object; (void)pp;
+    switch (field) {
+        default: return NULL;
+    }
+}
+
 Register_Class(Basic802154Packet);
 
 Basic802154Packet::Basic802154Packet(const char *name, int kind) : ::MacPacket(name,kind)
@@ -365,7 +573,7 @@ void Basic802154Packet::copy(const Basic802154Packet& other)
     this->somaSinais_var = other.somaSinais_var;
     this->energy_var = other.energy_var;
     delete [] this->dadosVizinho_var;
-    this->dadosVizinho_var = (other.dadosVizinho_arraysize==0) ? NULL : new int[other.dadosVizinho_arraysize];
+    this->dadosVizinho_var = (other.dadosVizinho_arraysize==0) ? NULL : new MENSAGENS_ESCUTADAS[other.dadosVizinho_arraysize];
     dadosVizinho_arraysize = other.dadosVizinho_arraysize;
     for (unsigned int i=0; i<dadosVizinho_arraysize; i++)
         this->dadosVizinho_var[i] = other.dadosVizinho_var[i];
@@ -432,7 +640,7 @@ void Basic802154Packet::parsimUnpack(cCommBuffer *b)
     if (dadosVizinho_arraysize==0) {
         this->dadosVizinho_var = 0;
     } else {
-        this->dadosVizinho_var = new int[dadosVizinho_arraysize];
+        this->dadosVizinho_var = new MENSAGENS_ESCUTADAS[dadosVizinho_arraysize];
         doUnpacking(b,this->dadosVizinho_var,dadosVizinho_arraysize);
     }
     doUnpacking(b,this->slotInicioRetrans_var);
@@ -618,12 +826,10 @@ void Basic802154Packet::setEnergy(double energy)
 
 void Basic802154Packet::setDadosVizinhoArraySize(unsigned int size)
 {
-    int *dadosVizinho_var2 = (size==0) ? NULL : new int[size];
+    MENSAGENS_ESCUTADAS *dadosVizinho_var2 = (size==0) ? NULL : new MENSAGENS_ESCUTADAS[size];
     unsigned int sz = dadosVizinho_arraysize < size ? dadosVizinho_arraysize : size;
     for (unsigned int i=0; i<sz; i++)
         dadosVizinho_var2[i] = this->dadosVizinho_var[i];
-    for (unsigned int i=sz; i<size; i++)
-        dadosVizinho_var2[i] = 0;
     dadosVizinho_arraysize = size;
     delete [] this->dadosVizinho_var;
     this->dadosVizinho_var = dadosVizinho_var2;
@@ -634,13 +840,13 @@ unsigned int Basic802154Packet::getDadosVizinhoArraySize() const
     return dadosVizinho_arraysize;
 }
 
-int Basic802154Packet::getDadosVizinho(unsigned int k) const
+MENSAGENS_ESCUTADAS& Basic802154Packet::getDadosVizinho(unsigned int k)
 {
     if (k>=dadosVizinho_arraysize) throw cRuntimeError("Array of size %d indexed by %d", dadosVizinho_arraysize, k);
     return dadosVizinho_var[k];
 }
 
-void Basic802154Packet::setDadosVizinho(unsigned int k, int dadosVizinho)
+void Basic802154Packet::setDadosVizinho(unsigned int k, const MENSAGENS_ESCUTADAS& dadosVizinho)
 {
     if (k>=dadosVizinho_arraysize) throw cRuntimeError("Array of size %d indexed by %d", dadosVizinho_arraysize, k);
     this->dadosVizinho_var[k] = dadosVizinho;
@@ -729,7 +935,7 @@ unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int fi
         FD_ISARRAY | FD_ISEDITABLE,
         FD_ISEDITABLE,
         FD_ISEDITABLE,
-        FD_ISARRAY | FD_ISEDITABLE,
+        FD_ISARRAY | FD_ISCOMPOUND,
         FD_ISEDITABLE,
     };
     return (field>=0 && field<16) ? fieldTypeFlags[field] : 0;
@@ -810,7 +1016,7 @@ const char *Basic802154PacketDescriptor::getFieldTypeString(void *object, int fi
         "int",
         "double",
         "double",
-        "int",
+        "MENSAGENS_ESCUTADAS",
         "int",
     };
     return (field>=0 && field<16) ? fieldTypeStrings[field] : NULL;
@@ -873,7 +1079,7 @@ std::string Basic802154PacketDescriptor::getFieldAsString(void *object, int fiel
         case 11: return long2string(pp->getVizinhosOuNodosCooperantes(i));
         case 12: return double2string(pp->getSomaSinais());
         case 13: return double2string(pp->getEnergy());
-        case 14: return long2string(pp->getDadosVizinho(i));
+        case 14: {std::stringstream out; out << pp->getDadosVizinho(i); return out.str();}
         case 15: return long2string(pp->getSlotInicioRetrans());
         default: return "";
     }
@@ -902,7 +1108,6 @@ bool Basic802154PacketDescriptor::setFieldAsString(void *object, int field, int 
         case 11: pp->setVizinhosOuNodosCooperantes(i,string2long(value)); return true;
         case 12: pp->setSomaSinais(string2double(value)); return true;
         case 13: pp->setEnergy(string2double(value)); return true;
-        case 14: pp->setDadosVizinho(i,string2long(value)); return true;
         case 15: pp->setSlotInicioRetrans(string2long(value)); return true;
         default: return false;
     }
@@ -918,6 +1123,7 @@ const char *Basic802154PacketDescriptor::getFieldStructName(void *object, int fi
     }
     switch (field) {
         case 10: return opp_typename(typeid(Basic802154GTSspec));
+        case 14: return opp_typename(typeid(MENSAGENS_ESCUTADAS));
         default: return NULL;
     };
 }
@@ -933,6 +1139,7 @@ void *Basic802154PacketDescriptor::getFieldStructPointer(void *object, int field
     Basic802154Packet *pp = (Basic802154Packet *)object; (void)pp;
     switch (field) {
         case 10: return (void *)(&pp->getGTSlist(i)); break;
+        case 14: return (void *)(&pp->getDadosVizinho(i)); break;
         default: return NULL;
     }
 }

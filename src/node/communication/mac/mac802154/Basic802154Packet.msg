@@ -30,6 +30,11 @@ struct Basic802154GTSspec {
 	int length;
 	bool retransmissor;
 }
+struct MENSAGENS_ESCUTADAS {
+	int idMens;
+	int idNodo;
+	
+}
 
 packet Basic802154Packet extends MacPacket {
 	int Mac802154PacketType enum (Mac802154Packet_type);
@@ -49,7 +54,8 @@ packet Basic802154Packet extends MacPacket {
 	int vizinhosOuNodosCooperantes[];//quando enviado pelo coordenador será a lista de colaboradores selecionado e quando enviado pelos outros nodos será a lista de vizinhos
 	double somaSinais;
 	double energy;
-	int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos
+	//int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos
+	MENSAGENS_ESCUTADAS dadosVizinho[];
 	int slotInicioRetrans;// posição do GTS em que inicia a retransmisso
 }
 

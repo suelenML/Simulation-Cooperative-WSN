@@ -57,7 +57,20 @@ void doPacking(cCommBuffer *b, Basic802154GTSspec& a);
 void doUnpacking(cCommBuffer *b, Basic802154GTSspec& a);
 
 /**
- * Class generated from <tt>src/node/communication/mac/mac802154/Basic802154Packet.msg:34</tt> by nedtool.
+ * Struct generated from src/node/communication/mac/mac802154/Basic802154Packet.msg:33 by nedtool.
+ */
+struct MENSAGENS_ESCUTADAS
+{
+    MENSAGENS_ESCUTADAS();
+    int idMens;
+    int idNodo;
+};
+
+void doPacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
+void doUnpacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
+
+/**
+ * Class generated from <tt>src/node/communication/mac/mac802154/Basic802154Packet.msg:39</tt> by nedtool.
  * <pre>
  * packet Basic802154Packet extends MacPacket
  * {
@@ -78,7 +91,8 @@ void doUnpacking(cCommBuffer *b, Basic802154GTSspec& a);
  *     int vizinhosOuNodosCooperantes[];//quando enviado pelo coordenador será a lista de colaboradores selecionado e quando enviado pelos outros nodos será a lista de vizinhos
  *     double somaSinais;
  *     double energy;
- *     int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos
+ *     //int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos
+ *     MENSAGENS_ESCUTADAS dadosVizinho[];
  *     int slotInicioRetrans;// posição do GTS em que inicia a retransmisso
  * }
  * </pre>
@@ -102,7 +116,7 @@ class Basic802154Packet : public ::MacPacket
     unsigned int vizinhosOuNodosCooperantes_arraysize;
     double somaSinais_var;
     double energy_var;
-    int *dadosVizinho_var; // array ptr
+    MENSAGENS_ESCUTADAS *dadosVizinho_var; // array ptr
     unsigned int dadosVizinho_arraysize;
     int slotInicioRetrans_var;
 
@@ -158,8 +172,9 @@ class Basic802154Packet : public ::MacPacket
     virtual void setEnergy(double energy);
     virtual void setDadosVizinhoArraySize(unsigned int size);
     virtual unsigned int getDadosVizinhoArraySize() const;
-    virtual int getDadosVizinho(unsigned int k) const;
-    virtual void setDadosVizinho(unsigned int k, int dadosVizinho);
+    virtual MENSAGENS_ESCUTADAS& getDadosVizinho(unsigned int k);
+    virtual const MENSAGENS_ESCUTADAS& getDadosVizinho(unsigned int k) const {return const_cast<Basic802154Packet*>(this)->getDadosVizinho(k);}
+    virtual void setDadosVizinho(unsigned int k, const MENSAGENS_ESCUTADAS& dadosVizinho);
     virtual int getSlotInicioRetrans() const;
     virtual void setSlotInicioRetrans(int slotInicioRetrans);
 };

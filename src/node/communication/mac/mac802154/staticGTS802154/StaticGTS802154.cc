@@ -31,6 +31,7 @@ void StaticGTS802154::startup() {
 	baseSlot = par("baseSlotDuration");
 	minCap = par("minCAPLength");
 	frameOrder = par("frameOrder");
+	/*
 	cout<<"------------GTS------------------\n";
 	cout<<"requestGTS: "<< requestGTS<<"\n";
 	cout<<"gtsOnly: "<< gtsOnly <<"\n";
@@ -38,6 +39,7 @@ void StaticGTS802154::startup() {
 	cout<<"minCap: "<<minCap <<"\n";
 	cout<<"frameOrder: "<< frameOrder<<"\n";
 	cout<<"------------------------------\n";
+	*/
 
 
 

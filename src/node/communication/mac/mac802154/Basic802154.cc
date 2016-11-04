@@ -251,10 +251,10 @@ void Basic802154::timerFiredCallback(int index) {
                     selecionaNodosSmartNumVizinhos(beaconPacket);
                     enviarNodosCooperantes(beaconPacket);
                     tempoDeBeacon = 0;
-                    if (selecao == 3)
+                    /*if (selecao == 3)
                         selecao = 20;
                     else if (selecao == 40)
-                        selecao = 40;
+                        selecao = 40;*/
                 } else {
                     //Para manter os colaboradores até a próxima seleção
                     enviarNodosCooperantes(beaconPacket);
@@ -287,7 +287,7 @@ void Basic802154::timerFiredCallback(int index) {
         } else {	// if not a PAN coordinator, then wait for beacon
             //cout<<"Setar RX: "<< SELF_MAC_ADDRESS<<"\n";
             toRadioLayer(createRadioCommand(SET_STATE, RX));
-            setTimer(BEACON_TIMEOUT, guardTime * 5);
+            setTimer(BEACON_TIMEOUT, guardTime * 7);
         }
         break;
     }
@@ -352,13 +352,13 @@ void Basic802154::timerFiredCallback(int index) {
             if (currentPacket)
                 clearCurrentPacket("No PAN");
         } else if (associatedPAN != -1) {
-            //trace() << "Missed beacon from PAN " << associatedPAN<< ", will wake up to receive next beacon in "<< beaconInterval * symbolLen - guardTime * 5 << " seconds";
+            //trace() << "Missed beacon from PAN " << associatedPAN<< ", will wake up to receive next beacon in "<< beaconInterval * symbolLen - guardTime * 7 << " seconds";
             beaconsPerdidos ++;
 
             cout<< "Beacon Perdido NODO: "<< SELF_MAC_ADDRESS<<"\n";
             setMacState(MAC_STATE_SLEEP);
             toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
-            setTimer(FRAME_START, beaconInterval * symbolLen - guardTime * 5);
+            setTimer(FRAME_START, beaconInterval * symbolLen - guardTime * 7);
         }
         break;
     }
@@ -738,12 +738,13 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
             Neighborhood *nodo = iterNeighborhood->second;
             if (primeiro) {
                 primeiro = false;
-
+                cout<<"Energia: "<< nodo->energy<<" RSSI: "<<nodo->somaRssi<<" Vizinhos: "<<nodo->numeroDevizinhos << " ID: "<< nodo->nodeId<<"\n";
                 out
                         << ((beta1 * nodo->energy) + beta2 * nodo->somaRssi
                                 + beta3 * nodo->numeroDevizinhos) << "*x"
                         << nodo->nodeId;
             } else {
+                cout<<"Energia: "<< nodo->energy<<" RSSI: "<<nodo->somaRssi<<" Vizinhos: "<<nodo->numeroDevizinhos << " ID: "<< nodo->nodeId<<"\n";
                 out << "+"
                         << ((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
                                 + (beta3 * nodo->numeroDevizinhos)) << "* x"
@@ -801,7 +802,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
             }
             out << ">=1;\n";
         }
-        if (listaDeNodosSoltos.size() > 0) {
+        /*if (listaDeNodosSoltos.size() > 0) {
             out << "C0:";
             primeiro = true;
             for (iter = listaDeNodosSoltos.begin();
@@ -817,7 +818,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
                 }
             }
             out << "=0;\n";
-        }
+        }*/
         out << "\n";
         primeiro = true;
         int i = 0;
@@ -961,11 +962,16 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
         if (historicoDeCooperacao.find(rcvPacket->getSrcID())
                         != historicoDeCooperacao.end()) {
 
+            for(int c = 0;c < (int)nodosEscutados.size();c++){
+                cout<<"nodosEscutados["<<c<<"].idMens: "<<nodosEscutados[c].idMens<<"\n";
+                cout<<"nodosEscutados["<<c<<"].idNodo: "<<nodosEscutados[c].idNodo<< "\n";
+            }
             map<int, vector<MENSAGENS_ESCUTADAS>*>::iterator iter;
             iter = historicoDeCooperacao.find(rcvPacket->getSrcID());
             vector<MENSAGENS_ESCUTADAS>* v = iter->second;
 
             for(i = 0;i < (int)rcvPacket->getDadosVizinhoArraySize();i++){
+                repetido = 0;
                 for(j = 0;j < (int)nodosEscutados.size();j++){
                     //if(nodosEscutados[j].idMens == rcvPacket->getDadosVizinho(i)){
                     if(nodosEscutados[j].idMens == rcvPacket->getDadosVizinho(i).idMens && nodosEscutados[j].idNodo == rcvPacket->getDadosVizinho(i).idNodo){
@@ -985,7 +991,12 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
                 }
             }
         }else{
+            for(int c = 0;c < (int)nodosEscutados.size();c++){
+                cout<<"nodosEscutados["<<c<<"].idMens: "<<nodosEscutados[c].idMens<<"\n";
+                cout<<"nodosEscutados["<<c<<"].idNodo: "<<nodosEscutados[c].idNodo<< "\n";
+            }
            for(i = 0;i < (int)rcvPacket->getDadosVizinhoArraySize();i++){
+               repetido = 0;
                 for(j = 0;j < (int)nodosEscutados.size();j++){
                     if(nodosEscutados[j].idMens == rcvPacket->getDadosVizinho(i).idMens && nodosEscutados[j].idNodo == rcvPacket->getDadosVizinho(i).idNodo){
                         repetido = 1;
@@ -1008,13 +1019,15 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
 
         if(utilidadeRetransmissao != 0){
                 retransmissoesEfetivas++;
-                cout<<"Retransmissões Uteis: "<< retransmissoesEfetivas<< "\n";
+                //cout<<"Retransmissões Uteis: "<< retransmissoesEfetivas<< "\n";
             }else{
                 retransmissoesNaoEfetivas++;
-                cout<<"Retransmissões que não foram Uteis: "<< retransmissoesNaoEfetivas<< "\n";
+                //cout<<"Retransmissões que não foram Uteis: "<< retransmissoesNaoEfetivas<< "\n";
             }
             cout<<"O nodo retransmitiu "<< (int)rcvPacket->getDadosVizinhoArraySize()<<" Mensagens e "<<utilidadeRetransmissao<< " Foram uteis.\n";
-            cout<<"Até esta retransmissão este cooperante retransmitu "<<utilidadeCoop <<" Mensagens uteis.\n";
+            //cout<<"Até esta retransmissão este cooperante retransmitu "<<utilidadeCoop <<" Mensagens uteis.\n";
+            cout<<"Retransmissões Uteis: "<< retransmissoesEfetivas<< "\n";
+            cout<<"Retransmissões que não foram Uteis: "<< retransmissoesNaoEfetivas<< "\n";
     }
 
 }
@@ -1099,6 +1112,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 //cout << rssi<<"\n";
 //Modificação Ríad
     //cout<<"Sou o  NODO " << SELF_MAC_ADDRESS<< "Estou Na escuta\n";
+    cout<<"Pacote Recbido: "<< rcvPacket->getSrcID()<<" Energgia" <<  rcvPacket->getEnergy()<<" RSSI: "<< rcvPacket->getSomaSinais()<<"\n";
     if(userelay){
         AtualizarVizinhaca(rcvPacket, rssi); // insere o nodo que enviou o pacote como vizinho
 

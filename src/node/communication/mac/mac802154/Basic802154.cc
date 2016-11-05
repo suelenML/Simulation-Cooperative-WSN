@@ -1242,6 +1242,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                 // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
                 cout<<"tempo atual: "<< getClock()<<"\n";
                 cout<<"No Tempo: "<< GTSstart - phyDelaySleep2Tx - offset <<"\n";
+                //setTimer(GTS_START, GTSstart - phyDelaySleep2Tx - offset);
                 setTimer(GTS_START, GTSstart - phyDelaySleep2Tx - offset);
             }
         } else {

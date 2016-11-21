@@ -63,11 +63,18 @@ enum Mac802154Timers {
 	GTS_RETRANS = 9,
 };
 
-//struct  MENSAGENS_ESCUTADAS {
-//    int idNodo;
-//    int idMens;
-//
-//};
+struct  MENSAGENS_ESCUTADAS_REPETIDAS {
+    int idNodo;
+    int idMens;
+    int idRetransmissor;
+
+};
+
+struct RETRANSMISSORES_REPETIDOS{
+    int idNodo1;
+    int idNodo2;
+
+};
 
 class Basic802154: public VirtualMac {
  private:
@@ -174,8 +181,6 @@ class Basic802154: public VirtualMac {
     simtime_t GTSstartRetrans;             // Absolute time of the start of GTS of retransmission period for current node
     simtime_t GTSendRetrans;               // Absolute time of the end of GTS of retransmission period for current node
     simtime_t GTSlengthRetrans;            // length of the GTS of retransmission period for current node
-    Basic802154Packet *packetRetransmitir; // os pacotes para serem retransmitidos serão duplicados;
-    queue< Basic802154Packet* > listRetransmitir; // Lista que armazena os pacotes a serem retransmitidos;
     int inicioGTSRetrans;
     simtime_t primeiraRetrans;
     simtime_t irDormir;
@@ -221,25 +226,25 @@ class Basic802154: public VirtualMac {
 
 	/*----riad----*/
 	    double MAX_RSSI = -100;
-	    double EstLoss;
-	    double DevLoss;
+	    double EstLoss; // usei
+	    double DevLoss; // usei
 	    double SamLoss;
-	    int numhosts;
+	    int numhosts; // usei
 
-	    int numeronodoscooperantes;
+	    int numeronodoscooperantes; // usei
 	    int numeronodoscooperantespassado;
-	    int numdadosrecebidosnogtstransmissao;
+	    int numdadosrecebidosnogtstransmissao; // Para deteminar o numero de cooperantes (usei)
 
 
 	    cOutVector vectormsgsuccs;
-	    cOutVector vectortaxaperda;
+	    cOutVector vectortaxaperda; // usei
 
 	    int sucessomsgrecebida;
-	    double limiaralpha;
-	    double limiarbetha;
-	    double alpha;
-	    double betha;
-	    double ganho;
+	    double limiaralpha; //usei
+	    double limiarbetha; // usei
+	    double alpha; // usei
+	    double betha; // usei
+	    double ganho; // usei
 	    int contadordivtemp;
 	    int histnumnodoscoop;
 
@@ -263,7 +268,7 @@ class Basic802154: public VirtualMac {
 	    int selecao=0;
 
 	    //void contabilizarMensagens();
-	    void listarNodosEscutados(Basic802154Packet *rcvPacket);
+	    void listarNodosEscutados(Basic802154Packet *rcvPacket, double rssi);
 	    void souNodoCooperante(Basic802154Packet * pkt);
 	    void preencherDados(Basic802154Packet *macPacket);
 	    void calculaNumNodosCooperantes();
@@ -274,7 +279,8 @@ class Basic802154: public VirtualMac {
 	    void retransmitir(Basic802154Packet *nextPacket);
 	    void verificarRetransmissao(Basic802154Packet *rcvPacket);
 	    void enviarNodosCooperantes(Basic802154Packet *beaconPacket);
-
+	    void verificaRetransmissoesRepetidas();//Suelen
+	    void armazenaRetransmissoes(Basic802154Packet *rcvPacket);//Suelen
 
 	    int retransmissoesEfetivas=0; // que o coordenador escutou apenas por retransmissão
 	    int retransmissoesNaoEfetivas=0; // que o coordenador escutou na transmissão direta e que foi por retransmissão também
@@ -292,6 +298,16 @@ class Basic802154: public VirtualMac {
 	    //int retransmissao;
 	    //std::map<int, vector<int>*> historicoDeSucesso;
 	    int utilidadeCoop;
+	    int primeiraSelecao;
+	    int msgEnviadas;
+	    int msgRecebidas;
+	    int msgRtrans;
+	    int beaconsRecebidos;
+	    std::map<int, int> listasgEnviadas;
+	    //std::vector<MENSAGENS_ESCUTADAS_REPETIDAS> retransmissoesRepetidas;
+	    //std::vector<RETRANSMISSORES_REPETIDOS> retransmissoresDuplicados;
+	    std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeSucesso; // armazena as mensagens de cooperação que o coordenador não havia escutado diretamente
+
 
 };
 

@@ -163,7 +163,7 @@ void StaticGTS802154::prepareBeacon_hub(Basic802154Packet *beaconPacket) {
 	 for (int i = (int)GTSlist.size()-1; i >= 0; i--) {
 	     //cout<<"GTS["<< i<<"]: "<<GTSlist[i].owner << "\n";
 	        if((i-1) >= 0 && GTSlist[i-1].retransmissor == 1){
-	            beaconPacket->setSlotInicioRetrans(i-1);
+	            beaconPacket->setSlotInicioRetrans(i-1); // o slotInicioRetrans ´e um short
 	            //cout<<"É retrans: "<<GTSlist[i-1].retransmissor<<"\n";
                 //cout<<"GTS: "<< i<< " Sou o nodo: "<< GTSlist[i].owner<<" O próximo é retransmissor"<< GTSlist[i-1].owner<< "\n";
                 break;

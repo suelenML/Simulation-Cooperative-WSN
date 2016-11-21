@@ -34,6 +34,7 @@ class ThroughputTest: public VirtualApplication {
 	
 	//Suelen
 	int numpacketsReceived;
+	int numpacketSend;
 
 
 

@@ -93,7 +93,10 @@ void doUnpacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
  *     double energy;
  *     //int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos
  *     MENSAGENS_ESCUTADAS dadosVizinho[];
- *     int slotInicioRetrans;// posição do GTS em que inicia a retransmisso
+ *     short slotInicioRetrans;// posição do GTS em que inicia a retransmisso
+ *     bool retransmissao = false;
+ *     short numMsgEnviadas;
+ *     short tempoBeacon;
  * }
  * </pre>
  */
@@ -118,7 +121,10 @@ class Basic802154Packet : public ::MacPacket
     double energy_var;
     MENSAGENS_ESCUTADAS *dadosVizinho_var; // array ptr
     unsigned int dadosVizinho_arraysize;
-    int slotInicioRetrans_var;
+    short slotInicioRetrans_var;
+    bool retransmissao_var;
+    short numMsgEnviadas_var;
+    short tempoBeacon_var;
 
   private:
     void copy(const Basic802154Packet& other);
@@ -175,8 +181,14 @@ class Basic802154Packet : public ::MacPacket
     virtual MENSAGENS_ESCUTADAS& getDadosVizinho(unsigned int k);
     virtual const MENSAGENS_ESCUTADAS& getDadosVizinho(unsigned int k) const {return const_cast<Basic802154Packet*>(this)->getDadosVizinho(k);}
     virtual void setDadosVizinho(unsigned int k, const MENSAGENS_ESCUTADAS& dadosVizinho);
-    virtual int getSlotInicioRetrans() const;
-    virtual void setSlotInicioRetrans(int slotInicioRetrans);
+    virtual short getSlotInicioRetrans() const;
+    virtual void setSlotInicioRetrans(short slotInicioRetrans);
+    virtual bool getRetransmissao() const;
+    virtual void setRetransmissao(bool retransmissao);
+    virtual short getNumMsgEnviadas() const;
+    virtual void setNumMsgEnviadas(short numMsgEnviadas);
+    virtual short getTempoBeacon() const;
+    virtual void setTempoBeacon(short tempoBeacon);
 };
 
 inline void doPacking(cCommBuffer *b, Basic802154Packet& obj) {obj.parsimPack(b);}

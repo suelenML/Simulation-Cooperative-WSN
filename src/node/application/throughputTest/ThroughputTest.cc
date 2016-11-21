@@ -49,16 +49,16 @@ void ThroughputTest::fromNetworkLayer(ApplicationPacket * rcvPacket,
 
 	// This node is the final recipient for the packet
 	if (recipientAddress.compare(SELF_NETWORK_ADDRESS) == 0) {
-		if (delayLimit == 0 || (simTime() - rcvPacket->getCreationTime()) <= delayLimit) { 
+		//if (delayLimit == 0 || (simTime() - rcvPacket->getCreationTime()) <= delayLimit) {
 			trace() << "Received packet #" << sequenceNumber << " from node " << source;
 			collectOutput("Packets received per node", sourceId);
 			packetsReceived[sourceId]++;
 			bytesReceived[sourceId] += rcvPacket->getByteLength();
 
-		} else {
-			trace() << "Packet #" << sequenceNumber << " from node " << source <<
-				" exceeded delay limit of " << delayLimit << "s";
-		}
+		//} else {
+			//trace() << "Packet #" << sequenceNumber << " from node " << source <<
+				//" exceeded delay limit of " << delayLimit << "s";
+		//}
 	// Packet has to be forwarded to the next hop recipient
 	} else {
 		ApplicationPacket* fwdPacket = rcvPacket->dup();
@@ -103,6 +103,7 @@ void ThroughputTest::handleRadioControlMessage(RadioControlMessage *radioMsg)
 void ThroughputTest::finishSpecific() {
 	declareOutput("Packets reception rate");
 	declareOutput("Packets loss rate");
+	declareOutput("Packets send");
 
 
 	cTopology *topo;	// temp variable to access packets received by other nodes
@@ -119,6 +120,7 @@ void ThroughputTest::finishSpecific() {
 				float rate = (float)packetsReceived[i]/packetsSent;
 				collectOutput("Packets reception rate", i, "total", rate);
 				collectOutput("Packets loss rate", i, "total", 1-rate);
+				collectOutput("Packets send",i, "total",packetsSent);
 
 			}
 

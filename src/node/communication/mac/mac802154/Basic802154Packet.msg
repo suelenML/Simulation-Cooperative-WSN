@@ -56,6 +56,9 @@ packet Basic802154Packet extends MacPacket {
 	double energy;
 	//int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos
 	MENSAGENS_ESCUTADAS dadosVizinho[];
-	int slotInicioRetrans;// posição do GTS em que inicia a retransmisso
+	short slotInicioRetrans;// posição do GTS em que inicia a retransmisso
+	bool retransmissao = false; 
+	short numMsgEnviadas;
+	short tempoBeacon;
 }
 

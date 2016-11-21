@@ -59,6 +59,19 @@ simple Basic802154 like node.communication.mac.iMac {
 	//Suelen 
 	bool userelay = default(false);
 	int selecao = default(10);
+	
+	// Para determinar o numero de cooperantes
+	double limiaralpha = default(0.2);
+    double limiabetha = default(0.2);
+    double betha = default (0.4);
+    double alpha = default (0.4);
+    double ganho = default (2.0);
+    
+	
+	
+	
+	
+	
  gates:
 	output toNetworkModule;
 	output toRadioModule;

@@ -63,6 +63,10 @@ enum Mac802154Timers {
 	GTS_RETRANS = 9,
 };
 
+enum macApp{
+    BEACON_CHEGADA1 = 21,
+};
+
 struct  MENSAGENS_ESCUTADAS_REPETIDAS {
     int idNodo;
     int idMens;
@@ -212,6 +216,9 @@ class Basic802154: public VirtualMac {
     virtual int associationRequest_hub(Basic802154Packet *);	//default: always accept
 	virtual void prepareBeacon_hub(Basic802154Packet *) {}
 
+	/*----Suelen----*/
+	virtual void remover(Basic802154Packet *, int) {}
+
 	/*--- Node-specific desicions ---*/
 	virtual void connectedToPAN_node() {}
 	virtual void disconnectedFromPAN_node() {}
@@ -281,6 +288,7 @@ class Basic802154: public VirtualMac {
 	    void enviarNodosCooperantes(Basic802154Packet *beaconPacket);
 	    void verificaRetransmissoesRepetidas();//Suelen
 	    void armazenaRetransmissoes(Basic802154Packet *rcvPacket);//Suelen
+	    void limparBufferAplicacao();//Suelen
 
 	    int retransmissoesEfetivas=0; // que o coordenador escutou apenas por retransmissão
 	    int retransmissoesNaoEfetivas=0; // que o coordenador escutou na transmissão direta e que foi por retransmissão também
@@ -307,6 +315,7 @@ class Basic802154: public VirtualMac {
 	    //std::vector<MENSAGENS_ESCUTADAS_REPETIDAS> retransmissoesRepetidas;
 	    //std::vector<RETRANSMISSORES_REPETIDOS> retransmissoresDuplicados;
 	    std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeSucesso; // armazena as mensagens de cooperação que o coordenador não havia escutado diretamente
+	    int mensagensPerdidas;
 
 
 };

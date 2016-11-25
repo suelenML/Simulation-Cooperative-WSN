@@ -113,14 +113,24 @@ int StaticGTS802154::gtsRequest_hub(Basic802154Packet *gtsPkt) {
  ***/
 void StaticGTS802154::prepareBeacon_hub(Basic802154Packet *beaconPacket) {
 	int CAPlength = totalSlots;
+	vector<Basic802154GTSspec>::iterator iter;
+
 	//SUELEN
-	// Retrira os cooperantes anteriores
+	// Retira os cooperantes anteriores
 	GTSlist.clear();
     // Deixa a lista de GTS apenas com os nodos transmissores
-    vector<Basic802154GTSspec>::iterator iter;
     for (iter = GTSlistCopy.begin(); iter != GTSlistCopy.end(); iter++) {
        GTSlist.push_back(*iter);
     }
+    // verifica se o nodo continua associado e possuí GTS
+    for (int j= 0; j < GTSlist.size(); j++) {
+        if(GTSlist[j].retransmissor){
+           //GTSlist.erase(GTSlist.begin()+j);
+        }
+    }
+
+
+
     if(beaconPacket->getVizinhosOuNodosCooperantesArraySize()>0){
             /*for (int k = 0; k < (int)GTSlist.size(); k++) {
                 cout<< "Lista GTS Depois de copiar****Básico*****["<<k<<"]: "<<GTSlist[k].owner<<"\n";
@@ -291,6 +301,23 @@ void StaticGTS802154::TempoNodosNaoCoopDormir(Basic802154Packet *beaconPacket){
     }
 
 }
+void StaticGTS802154::remover(Basic802154Packet *beaconPacket, int id){
+    if(GTSlist.size() > 0){
+        cout<<"Antes de apagar do GTS\n";
+        for (int j= 0; j < GTSlist.size(); j++) {
+            cout<<"GTSlist[j].owner: "<< GTSlist[j].owner <<"\n";
+                if(GTSlist[j].owner == id){
+                   GTSlist.erase(GTSlist.begin()+j);
+                }
+            }
+
+        cout<<"Depois de apagar do GTS\n";
+            for (int j= 0; j < GTSlist.size(); j++) {
+                cout<<"GTSlist[j].owner: "<< GTSlist[j].owner <<"\n";
+             }
+    }
+}
+
 /*
 void StaticGTS802154::copiaGTSSemRetransmissao(){
 

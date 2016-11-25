@@ -22,6 +22,7 @@ void ThroughputTest::startup()
 	startupDelay = par("startupDelay");
 	delayLimit = par("delayLimit");
 	packet_spacing = packet_rate > 0 ? 1 / float (packet_rate) : -1;
+	//packet_spacing = 60 * 16 * (1 << frameorder) * symbolLen; // Suelen
 	dataSN = 0;
 	
 	numNodes = getParentModule()->getParentModule()->par("numNodes");
@@ -32,10 +33,10 @@ void ThroughputTest::startup()
 	// Suelen
 	numpacketsReceived=0;
 
-	if (packet_spacing > 0 && recipientAddress.compare(SELF_NETWORK_ADDRESS) != 0)
-		setTimer(SEND_PACKET, packet_spacing + startupDelay);
-	else
-		trace() << "Not sending packets";
+//	if (packet_spacing > 0 && recipientAddress.compare(SELF_NETWORK_ADDRESS) != 0)
+//		setTimer(SEND_PACKET, packet_spacing + startupDelay);
+//	else
+//		trace() << "Not sending packets";
 
 	declareOutput("Packets received per node");
 	declareOutput("Total Packets received -- Coordenador");
@@ -85,6 +86,9 @@ void ThroughputTest::timerFiredCallback(int index)
 			dataSN++;
 			setTimer(SEND_PACKET, packet_spacing);
 			break;
+
+
+
 		}
 	}
 }
@@ -97,6 +101,13 @@ void ThroughputTest::handleRadioControlMessage(RadioControlMessage *radioMsg)
 		case CARRIER_SENSE_INTERRUPT:
 			trace() << "CS Interrupt received! current RSSI value is: " << radioModule->readRSSI();
                         break;
+       case BEACON_CHEGADA:
+            trace() << "App Sending packet #" << dataSN;
+            toNetworkLayer(createGenericDataPacket(0, dataSN), recipientAddress.c_str());
+            packetsSent[recipientId]++;
+            dataSN++;
+            //setTimer(SEND_PACKET, packet_spacing);
+            break;
 	}
 }
 

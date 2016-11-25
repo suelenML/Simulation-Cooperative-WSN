@@ -1,0 +1,21 @@
+version 2
+run General-0-20161125-20:44:55-2312
+attr configname General
+attr datetime 20161125-20:44:55
+attr experiment General
+attr inifile omnetpp.ini
+attr iterationvars ""
+attr iterationvars2 $repetition=0
+attr measurement ""
+attr network SN
+attr processid 2312
+attr repetition 0
+attr replication #0
+attr resultdir results
+attr runnumber 0
+attr seedset 0
+
+vector 5  SN.node[0].Communication.MAC  "Taxa de Perda"  ETV
+5	3590	6.908819895218	3
+5	9984	15.510419895218	3
+5	13965	24.112019895218	3

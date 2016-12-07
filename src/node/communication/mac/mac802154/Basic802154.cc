@@ -550,9 +550,10 @@ void Basic802154::preencherDados(Basic802154Packet *macPacket) {
 
         macPacket->setVizinhosOuNodosCooperantesArraySize(i);
         macPacket->setSomaSinais(somaDeSinais);
-        macPacket->setEnergy(
-                resMgrModule->getRemainingEnergy()
-                        / resMgrModule->getInitialEnergy());
+        //macPacket->setEnergy(resMgrModule->getRemainingEnergy()/ resMgrModule->getInitialEnergy()); // Considera a energia restante no nodo
+        macPacket->setEnergy(resMgrModule->getSpentEnergy()); //Considera a energia gasta
+        cout<<"Energia Gasta: "<< resMgrModule->getSpentEnergy()<< "  Nodo: "<< SELF_MAC_ADDRESS<<"\n";
+        cout<<"Energia rstante: "<< resMgrModule->getRemainingEnergy()<< "  Nodo: "<< SELF_MAC_ADDRESS<<"\n";
         i = 0;
         for (iter = neigmap.begin(); iter != neigmap.end(); iter++) {
             Neighborhood *nodo = iter->second;
@@ -832,13 +833,13 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
 
                 cout<<"Energia: "<< nodo->energy<<" RSSI: "<<nodo->somaRssi<<" Vizinhos: "<<nodo->numeroDevizinhos << "Taxa de Sucesso: "<<nodo->txSucesso << " ID: "<< nodo->nodeId<<"\n";
                 out
-                        << (-1)*((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
-                                + (beta3 * nodo->numeroDevizinhos) + (beta4 * nodo->txSucesso)) << "*x"
+                        << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
+                                + (beta3 / nodo->numeroDevizinhos) + (beta4 / nodo->txSucesso)) << "*x"
                         << nodo->nodeId;
 
                /*POSSIVEIS_COOPERANTES possiveisCoop;
                possiveisCoop.id = nodo->nodeId;
-               possiveisCoop.valor = (-1)*((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
+               possiveisCoop.valor = ((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
                        + (beta3 * nodo->numeroDevizinhos)+ (beta4 * nodo->txSucesso));
                cooperantes.push_back(possiveisCoop);*/
 
@@ -846,13 +847,13 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
             } else {
                 cout<<"Energia: "<< nodo->energy<<" RSSI: "<<nodo->somaRssi<<" Vizinhos: "<<nodo->numeroDevizinhos << "Taxa de Sucesso: "<<nodo->txSucesso <<" ID: "<< nodo->nodeId<<"\n";
                 out << "+"
-                        << (-1)*((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
-                                + (beta3 * nodo->numeroDevizinhos) + (beta4 * nodo->txSucesso)) << "* x"
+                        << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
+                                + (beta3 / nodo->numeroDevizinhos) + (beta4 / nodo->txSucesso)) << "* x"
                         << nodo->nodeId;
 
                 /*POSSIVEIS_COOPERANTES possiveisCoop;
                 possiveisCoop.id = nodo->nodeId;
-                possiveisCoop.valor = (-1)*((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
+                possiveisCoop.valor = ((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
                           + (beta3 * nodo->numeroDevizinhos)+ (beta4 * nodo->txSucesso));
                 cooperantes.push_back(possiveisCoop);*/
 

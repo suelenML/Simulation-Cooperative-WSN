@@ -20,7 +20,7 @@ using namespace std;
 
 enum ThroughputTestTimers {
 	SEND_PACKET = 1,
-	//BEACON_CHEGADA = 21,
+	BEACON_CHEGADA = 21,
 };
 
 class ThroughputTest: public VirtualApplication {

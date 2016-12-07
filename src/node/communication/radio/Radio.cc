@@ -977,7 +977,7 @@ void Radio::readIniFileParameters(void)
 
 	string startingMode = par("mode");
 	RXmode = parseRxMode(startingMode);
-	//trace() << "Initialized RX mode to " << RXmode->name;
+	trace() << "Initialized RX mode to " << RXmode->name;
 
 	string startingTxPower = par("TxOutputPower");
 	TxLevel = parseTxLevel(startingTxPower);

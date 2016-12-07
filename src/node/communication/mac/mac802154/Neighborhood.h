@@ -31,6 +31,8 @@ public:
     double somaRssi;
     double rssi;
     int numeroDevizinhos=0;
+    double txSucesso;
+    double txSucessoVizinhanca;
 
 };
 

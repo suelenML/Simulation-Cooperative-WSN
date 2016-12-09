@@ -47,6 +47,8 @@ void Basic802154::startup() {
     beaconsRecebidos = 0;
     mensagensPerdidas = 0;
     limiteRSSI = -87;
+    mensagensRecuperadas = 0;
+    nodosAssociados.clear();
 
      //Suelen
     //Variaveis utilizadas para determinar o numero de cooperantes
@@ -287,8 +289,9 @@ void Basic802154::timerFiredCallback(int index) {
                 nodosEscutados.clear();
 
                 if (tempoDeBeacon == selecao) {
-                    selecionaNodosSmart(beaconPacket); // numeronodoscooperantes valor inserido na função calculaNumNodosCooperantes
+                    selecionaNodosSmart(beaconPacket); // Função Correta
                     //selecionaNodosSmartNumVizinhos(beaconPacket);
+                    //selecaoCoopAleatoria(beaconPacket);// Seleção Aleatória
                     enviarNodosCooperantes(beaconPacket);
                     tempoDeBeacon = 0;
                     primeiraSelecao = 1;
@@ -413,6 +416,17 @@ void Basic802154::timerFiredCallback(int index) {
             associatedPAN = -1;
             desyncTimeStart = getClock();
             disconnectedFromPAN_node();
+            /*std::vector<int>::iterator iter;
+            int i=0;
+            for (iter = nodosAssociados.begin();iter != nodosAssociados.end(); iter++) {
+                if(nodosAssociados[i] == SELF_MAC_ADDRESS){
+                    nodosAssociados.erase(iter);
+                    break;
+                }
+                i++;
+            }*/
+
+
             if (currentPacket)
                 clearCurrentPacket("No PAN");
         } else if (associatedPAN != -1) {
@@ -552,8 +566,8 @@ void Basic802154::preencherDados(Basic802154Packet *macPacket) {
         macPacket->setSomaSinais(somaDeSinais);
         //macPacket->setEnergy(resMgrModule->getRemainingEnergy()/ resMgrModule->getInitialEnergy()); // Considera a energia restante no nodo
         macPacket->setEnergy(resMgrModule->getSpentEnergy()); //Considera a energia gasta
-        cout<<"Energia Gasta: "<< resMgrModule->getSpentEnergy()<< "  Nodo: "<< SELF_MAC_ADDRESS<<"\n";
-        cout<<"Energia rstante: "<< resMgrModule->getRemainingEnergy()<< "  Nodo: "<< SELF_MAC_ADDRESS<<"\n";
+        //cout<<"Energia Gasta: "<< resMgrModule->getSpentEnergy()<< "  Nodo: "<< SELF_MAC_ADDRESS<<"\n";
+        //cout<<"Energia rstante: "<< resMgrModule->getRemainingEnergy()<< "  Nodo: "<< SELF_MAC_ADDRESS<<"\n";
         i = 0;
         for (iter = neigmap.begin(); iter != neigmap.end(); iter++) {
             Neighborhood *nodo = iter->second;
@@ -651,6 +665,11 @@ void Basic802154::finishSpecific() {
 
         declareOutput("Retransmissoes Uteis");
         collectOutput("Retransmissoes Uteis","",retransmissoesEfetivas);
+
+        declareOutput("Msg's Recuperadas");
+        collectOutput("Msg's Recuperadas","",mensagensRecuperadas);
+
+
 
 
 
@@ -1174,12 +1193,13 @@ void Basic802154::armazenaRetransmissoes(Basic802154Packet *rcvPacket){
 void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
     int i = 0,j = 0,repetido = 0;
     int utilidadeRetransmissao = 0;
-    cout<<"Numer de escutados: "<<rcvPacket->getDadosVizinhoArraySize()<<"\n";
+
     vector<MENSAGENS_ESCUTADAS> *vetor = new vector<MENSAGENS_ESCUTADAS>;
 
 
 
     if (rcvPacket->getDadosVizinhoArraySize() > 0) {
+        cout<<"Numer de escutados: "<<rcvPacket->getDadosVizinhoArraySize()<<"\n";
         /** Salvando todas as cooperações para excluir cooperantes que estão repetindo as mensagens**/
         armazenaRetransmissoes(rcvPacket);
 
@@ -1253,6 +1273,7 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
         }
 
         if(utilidadeRetransmissao != 0){
+                mensagensRecuperadas = mensagensRecuperadas + utilidadeRetransmissao;
                 retransmissoesEfetivas++;
                 //cout<<"Retransmissões Uteis: "<< retransmissoesEfetivas<< "\n";
             }else{
@@ -1420,7 +1441,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
         //LimparBuffer
         cout<<"Sou o nodo: "<< SELF_MAC_ADDRESS<<"\n";
-        cout<<"tamanho Buffer: "<<TXBuffer.size()<<"\n";
+        //cout<<"tamanho Buffer: "<<TXBuffer.size()<<"\n";
         limparBufferAplicacao();
 //        // Gerar Mensagem da aplicação
 //        RadioControlMessage *msg1 = new RadioControlMessage("BEACON_CHEGADA",BEACON_CHEGADA1);
@@ -1572,6 +1593,9 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
             ackPacket->setDstID(rcvPacket->getSrcID());
             ackPacket->setByteLength(ACK_PKT_SIZE);
 
+            //Insere na lista de associados
+            nodosAssociados.push_back(rcvPacket->getSrcID());
+
             //Conta como filho!!!
             nchildren++;
 
@@ -1626,7 +1650,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
         // data frame
     case MAC_802154_DATA_PACKET: {
-        //cout<<"Eu sou o: "<< SELF_MAC_ADDRESS<< "\n";
+        cout<<"Eu sou o: "<< SELF_MAC_ADDRESS<< "\n";
         if(rssi > limiteRSSI){// Só irá receber a mensagem se o RSSI for bom
 
            if (isNotDuplicatePacket(rcvPacket)) {
@@ -2052,8 +2076,30 @@ void Basic802154::limparBufferAplicacao(){
 }
 
 void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket){
-    calculaNumNodosCooperantes();
+    int numCoop = 0, qntNodosCoordEscuta = 0, coop = 0;
 
+    qntNodosCoordEscuta = neigmap.size();
+
+    cout<<"qntNodosAssociados: "<<qntNodosCoordEscuta<<"\n";
+    numCoop = rand()%(qntNodosCoordEscuta+1);
+    cout<<"numCoop: "<<numCoop<<"\n";
+
+    int j=0;
+    std::map<int, Neighborhood*>::iterator iterNeighborhood;
+        while(j!=numCoop){
+        coop = rand()%(numhosts+1);
+              for (iterNeighborhood = neigmap.begin();
+                      iterNeighborhood != neigmap.end(); iterNeighborhood++) {
+                  Neighborhood *nodo = iterNeighborhood->second;
+
+                  if (nodo->nodeId == coop) {
+                      nodosColaboradores.push_back(nodo->nodeId);
+                      j++;
+                  }
+
+              }
+
+       }
 }
 
 

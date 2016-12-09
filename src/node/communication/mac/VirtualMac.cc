@@ -205,7 +205,7 @@ bool VirtualMac::isNotDuplicatePacket(cPacket * pkt)
 	//extract source address and sequence number from the packet
 	MacPacket *macPkt = check_and_cast <MacPacket*>(pkt);
 	int src = macPkt->getSource();
-	cout<<"getSequenceNumber: "<< macPkt->getSequenceNumber()<< "\n";
+	//cout<<"getSequenceNumber: "<< macPkt->getSequenceNumber()<< "\n";
 	unsigned int sn = macPkt->getSequenceNumber();
 
 	//resize packet history vector if necessary
@@ -214,7 +214,7 @@ bool VirtualMac::isNotDuplicatePacket(cPacket * pkt)
 
 	//if recorded sequence number is less than new
 	//then packet is new (i.e. not duplicate)
-	cout<<"pktHistory[src]: "<<pktHistory[src]<<" sn: "<< sn<<"\n";
+	//cout<<"pktHistory[src]: "<<pktHistory[src]<<" sn: "<< sn<<"\n";
 	if (pktHistory[src] < sn) {
 		pktHistory[src] = sn;
 		return true;

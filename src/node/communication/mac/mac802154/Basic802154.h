@@ -323,15 +323,17 @@ class Basic802154: public VirtualMac {
 	    int msgRecebidas;
 	    int msgRtrans;
 	    int beaconsRecebidos;
+	    int mensagensRecuperadas;
+	    int mensagensPerdidas;
 	    std::map<int, int> listasgEnviadas;
 	    //std::vector<MENSAGENS_ESCUTADAS_REPETIDAS> retransmissoesRepetidas;
 	    //std::vector<RETRANSMISSORES_REPETIDOS> retransmissoresDuplicados;
 	    std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeSucesso; // armazena as mensagens de cooperação que o coordenador não havia escutado diretamente
-	    int mensagensPerdidas;
 	    std::vector<POSSIVEIS_COOPERANTES> cooperantes;
 	    /*Variáveis taxa de sucesso*/
 	    double alphaSucess;
 	    std::vector<TAXA_DE_SUCESSO> historicoTaxaDeSucesso;
+	    std::vector<int> nodosAssociados;
 
 
 };

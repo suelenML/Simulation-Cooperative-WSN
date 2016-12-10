@@ -18,6 +18,8 @@
 Neighborhood::Neighborhood() {
     rssi=0;
     energy=0;
+    txSucesso=0;
+    txSucessoVizinhanca=0;
 
 }
 

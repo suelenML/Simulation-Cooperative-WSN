@@ -67,6 +67,15 @@ simple Basic802154 like node.communication.mac.iMac {
     double alpha = default (0.4);
     double ganho = default (2.0);
     
+    //Para determinar a taxa de sucesso
+    double alphaSucess = default(0.3);
+    
+    //Para determinar quais nodos serao coop
+    double beta1 = default(-1.0);
+	double beta2 = default(-1.5);
+	double beta3 = default(-2.0);
+	double beta4 = default(-1.0);
+    
 	
 	
 	

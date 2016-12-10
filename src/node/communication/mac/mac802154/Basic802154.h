@@ -66,18 +66,29 @@ enum Mac802154Timers {
 enum macApp{
     BEACON_CHEGADA1 = 21,
 };
-
+//Suelen
 struct  MENSAGENS_ESCUTADAS_REPETIDAS {
     int idNodo;
     int idMens;
     int idRetransmissor;
 
 };
-
+//Suelen
 struct RETRANSMISSORES_REPETIDOS{
     int idNodo1;
     int idNodo2;
 
+};
+//Suelen
+struct POSSIVEIS_COOPERANTES{
+    int id;
+    double valor;
+};
+
+//Suelen
+struct  TAXA_DE_SUCESSO{
+    int id;
+    double taxaDeSucesso;
 };
 
 class Basic802154: public VirtualMac {
@@ -289,6 +300,8 @@ class Basic802154: public VirtualMac {
 	    void verificaRetransmissoesRepetidas();//Suelen
 	    void armazenaRetransmissoes(Basic802154Packet *rcvPacket);//Suelen
 	    void limparBufferAplicacao();//Suelen
+	    double taxaDeSucesso(int id, int recebidas); //Suelen
+	    void selecaoCoopAleatoria(Basic802154Packet *beaconPacket);//Suelen
 
 	    int retransmissoesEfetivas=0; // que o coordenador escutou apenas por retransmissão
 	    int retransmissoesNaoEfetivas=0; // que o coordenador escutou na transmissão direta e que foi por retransmissão também
@@ -302,20 +315,25 @@ class Basic802154: public VirtualMac {
 	    std::map<int, Neighborhood*> neigmap; // Acho que são todos os nodos da rede
 
 	    /*----------------SUELEN------------------*/
+	    double limiteRSSI;
 	    bool userelay= false;
-	    //int retransmissao;
-	    //std::map<int, vector<int>*> historicoDeSucesso;
 	    int utilidadeCoop;
 	    int primeiraSelecao;
 	    int msgEnviadas;
 	    int msgRecebidas;
 	    int msgRtrans;
 	    int beaconsRecebidos;
+	    int mensagensRecuperadas;
+	    int mensagensPerdidas;
 	    std::map<int, int> listasgEnviadas;
 	    //std::vector<MENSAGENS_ESCUTADAS_REPETIDAS> retransmissoesRepetidas;
 	    //std::vector<RETRANSMISSORES_REPETIDOS> retransmissoresDuplicados;
 	    std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeSucesso; // armazena as mensagens de cooperação que o coordenador não havia escutado diretamente
-	    int mensagensPerdidas;
+	    std::vector<POSSIVEIS_COOPERANTES> cooperantes;
+	    /*Variáveis taxa de sucesso*/
+	    double alphaSucess;
+	    std::vector<TAXA_DE_SUCESSO> historicoTaxaDeSucesso;
+	    std::vector<int> nodosAssociados;
 
 
 };

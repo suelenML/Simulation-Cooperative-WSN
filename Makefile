@@ -82,9 +82,10 @@ O = $(PROJECT_OUTPUT_DIR)/$(CONFIGNAME)/$(PROJECTRELATIVE_PATH)
 
 # Object files for local .cc and .msg files
 OBJS = \
+    $O/src/helpStructures/CastaliaModule.o \
     $O/src/helpStructures/TimerService.o \
     $O/src/helpStructures/DebugInfoWriter.o \
-    $O/src/helpStructures/CastaliaModule.o \
+    $O/src/helpStructures/TimerService.o \
     $O/src/node/application/VirtualApplication.o \
     $O/src/node/application/bridgeTest/BridgeTest.o \
     $O/src/node/application/connectivityMap/ConnectivityMap.o \
@@ -95,14 +96,14 @@ OBJS = \
     $O/src/node/communication/mac/VirtualMac.o \
     $O/src/node/communication/mac/baselineBanMac/BaselineBANMac.o \
     $O/src/node/communication/mac/bypassMac/BypassMAC.o \
+    $O/src/node/communication/mac/mac802154/Neighbor.o \
     $O/src/node/communication/mac/mac802154/Neighborhood.o \
     $O/src/node/communication/mac/mac802154/Basic802154.o \
-    $O/src/node/communication/mac/mac802154/Neighbor.o \
     $O/src/node/communication/mac/mac802154/staticGTS802154/StaticGTS802154.o \
     $O/src/node/communication/mac/tMac/TMAC.o \
     $O/src/node/communication/mac/tunableMac/TunableMAC.o \
-    $O/src/node/communication/radio/RadioSupportFunctions.o \
     $O/src/node/communication/radio/Radio.o \
+    $O/src/node/communication/radio/RadioSupportFunctions.o \
     $O/src/node/communication/routing/VirtualRouting.o \
     $O/src/node/communication/routing/bypassRouting/BypassRouting.o \
     $O/src/node/communication/routing/multipathRingsRouting/MultipathRingsRouting.o \
@@ -113,8 +114,8 @@ OBJS = \
     $O/src/node/sensorManager/SensorManager.o \
     $O/src/physicalProcess/carsPhysicalProcess/CarsPhysicalProcess.o \
     $O/src/physicalProcess/customizablePhysicalProcess/CustomizablePhysicalProcess.o \
-    $O/src/wirelessChannel/defaultChannel/WirelessChannel.o \
     $O/src/wirelessChannel/defaultChannel/WirelessChannelTemporal.o \
+    $O/src/wirelessChannel/defaultChannel/WirelessChannel.o \
     $O/src/wirelessChannel/traceChannel/TraceChannel.o \
     $O/src/helpStructures/TimerServiceMessage_m.o \
     $O/src/node/application/ApplicationPacket_m.o \

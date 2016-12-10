@@ -783,7 +783,7 @@ void Basic802154::selecionaNodosSmartNumVizinhos(
 
                 if (resultado_lp[j] == 1) {
                     nodosColaboradores.push_back(nodo->nodeId);
-                    //cout<<"- : "<<nodo->nodeId <<"\n";
+                    cout<<"- : "<<nodo->nodeId <<"\n";
                 }
                 j++;
 
@@ -813,13 +813,13 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
                 primeiro = false;
                // cout<<"Energia: "<< nodo->energy<<" RSSI: "<<nodo->somaRssi<<" Vizinhos: "<<nodo->numeroDevizinhos << " ID: "<< nodo->nodeId<<"\n";
                 out
-                        << ((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
+                        << -1*((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
                                 + (beta3 * nodo->numeroDevizinhos)) << "*x"
                         << nodo->nodeId;
             } else {
                 //cout<<"Energia: "<< nodo->energy<<" RSSI: "<<nodo->somaRssi<<" Vizinhos: "<<nodo->numeroDevizinhos << " ID: "<< nodo->nodeId<<"\n";
                 out << "+"
-                        << ((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
+                        << -1*((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
                                 + (beta3 * nodo->numeroDevizinhos)) << "* x"
                         << nodo->nodeId;
             }
@@ -917,9 +917,10 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
         } else {
 
             solve(lp);
-            //print_solution(lp, 1);
+            print_solution(lp, 1);
             REAL resultado_lp[i];
             get_variables(lp, resultado_lp);
+
             int j = 0;
             primeiro = true;
             //limpando lista de colaboradores
@@ -927,7 +928,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
             for (iterNeighborhood = neigmap.begin();
                     iterNeighborhood != neigmap.end(); iterNeighborhood++) {
                 Neighborhood *nodo = iterNeighborhood->second;
-                //cout<<resultado_lp[j]<<"\n";
+                //cout<<"sou cooperante"<<resultado_lp[j]<<"\n";
                 if (resultado_lp[j] == 1) {
                     nodosColaboradores.push_back(nodo->nodeId);
                 }

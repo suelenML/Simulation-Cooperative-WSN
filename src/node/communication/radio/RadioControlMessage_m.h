@@ -29,8 +29,7 @@
  */
 enum RadioControlMessage_type {
     CARRIER_SENSE_INTERRUPT = 1,
-    RADIO_BUFFER_FULL = 2,
-    BEACON_CHEGADA = 21 //Suelen
+    RADIO_BUFFER_FULL = 2
 };
 
 /**

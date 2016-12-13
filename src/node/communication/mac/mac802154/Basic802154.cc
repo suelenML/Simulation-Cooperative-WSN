@@ -69,7 +69,7 @@ void Basic802154::startup() {
     for(int i=0;i<numhosts;i++ ){
         TAXA_DE_SUCESSO txSucess;
         txSucess.id = i;
-        txSucess.taxaDeSucesso = 0;
+        txSucess.taxaDeSucesso = 0.001;
         historicoTaxaDeSucesso.push_back(txSucess);
     }
     //Parâmetro da taxa de sucesso
@@ -739,7 +739,7 @@ void Basic802154::selecionaNodosSmartNumVizinhos(
             if (nodo->numeroDevizinhos > 0) {
                 primeiro = true;
                 int i, nodosConectados = 0;
-                for (i = 1; i < nodo->numeroDevizinhos; i++) {
+                for (i = 0; i < nodo->numeroDevizinhos; i++) {
 
                     if (neigmap.find(nodo->vizinhos[i]) == neigmap.end()) {
                         adicionarNodoSolto(nodo->nodeId, nodo->vizinhos[i]);
@@ -889,7 +889,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
             if (nodo->numeroDevizinhos > 0) {
                 primeiro = true;
                 int i, nodosConectados = 0;
-                for (i = 1; i < nodo->numeroDevizinhos; i++) {
+                for (i = 0; i < nodo->numeroDevizinhos; i++) {
 
                     if (neigmap.find(nodo->vizinhos[i]) == neigmap.end()) {
                         adicionarNodoSolto(nodo->nodeId, nodo->vizinhos[i]);

@@ -137,6 +137,12 @@ void Basic802154::startup() {
             opp_error(
                     "Only full-function devices (isFFD=true) can be PAN coordinators");
         }
+        if(userelay){
+            beta1 = par("beta1");
+            beta2 = par("beta2");
+            beta3 = par("beta3");
+            beta4 = par("beta4");
+        }
 
         associatedPAN = SELF_MAC_ADDRESS;
         macBSN = genk_intrand(0, 255) + 1;
@@ -231,10 +237,6 @@ void Basic802154::startup() {
       }
 
 }*/
-
-
-
-
 
 
 // método Ríad
@@ -366,8 +368,6 @@ void Basic802154::timerFiredCallback(int index) {
             if(cooperador){
                 //Se for cooperante só dorme depois da retransmissão
                 // inform the decision layer that GTS has started
-                //cout<<"Sou o Nodo: "<<SELF_MAC_ADDRESS <<"\n";
-                //cout<<"Tempo: "<<getClock()<<"\n";
                 startedGTS_node();
                 break;
             }else{
@@ -827,14 +827,11 @@ void Basic802154::selecionaNodosSmartNumVizinhos(
 // método Ríad
 //método que monta e resolve o probelma de otimização e escreve um arquivo .mod
 void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
-    //int numCoop;
-    //calculaNumNodosCooperantes();
-    //numCoop = numeronodoscooperantes;
+
     std::string fileName("prob" + std::to_string(numeroDoProblema) + ".mod");
     char *cstr = new char[fileName.length() + 1];
     strcpy(cstr, fileName.c_str());
     std::ofstream out(cstr);
-
     std::map<int, Neighborhood*>::iterator iterNeighborhood;
 
 
@@ -848,9 +845,8 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
                 primeiro = false;
 
                 cout<<"Energia: "<< nodo->energy<<" RSSI: "<<nodo->somaRssi<<" Vizinhos: "<<nodo->numeroDevizinhos << "Taxa de Sucesso: "<<nodo->txSucesso << " ID: "<< nodo->nodeId<<"\n";
-                out
-                        << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
-                                + (beta3 / nodo->numeroDevizinhos) + (beta4 / nodo->txSucesso)) << "*x"
+                out << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
+                                + (beta3 * nodo->numeroDevizinhos) + (beta4 / nodo->txSucesso)) << "*x"
                         << nodo->nodeId;
 
                /*POSSIVEIS_COOPERANTES possiveisCoop;
@@ -864,7 +860,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
                 cout<<"Energia: "<< nodo->energy<<" RSSI: "<<nodo->somaRssi<<" Vizinhos: "<<nodo->numeroDevizinhos << "Taxa de Sucesso: "<<nodo->txSucesso <<" ID: "<< nodo->nodeId<<"\n";
                 out << "+"
                         << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
-                                + (beta3 / nodo->numeroDevizinhos) + (beta4 / nodo->txSucesso)) << "* x"
+                                + (beta3 * nodo->numeroDevizinhos) + (beta4 / nodo->txSucesso)) << "* x"
                         << nodo->nodeId;
 
                 /*POSSIVEIS_COOPERANTES possiveisCoop;
@@ -875,19 +871,20 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
 
             }
 
-
         }
         out << ";\n";
 
         for (iterNeighborhood = neigmap.begin();
                 iterNeighborhood != neigmap.end(); iterNeighborhood++) {
             Neighborhood *nodo = iterNeighborhood->second;
-
+            cout <<"\n--->>>>>eu sou o nodo"<<nodo->nodeId<<"e eu escutei:\n ";
             if (nodo->numeroDevizinhos > 0) {
                 primeiro = true;
                 int i, nodosConectados = 0;
-                for (i = 1; i < nodo->numeroDevizinhos; i++) {
-
+                for (i = 0; i < nodo->numeroDevizinhos; i++) {
+                    cout <<"--->>>>>"<<nodo->vizinhos[i]<<"\n";
+                    //aqui é verificado se o nodo vizinho foi escutado pelo coordenador. Caso ele não tenha
+                    //sido escutado pelo coordenador ele é considerado um nodo solto
                     if (neigmap.find(nodo->vizinhos[i]) == neigmap.end()) {
                         adicionarNodoSolto(nodo->nodeId, nodo->vizinhos[i]);
                     } else {
@@ -1091,7 +1088,6 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
             }
 
         }
-
     }
 }
 double Basic802154:: taxaDeSucesso(int id, int recebidas){
@@ -1675,7 +1671,6 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                    }
                 }
             }
-        }
 
             // If the frame was sent to broadcast address, nothing else needs to be done
             if (rcvPacket->getDstID() == BROADCAST_MAC_ADDRESS)

@@ -656,11 +656,18 @@ void Basic802154::finishSpecific() {
         declareOutput("Msg's Recebidas");
         collectOutput("Msg's Recebidas", "", msgRecebidas);
 
+        // Mensagens que foram recebidas por retransmissão, mesmo que não tenha sido útil
         declareOutput("Msg's Recebidas Retransmissao");
         collectOutput("Msg's Recebidas Retransmissao", "", msgRtrans);
 
+        // numero de retransmissões em que alguma mensagem foi recuperada
         declareOutput("Retransmissoes Uteis");
         collectOutput("Retransmissoes Uteis","",retransmissoesEfetivas);
+
+        // numero de retransmissões em que nenhuma mensagem foi recuperada
+        declareOutput("Retransmissoes Nao Uteis");
+        collectOutput("Retransmissoes Nao Uteis","",retransmissoesNaoEfetivas);
+
 
         declareOutput("Msg's Recuperadas");
         collectOutput("Msg's Recuperadas","",mensagensRecuperadas);
@@ -1051,43 +1058,45 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
     Neighborhood *nodo;
     cout<<"Eu sou o: "<< SELF_MAC_ADDRESS<< "\n";
     unsigned vizinhos = pkt->getVizinhosOuNodosCooperantesArraySize();
-    if(rssi>limiteRSSI){
-        if (iterNeighborhood == neigmap.end()) {
-            nodo = new Neighborhood();
-            nodo->nodeId = pkt->getSrcID();
-            nodo->rssi = (rssi / MAX_RSSI);
-            somaDeSinais = somaDeSinais + (rssi / MAX_RSSI);
-            nodo->energy = pkt->getEnergy();
-            nodo->numeroDevizinhos = vizinhos;
-            nodo->somaRssi = pkt->getSomaSinais(); //atulizar soma de rssi
-            nodo->txSucesso = taxaDeSucesso(pkt->getSrcID(), 1);
+    if(pkt->getDadosVizinhoArraySize() == 0){
+        if(rssi>limiteRSSI){
+            if (iterNeighborhood == neigmap.end()) {
+                nodo = new Neighborhood();
+                nodo->nodeId = pkt->getSrcID();
+                nodo->rssi = (rssi / MAX_RSSI);
+                somaDeSinais = somaDeSinais + (rssi / MAX_RSSI);
+                nodo->energy = pkt->getEnergy();
+                nodo->numeroDevizinhos = vizinhos;
+                nodo->somaRssi = pkt->getSomaSinais(); //atulizar soma de rssi
+                nodo->txSucesso = taxaDeSucesso(pkt->getSrcID(), 1);
 
-            if (isPANCoordinator && vizinhos > 0) {
-                //atualizar lista de vinhos
-                int i;
-                for (i = 0; i < vizinhos; i++) {
-                    nodo->vizinhos.push_back(pkt->getVizinhosOuNodosCooperantes(i));
+                if (isPANCoordinator && vizinhos > 0) {
+                    //atualizar lista de vinhos
+                    int i;
+                    for (i = 0; i < vizinhos; i++) {
+                        nodo->vizinhos.push_back(pkt->getVizinhosOuNodosCooperantes(i));
+                    }
                 }
-            }
-            neigmap[pkt->getSrcID()] = nodo;
-        } else {            //se o nodo já está na lista atualiza os dados
-            nodo = iterNeighborhood->second;
-            somaDeSinais = somaDeSinais - nodo->rssi;
-            nodo->rssi = (rssi / MAX_RSSI);
-            somaDeSinais = somaDeSinais + (rssi / MAX_RSSI);
-            nodo->energy = pkt->getEnergy();
-            nodo->numeroDevizinhos = vizinhos;
-            nodo->somaRssi = pkt->getSomaSinais();
-            nodo->txSucesso = taxaDeSucesso(pkt->getSrcID(), 1);
-            if (isPANCoordinator && vizinhos > 0) {
-                //atualizar lista de vinhos
-                nodo->vizinhos.clear();
-                int i;
-                for (i = 0; i < vizinhos; i++) {
-                    nodo->vizinhos.push_back(pkt->getVizinhosOuNodosCooperantes(i));
+                neigmap[pkt->getSrcID()] = nodo;
+            } else {            //se o nodo já está na lista atualiza os dados
+                nodo = iterNeighborhood->second;
+                somaDeSinais = somaDeSinais - nodo->rssi;
+                nodo->rssi = (rssi / MAX_RSSI);
+                somaDeSinais = somaDeSinais + (rssi / MAX_RSSI);
+                nodo->energy = pkt->getEnergy();
+                nodo->numeroDevizinhos = vizinhos;
+                nodo->somaRssi = pkt->getSomaSinais();
+                nodo->txSucesso = taxaDeSucesso(pkt->getSrcID(), 1);
+                if (isPANCoordinator && vizinhos > 0) {
+                    //atualizar lista de vinhos
+                    nodo->vizinhos.clear();
+                    int i;
+                    for (i = 0; i < vizinhos; i++) {
+                        nodo->vizinhos.push_back(pkt->getVizinhosOuNodosCooperantes(i));
+                    }
                 }
-            }
 
+            }
         }
     }
 }
@@ -2089,7 +2098,9 @@ void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket){
 
                   if (nodo->nodeId == coop) {
                       nodosColaboradores.push_back(nodo->nodeId);
+                      cout<<"Selecionado: "<<coop <<"\n";
                       j++;
+                      break;
                   }
 
               }

@@ -882,13 +882,10 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
                 primeiro = true;
                 int i, nodosConectados = 0;
                 for (i = 0; i < nodo->numeroDevizinhos; i++) {
-<<<<<<< HEAD
                     cout <<"--->>>>>"<<nodo->vizinhos[i]<<"\n";
                     //aqui é verificado se o nodo vizinho foi escutado pelo coordenador. Caso ele não tenha
                     //sido escutado pelo coordenador ele é considerado um nodo solto
-=======
 
->>>>>>> refs/remotes/origin/master
                     if (neigmap.find(nodo->vizinhos[i]) == neigmap.end()) {
                         adicionarNodoSolto(nodo->nodeId, nodo->vizinhos[i]);
                     } else {

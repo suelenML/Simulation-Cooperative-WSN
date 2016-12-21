@@ -54,7 +54,7 @@ void Basic802154::startup() {
     //Variaveis utilizadas para determinar o numero de cooperantes
     numdadosrecebidosnogtstransmissao = 0;
     SamLoss = 0.0;
-    numhosts = getParentModule()->getParentModule()->getParentModule()->par("numNodes");;
+    numhosts = getParentModule()->getParentModule()->getParentModule()->par("numNodes");
     vectortaxaperda.setName("Taxa de Perda");
     alpha = par("alpha");
     betha = par("betha");
@@ -171,7 +171,7 @@ void Basic802154::startup() {
         }
 
 
-        setTimer(FRAME_START, 0);	//frame start is NOW
+        setTimer(FRAME_START, 0);   //frame start is NOW
     }
 }
 // método Ríad
@@ -239,6 +239,10 @@ void Basic802154::startup() {
 }*/
 
 
+
+
+
+
 // método Ríad
 //método usado pelo coordenador para adiciona ao beacon uma lista com os nodos cooperantes.
 void Basic802154::enviarNodosCooperantes(Basic802154Packet *beaconPacket) {
@@ -261,7 +265,7 @@ void Basic802154::timerFiredCallback(int index) {
 
     // Start of a new superframe
     case FRAME_START: {
-        if (isPANCoordinator) {	// as a PAN coordinator, create and broadcast beacon packet
+        if (isPANCoordinator) { // as a PAN coordinator, create and broadcast beacon packet
 
             beaconPacket = new Basic802154Packet("PAN beacon packet",
                     MAC_LAYER_PACKET);
@@ -342,7 +346,7 @@ void Basic802154::timerFiredCallback(int index) {
 
             currentFrameStart = getClock() + phyDelayRx2Tx;
             setTimer(FRAME_START, beaconInterval * symbolLen);
-        } else {	// if not a PAN coordinator, then wait for beacon
+        } else {    // if not a PAN coordinator, then wait for beacon
             //cout<<"Setar RX: "<< SELF_MAC_ADDRESS<<"\n";
             toRadioLayer(createRadioCommand(SET_STATE, RX));
             setTimer(BEACON_TIMEOUT, guardTime * 7);
@@ -834,7 +838,10 @@ void Basic802154::selecionaNodosSmartNumVizinhos(
 // método Ríad
 //método que monta e resolve o probelma de otimização e escreve um arquivo .mod
 void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
-
+    cout<<"-------------->>>>>>>>>>Começou a executar"<<"\n";
+    //int numCoop;
+    //calculaNumNodosCooperantes();
+    //numCoop = numeronodoscooperantes;
     std::string fileName("prob" + std::to_string(numeroDoProblema) + ".mod");
     char *cstr = new char[fileName.length() + 1];
     strcpy(cstr, fileName.c_str());
@@ -852,31 +859,20 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
                 primeiro = false;
 
                 cout<<"Energia: "<< nodo->energy<<" RSSI: "<<nodo->somaRssi<<" Vizinhos: "<<nodo->numeroDevizinhos << "Taxa de Sucesso: "<<nodo->txSucesso << " ID: "<< nodo->nodeId<<"\n";
-                out << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
-                                + (beta3 * nodo->numeroDevizinhos) + (beta4 / nodo->txSucesso)) << "*x"
+                out
+                        << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
+                                + (beta3 / nodo->numeroDevizinhos) + (beta4 / nodo->txSucesso)) << "*x"
                         << nodo->nodeId;
-
-               /*POSSIVEIS_COOPERANTES possiveisCoop;
-               possiveisCoop.id = nodo->nodeId;
-               possiveisCoop.valor = ((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
-                       + (beta3 * nodo->numeroDevizinhos)+ (beta4 * nodo->txSucesso));
-               cooperantes.push_back(possiveisCoop);*/
 
 
             } else {
                 cout<<"Energia: "<< nodo->energy<<" RSSI: "<<nodo->somaRssi<<" Vizinhos: "<<nodo->numeroDevizinhos << "Taxa de Sucesso: "<<nodo->txSucesso <<" ID: "<< nodo->nodeId<<"\n";
                 out << "+"
                         << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
-                                + (beta3 * nodo->numeroDevizinhos) + (beta4 / nodo->txSucesso)) << "* x"
+                                + (beta3 / nodo->numeroDevizinhos) + (beta4 / nodo->txSucesso)) << "* x"
                         << nodo->nodeId;
-
-                /*POSSIVEIS_COOPERANTES possiveisCoop;
-                possiveisCoop.id = nodo->nodeId;
-                possiveisCoop.valor = ((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
-                          + (beta3 * nodo->numeroDevizinhos)+ (beta4 * nodo->txSucesso));
-                cooperantes.push_back(possiveisCoop);*/
-
             }
+
 
         }
         out << ";\n";
@@ -884,14 +880,11 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
         for (iterNeighborhood = neigmap.begin();
                 iterNeighborhood != neigmap.end(); iterNeighborhood++) {
             Neighborhood *nodo = iterNeighborhood->second;
-            cout <<"\n--->>>>>eu sou o nodo"<<nodo->nodeId<<"e eu escutei:\n ";
+
             if (nodo->numeroDevizinhos > 0) {
                 primeiro = true;
                 int i, nodosConectados = 0;
                 for (i = 0; i < nodo->numeroDevizinhos; i++) {
-                    cout <<"--->>>>>"<<nodo->vizinhos[i]<<"\n";
-                    //aqui é verificado se o nodo vizinho foi escutado pelo coordenador. Caso ele não tenha
-                    //sido escutado pelo coordenador ele é considerado um nodo solto
 
                     if (neigmap.find(nodo->vizinhos[i]) == neigmap.end()) {
                         adicionarNodoSolto(nodo->nodeId, nodo->vizinhos[i]);
@@ -974,64 +967,20 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
         } else {
 
             solve(lp);
+            cout<<"------------>>>>>>>>>>>>>Problema resolvido"<<"\n";
             //print_solution(lp, 1);
-            print_solution(lp, 1);
+            cout<<"------------>>>>>>>>>>>>>i="<<i<<"\n";
             REAL resultado_lp[i];
             get_variables(lp, resultado_lp);
-            /*
-            for(int k=0; k<i;k++){
-                cout<<"elementos otimizacao: "<< resultado_lp[k] <<"\n";
-            }
-
-            //For para multiplicar o alor da otimização pela funcao beneficiio
-            for(int i = 0; i < (int)cooperantes.size();i++){
-                cout<<"Id: "<< cooperantes[i].id<<"\n";
-                cout<<"Valor: "<< cooperantes[i].valor<<"\n";
-                cooperantes[i].valor = resultado_lp[i] * cooperantes[i].valor;
-                cout<<"Valor Depois: "<< cooperantes[i].valor<<"\n";
-            }
-
-            //Ordena o valor obtido da funcao benefio
-            POSSIVEIS_COOPERANTES temp;
-            for (int i=0;i<(int)cooperantes.size(); i++){
-                for(int j=i+1;j<(int)cooperantes.size();j++)
-                {
-                    if (cooperantes[i].valor > cooperantes[j].valor)
-                    {
-                        temp.valor=cooperantes[i].valor;
-                        temp.id=cooperantes[i].id;
-                        cooperantes[i].valor=cooperantes[j].valor;
-                        cooperantes[i].id=cooperantes[j].id;
-                        cooperantes[j].valor=temp.valor;
-                        cooperantes[j].id = temp.id;
-                    }
-                }
-            }
-
-            for (int j=0; j< (int)cooperantes.size(); j++) {
-                  cout<<"\nCooperante: "<< cooperantes[j].id<<"\n";
-                  cout<<"Valor: "<< cooperantes[j].valor<"\n";
-            }
-            */
-            int j = 0;
+            cout<<"------------>>>>>>>>>>>>>get_variables"<<"\n";
+                       int j = 0;
             primeiro = true;
-            //limpando lista de colaboradores
-            nodosColaboradores.clear();
+            if(!nodosColaboradores.empty()){
+                nodosColaboradores.clear();
+            }
             for (iterNeighborhood = neigmap.begin();
                     iterNeighborhood != neigmap.end(); iterNeighborhood++) {
                 Neighborhood *nodo = iterNeighborhood->second;
-                /*if(j==numCoop)
-                    break;
-
-                for (int i=0;i<(int)cooperantes.size(); i++){
-                    if(nodo->nodeId == cooperantes[i].id && cooperantes[i].valor != 0){
-                        cout<<"coop: "<<cooperantes[i].id <<"\n";
-                        nodosColaboradores.push_back(nodo->nodeId);
-                        j++;
-                        break;
-                    }
-                }*/
-                //cout<<resultado_lp[j]<<"\n";
                 if (resultado_lp[j] == 1) {
                     nodosColaboradores.push_back(nodo->nodeId);
                 }
@@ -1436,9 +1385,9 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
         recvBeacons++;
 
         if (isPANCoordinator)
-            break;			//PAN coordinators ignore beacons from other PANs
+            break;          //PAN coordinators ignore beacons from other PANs
         if (associatedPAN != -1 && associatedPAN != rcvPacket->getPANid())
-            break;			//Ignore, if associated to another PAN
+            break;          //Ignore, if associated to another PAN
 
         //cancel beacon timeout message (if present)
         cancelTimer(BEACON_TIMEOUT);
@@ -1454,7 +1403,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
         //this node is connected to this PAN (or will try to connect), update frame parameters
         double offset = TX_TIME(rcvPacket->getByteLength());
-        currentFrameStart = getClock() - offset;	//frame start is in the past
+        currentFrameStart = getClock() - offset;    //frame start is in the past
         lostBeacons = 0;
         frameOrder = rcvPacket->getFrameOrder();
         beaconOrder = rcvPacket->getBeaconOrder();
@@ -1934,11 +1883,11 @@ void Basic802154::transmitCurrentPacket() {
     simtime_t txEndTime = getClock() + txTime;
     int allowTx = 1;
 
-    if (macState == MAC_STATE_CAP) {	//currently in CAP
+    if (macState == MAC_STATE_CAP) {    //currently in CAP
         if (currentFrameStart + CAPend < txEndTime && CAPend != GTSstart)
             //transmission will not fit in CAP
             allowTx = 0;
-    } else if (macState == MAC_STATE_GTS) {	//currently in GTS
+    } else if (macState == MAC_STATE_GTS) { //currently in GTS
         if (currentFrameStart + GTSend < txEndTime)
             //transmission will not fit in GTS
             allowTx = 0;
@@ -1993,8 +1942,8 @@ void Basic802154::collectPacketHistory(const char *s) {
 //--- DECISION LAYER FUNCTIONS ---//
 
 // A function to accept new packet from the Network layer
-// ACTION: 	check if packet can be transmitted immediately
-//			otherwise accept only if there is room in the buffer
+// ACTION:  check if packet can be transmitted immediately
+//          otherwise accept only if there is room in the buffer
 bool Basic802154::acceptNewPacket(Basic802154Packet *newPacket) {
     if (getAssociatedPAN() != -1 && getCurrentPacket() == NULL) {
         transmitPacket(newPacket);
@@ -2107,9 +2056,3 @@ void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket){
 
        }
 }
-
-
-
-
-
-

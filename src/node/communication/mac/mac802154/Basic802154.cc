@@ -54,7 +54,7 @@ void Basic802154::startup() {
     //Variaveis utilizadas para determinar o numero de cooperantes
     numdadosrecebidosnogtstransmissao = 0;
     SamLoss = 0.0;
-    numhosts = getParentModule()->getParentModule()->getParentModule()->par("numNodes");;
+    numhosts = getParentModule()->getParentModule()->getParentModule()->par("numNodes");
     vectortaxaperda.setName("Taxa de Perda");
     alpha = par("alpha");
     betha = par("betha");
@@ -406,7 +406,11 @@ void Basic802154::timerFiredCallback(int index) {
     case BEACON_TIMEOUT: {
         lostBeacons++;
         //Limpa o Buffer da App
+        if(!TXBuffer.empty()){
         limparBufferAplicacao();
+        }else{
+            mensagensPerdidas++;
+        }
         //cMessage *msg = new cMessage("BEACON",BEACON);
         //handleRadioControlMessage(msg);
 
@@ -838,12 +842,10 @@ void Basic802154::selecionaNodosSmartNumVizinhos(
 // método Ríad
 //método que monta e resolve o probelma de otimização e escreve um arquivo .mod
 void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
-    //int numCoop;
-    //calculaNumNodosCooperantes();
-    //numCoop = numeronodoscooperantes;
     std::string fileName("prob" + std::to_string(numeroDoProblema) + ".mod");
     char *cstr = new char[fileName.length() + 1];
     strcpy(cstr, fileName.c_str());
+    cout<<"cstr: "<< cstr<<"\n";
     std::ofstream out(cstr);
     std::map<int, Neighborhood*>::iterator iterNeighborhood;
 
@@ -863,26 +865,12 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
                                 + (beta3 / nodo->numeroDevizinhos) + (beta4 / nodo->txSucesso)) << "*x"
                         << nodo->nodeId;
 
-               /*POSSIVEIS_COOPERANTES possiveisCoop;
-               possiveisCoop.id = nodo->nodeId;
-               possiveisCoop.valor = ((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
-                       + (beta3 * nodo->numeroDevizinhos)+ (beta4 * nodo->txSucesso));
-               cooperantes.push_back(possiveisCoop);*/
-
-
             } else {
                 cout<<"Energia: "<< nodo->energy<<" RSSI: "<<nodo->somaRssi<<" Vizinhos: "<<nodo->numeroDevizinhos << "Taxa de Sucesso: "<<nodo->txSucesso <<" ID: "<< nodo->nodeId<<"\n";
                 out << "+"
                         << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
                                 + (beta3 / nodo->numeroDevizinhos) + (beta4 / nodo->txSucesso)) << "* x"
                         << nodo->nodeId;
-
-                /*POSSIVEIS_COOPERANTES possiveisCoop;
-                possiveisCoop.id = nodo->nodeId;
-                possiveisCoop.valor = ((beta1 * nodo->energy) + (beta2 * nodo->somaRssi)
-                          + (beta3 * nodo->numeroDevizinhos)+ (beta4 * nodo->txSucesso));
-                cooperantes.push_back(possiveisCoop);*/
-
             }
 
 
@@ -983,41 +971,6 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
             print_solution(lp, 1);
             REAL resultado_lp[i];
             get_variables(lp, resultado_lp);
-            /*
-            for(int k=0; k<i;k++){
-                cout<<"elementos otimizacao: "<< resultado_lp[k] <<"\n";
-            }
-
-            //For para multiplicar o alor da otimização pela funcao beneficiio
-            for(int i = 0; i < (int)cooperantes.size();i++){
-                cout<<"Id: "<< cooperantes[i].id<<"\n";
-                cout<<"Valor: "<< cooperantes[i].valor<<"\n";
-                cooperantes[i].valor = resultado_lp[i] * cooperantes[i].valor;
-                cout<<"Valor Depois: "<< cooperantes[i].valor<<"\n";
-            }
-
-            //Ordena o valor obtido da funcao benefio
-            POSSIVEIS_COOPERANTES temp;
-            for (int i=0;i<(int)cooperantes.size(); i++){
-                for(int j=i+1;j<(int)cooperantes.size();j++)
-                {
-                    if (cooperantes[i].valor > cooperantes[j].valor)
-                    {
-                        temp.valor=cooperantes[i].valor;
-                        temp.id=cooperantes[i].id;
-                        cooperantes[i].valor=cooperantes[j].valor;
-                        cooperantes[i].id=cooperantes[j].id;
-                        cooperantes[j].valor=temp.valor;
-                        cooperantes[j].id = temp.id;
-                    }
-                }
-            }
-
-            for (int j=0; j< (int)cooperantes.size(); j++) {
-                  cout<<"\nCooperante: "<< cooperantes[j].id<<"\n";
-                  cout<<"Valor: "<< cooperantes[j].valor<"\n";
-            }
-            */
             int j = 0;
             primeiro = true;
             //limpando lista de colaboradores
@@ -1025,18 +978,6 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
             for (iterNeighborhood = neigmap.begin();
                     iterNeighborhood != neigmap.end(); iterNeighborhood++) {
                 Neighborhood *nodo = iterNeighborhood->second;
-                /*if(j==numCoop)
-                    break;
-
-                for (int i=0;i<(int)cooperantes.size(); i++){
-                    if(nodo->nodeId == cooperantes[i].id && cooperantes[i].valor != 0){
-                        cout<<"coop: "<<cooperantes[i].id <<"\n";
-                        nodosColaboradores.push_back(nodo->nodeId);
-                        j++;
-                        break;
-                    }
-                }*/
-                //cout<<resultado_lp[j]<<"\n";
                 if (resultado_lp[j] == 1) {
                     nodosColaboradores.push_back(nodo->nodeId);
                 }
@@ -1046,7 +987,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
         }
         numeroDoProblema++;
     }
-    //cooperantes.clear();
+
 }
 // método Ríad
 //esse método é executado por qualquer nodo quando ele recebe uma mensagem.
@@ -2085,18 +2026,28 @@ void Basic802154::limparBufferAplicacao(){
 }
 
 void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket){
-    int numCoop = 0, qntNodosCoordEscuta = 0, coop = 0;
+    int numCoop = 0, qntNodosCoordEscuta = 0, qntNodosCoordNaoEscuta = 0, coop = 0;
+    int limiteCoop =0;
 
     qntNodosCoordEscuta = neigmap.size();
+    qntNodosCoordNaoEscuta = (numhosts -1) - neigmap.size();
 
-    cout<<"qntNodosAssociados: "<<qntNodosCoordEscuta<<"\n";
-    numCoop = rand()%(qntNodosCoordEscuta+1);
+    cout<<"Quantdad de Nodos que o Cood Escuta: "<<qntNodosCoordEscuta<<"\n";
+    cout<<"Coord Nao escuta: "<< qntNodosCoordNaoEscuta<<"\n";
+
+    limiteCoop = min(qntNodosCoordEscuta,qntNodosCoordNaoEscuta );
+    numCoop = rand()%(limiteCoop) + 1; // seleciona de 1 ao min(escutaCoord,naoEscutaCoord);
+
     cout<<"numCoop: "<<numCoop<<"\n";
+    trace()<<"Comunicacao direta: "<< neigmap.size();
+    trace()<<"Comunicacao Falha: "<< qntNodosCoordNaoEscuta;
+    trace()<<"Seleção de cooperantes:";
+    trace()<<"numCoop: "<<numCoop<<"\n";
 
     int j=0;
     std::map<int, Neighborhood*>::iterator iterNeighborhood;
         while(j!=numCoop){
-        coop = rand()%(numhosts+1);
+            coop = rand()%(numhosts-1) + 1;
               for (iterNeighborhood = neigmap.begin();
                       iterNeighborhood != neigmap.end(); iterNeighborhood++) {
                   Neighborhood *nodo = iterNeighborhood->second;

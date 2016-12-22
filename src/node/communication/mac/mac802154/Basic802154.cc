@@ -1218,6 +1218,31 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
 
 }
 //Suelen Verifica os nodos que retransmitiram todas as mensagens repetidas
+/*void Basic802154::contabilizarRetransmissores() {
+    std::map<int, vector<MENSAGENS_ESCUTADAS>*>::iterator iter;
+    vector<MENSAGENS_ESCUTADAS>::iterator i;
+
+
+    for (iter = historicoDeSucesso.begin();
+            iter != historicoDeSucesso.end(); iter++) {
+        vector<MENSAGENS_ESCUTADAS> *nodo = iter->second;
+        cout << "Cooperante: " << iter->first << "\n";
+        for (i = (iter->second)->begin(); i != (iter->second)->end(); i++) {
+            cout << "valor 1: " << i->idNodo << "\n";
+            cout << "Mens: " << i->idMens << "\n";
+
+
+
+        }
+    }
+
+}*/
+
+
+
+
+
+//Suelen Verifica os nodos que retransmitiram todas as mensagens repetidas
 void Basic802154::verificaRetransmissoesRepetidas() {
     std::map<int, vector<MENSAGENS_ESCUTADAS>*>::iterator iter;
     std::map<int, vector<MENSAGENS_ESCUTADAS>*>::iterator iterProx;

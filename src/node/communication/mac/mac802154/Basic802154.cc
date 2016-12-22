@@ -13,8 +13,6 @@
 #include "Basic802154.h"
 //#include "ThroughputTest.h"
 
-
-
 // This module is virtual and can not be used directly
 Define_Module(Basic802154);
 
@@ -50,11 +48,12 @@ void Basic802154::startup() {
     mensagensRecuperadas = 0;
     nodosAssociados.clear();
 
-     //Suelen
+    //Suelen
     //Variaveis utilizadas para determinar o numero de cooperantes
     numdadosrecebidosnogtstransmissao = 0;
     SamLoss = 0.0;
-    numhosts = getParentModule()->getParentModule()->getParentModule()->par("numNodes");
+    numhosts = getParentModule()->getParentModule()->getParentModule()->par(
+            "numNodes");
     vectortaxaperda.setName("Taxa de Perda");
     alpha = par("alpha");
     betha = par("betha");
@@ -66,7 +65,7 @@ void Basic802154::startup() {
     numeronodoscooperantes = 0; // no do Odilson iniciava em 20 ver o pq??
 
     //Vetor de taxa de Sucesso
-    for(int i=0;i<numhosts;i++ ){
+    for (int i = 0; i < numhosts; i++) {
         TAXA_DE_SUCESSO txSucess;
         txSucess.id = i;
         txSucess.taxaDeSucesso = 0.001;
@@ -74,7 +73,6 @@ void Basic802154::startup() {
     }
     //Parâmetro da taxa de sucesso
     alphaSucess = par("alphaSucess");
-
 
     isPANCoordinator = par("isPANCoordinator");
     isFFD = par("isFFD");
@@ -137,7 +135,7 @@ void Basic802154::startup() {
             opp_error(
                     "Only full-function devices (isFFD=true) can be PAN coordinators");
         }
-        if(userelay){
+        if (userelay) {
             beta1 = par("beta1");
             beta2 = par("beta2");
             beta3 = par("beta3");
@@ -150,7 +148,6 @@ void Basic802154::startup() {
         //Numero de nodes a serem associados ao PAN
         maxChild = par("maxChild");
         nchildren = 0; //guarda o número de filhos
-
 
         //initialise frameOrder and beaconOrder
         frameOrder = par("frameOrder");
@@ -170,78 +167,71 @@ void Basic802154::startup() {
                     "Invalid parameter combination of baseSlotDuration and numSuperframeSlots");
         }
 
-
-        setTimer(FRAME_START, 0);   //frame start is NOW
+        setTimer(FRAME_START, 0);	//frame start is NOW
     }
 }
 // método Ríad
 //verifica quais nodos só conseguiram transmitir por retransmissão.
 //caso de dois nodos retransmitirem o mesmo nodo
 /*void Basic802154::contabilizarMensagens() {
-    int numNodosEscutados = nodosEscutados.size();
-    int i = 0;
+ int numNodosEscutados = nodosEscutados.size();
+ int i = 0;
 
-    cout<<"Sou Nodo: "<<SELF_MAC_ADDRESS<<"\n";
-    cout<<"tamanho cooperacoes beacon: "<<cooperacoesDoBeacon.size()<<"\n";
+ cout<<"Sou Nodo: "<<SELF_MAC_ADDRESS<<"\n";
+ cout<<"tamanho cooperacoes beacon: "<<cooperacoesDoBeacon.size()<<"\n";
 
-    for(int j=0;j<numNodosEscutados;j++){
-        cout<<"NodoEscutado["<<j<<"]: "<<nodosEscutados[j].idNodo<<"\n";
-    }
-    while (i < numNodosEscutados) {
+ for(int j=0;j<numNodosEscutados;j++){
+ cout<<"NodoEscutado["<<j<<"]: "<<nodosEscutados[j].idNodo<<"\n";
+ }
+ while (i < numNodosEscutados) {
 
-        int nodoEscutado = nodosEscutados[i].idNodo;
-        map<int, bool>::iterator nodoID = cooperacoesDoBeacon.find(
-                nodoEscutado);// se ele não encontrar no find (nodoEscutado) retorna o ultimo elemento da lista
+ int nodoEscutado = nodosEscutados[i].idNodo;
+ map<int, bool>::iterator nodoID = cooperacoesDoBeacon.find(
+ nodoEscutado);// se ele não encontrar no find (nodoEscutado) retorna o ultimo elemento da lista
 
-        if (nodoID != cooperacoesDoBeacon.end()) { // se não for o último elemento da lista é pq encontrou
-            //cout<<"Lista de cooperacao: "<<cooperacoesDoBeacon.size()<< "\n";
-            cooperacoesDoBeacon.erase(nodoID);
-            retransmissoesNaoEfetivas++;
-            //cout<< "Não efetivas: "<<retransmissoesNaoEfetivas <<"\n";
-            //cout<<"Lista de cooperacao Depois de apagar: "<<cooperacoesDoBeacon.size()<< "\n";
-        }
-        i++;
-    }
+ if (nodoID != cooperacoesDoBeacon.end()) { // se não for o último elemento da lista é pq encontrou
+ //cout<<"Lista de cooperacao: "<<cooperacoesDoBeacon.size()<< "\n";
+ cooperacoesDoBeacon.erase(nodoID);
+ retransmissoesNaoEfetivas++;
+ //cout<< "Não efetivas: "<<retransmissoesNaoEfetivas <<"\n";
+ //cout<<"Lista de cooperacao Depois de apagar: "<<cooperacoesDoBeacon.size()<< "\n";
+ }
+ i++;
+ }
 
-    retransmissoesEfetivas += cooperacoesDoBeacon.size();
-    cout << "até o momento foram " << retransmissoesEfetivas
-            << "retransmissões efetivas\n";
-    cout << "até o momento foram " << retransmissoesNaoEfetivas
-            << "retransmissões não efetivas\n";
+ retransmissoesEfetivas += cooperacoesDoBeacon.size();
+ cout << "até o momento foram " << retransmissoesEfetivas
+ << "retransmissões efetivas\n";
+ cout << "até o momento foram " << retransmissoesNaoEfetivas
+ << "retransmissões não efetivas\n";
 
-}*/
-
+ }*/
 
 //verifica quais nodos só conseguiram transmitir por retransmissão.
 //caso de dois nodos retransmitirem o mesmo nodo
 /*void Basic802154::contabilizarMensagens() {
-    int repetido = 0,k = 0;
-    std::map<int, vector<MENSAGENS_ESCUTADAS>*>::iterator iter;
-    vector<MENSAGENS_ESCUTADAS> *vetor = new vector<MENSAGENS_ESCUTADAS>;
-      for (iter = historicoDeCooperacao.begin(); iter != historicoDeCooperacao.end(); iter++) {
-          vector<MENSAGENS_ESCUTADAS>* v;
-          for(v = iter->second; v!=v->end(); v++){
-              repetido=0;
-              for(k = 0; k < nodosEscutados.size();k++){
-                  if(v->idMens == nodosEscutados[k].idMens && v->idNodo == nodosEscutados[k].idNodo){
-                      repetido = 1;
-                  }
+ int repetido = 0,k = 0;
+ std::map<int, vector<MENSAGENS_ESCUTADAS>*>::iterator iter;
+ vector<MENSAGENS_ESCUTADAS> *vetor = new vector<MENSAGENS_ESCUTADAS>;
+ for (iter = historicoDeCooperacao.begin(); iter != historicoDeCooperacao.end(); iter++) {
+ vector<MENSAGENS_ESCUTADAS>* v;
+ for(v = iter->second; v!=v->end(); v++){
+ repetido=0;
+ for(k = 0; k < nodosEscutados.size();k++){
+ if(v->idMens == nodosEscutados[k].idMens && v->idNodo == nodosEscutados[k].idNodo){
+ repetido = 1;
+ }
 
-              }
-              if(repetido = 0){
-                 vetor->push_back(v);
-              }
-      }
-          historicoDeSucesso[i] = vetor;
-          i++;
-      }
+ }
+ if(repetido = 0){
+ vetor->push_back(v);
+ }
+ }
+ historicoDeSucesso[i] = vetor;
+ i++;
+ }
 
-}*/
-
-
-
-
-
+ }*/
 
 // método Ríad
 //método usado pelo coordenador para adiciona ao beacon uma lista com os nodos cooperantes.
@@ -265,7 +255,7 @@ void Basic802154::timerFiredCallback(int index) {
 
     // Start of a new superframe
     case FRAME_START: {
-        if (isPANCoordinator) { // as a PAN coordinator, create and broadcast beacon packet
+        if (isPANCoordinator) {	// as a PAN coordinator, create and broadcast beacon packet
 
             beaconPacket = new Basic802154Packet("PAN beacon packet",
                     MAC_LAYER_PACKET);
@@ -279,11 +269,9 @@ void Basic802154::timerFiredCallback(int index) {
             beaconPacket->setBSN(macBSN);
             beaconPacket->setCAPlength(numSuperframeSlots);
 
-
-
-            if(userelay){
-            //modificação Ríad
-            //no começo de um novo beacon as mensagens são contabilizadas, a lista de nodos escutada é limpada e novos nodos cooperadores podem ser selecionados
+            if (userelay) {
+                //modificação Ríad
+                //no começo de um novo beacon as mensagens são contabilizadas, a lista de nodos escutada é limpada e novos nodos cooperadores podem ser selecionados
                 //contabilizarMensagens();
                 //verificaRetransmissoesRepetidas();
                 nodosEscutados.clear();
@@ -297,12 +285,8 @@ void Basic802154::timerFiredCallback(int index) {
                     primeiraSelecao = 1;
                     if (selecao == 3)
                         selecao = 5;
-                    /*else if (selecao == 40)
-                        selecao = 40;*/
-                    //beaconPacket->setTempoBeacon(tempoDeBeacon);
                 } else {
-                    //cout<<"Numero de cooperantes: "<<beaconPacket->getVizinhosOuNodosCooperantesArraySize() <<"\n";
-                    if(primeiraSelecao ==1){
+                    if (primeiraSelecao == 1) {
                         //Para manter os colaboradores até a próxima seleção
                         enviarNodosCooperantes(beaconPacket);
                     }
@@ -318,14 +302,6 @@ void Basic802154::timerFiredCallback(int index) {
             prepareBeacon_hub(beaconPacket);
 
             // Verifica os nodos que tinham GTS e não estao mais associados
-              /*if(beaconPacket->getGTSlistArraySize() > 0){
-                  for (int j = 0; j < (int) beaconPacket->getGTSlistArraySize(); j++) {
-                      if (associatedDevices[beaconPacket->getGTSlist(j).owner] == false){
-                          remover(beaconPacket,beaconPacket->getGTSlist(j).owner);
-                      }
-                  }
-              }*/
-
 
             beaconPacket->setByteLength(
                     BASE_BEACON_PKT_SIZE
@@ -337,7 +313,8 @@ void Basic802154::timerFiredCallback(int index) {
             sentBeacons++;
 
             trace() << "Transmitting [PAN beacon packet] now, BSN = " << macBSN;
-            cout<< "Transmitting [PAN beacon packet] now, BSN = " << macBSN<< "\n";
+            cout << "Transmitting [PAN beacon packet] now, BSN = " << macBSN
+                    << "\n";
             setMacState(MAC_STATE_CAP);
             toRadioLayer(beaconPacket);
             toRadioLayer(createRadioCommand(SET_STATE, TX));
@@ -346,7 +323,7 @@ void Basic802154::timerFiredCallback(int index) {
 
             currentFrameStart = getClock() + phyDelayRx2Tx;
             setTimer(FRAME_START, beaconInterval * symbolLen);
-        } else {    // if not a PAN coordinator, then wait for beacon
+        } else {	// if not a PAN coordinator, then wait for beacon
             //cout<<"Setar RX: "<< SELF_MAC_ADDRESS<<"\n";
             toRadioLayer(createRadioCommand(SET_STATE, RX));
             setTimer(BEACON_TIMEOUT, guardTime * 7);
@@ -365,26 +342,25 @@ void Basic802154::timerFiredCallback(int index) {
         // earlier than the actual start time of GTS slot
         setTimer(ATTEMPT_TX, phyDelaySleep2Tx);
 
-
         //SUELEN
-       // Aqui fazer o controle de quando ir dormir se for retransmissor
-        if(userelay){
-            if(cooperador){
+        // Aqui fazer o controle de quando ir dormir se for retransmissor
+        if (userelay) {
+            if (cooperador) {
                 //Se for cooperante só dorme depois da retransmissão
                 // inform the decision layer that GTS has started
                 startedGTS_node();
                 break;
-            }else{
-                if(primeiraRetrans > 0){// Sinaliza o fim das transmissões
-                     // Se não for cooperante e existir retranmissores, dorme ao iniciar a retransmissao
+            } else {
+                if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
+                    // Se não for cooperante e existir retranmissores, dorme ao iniciar a retransmissao
                     setTimer(SLEEP_START, primeiraRetrans - simTime());
 
-                     // inform the decision layer that GTS has started
+                    // inform the decision layer that GTS has started
                     startedGTS_node();
-                break;
-                }else{// Se não existir retransmissões
-                     // set a timer to go to sleep after this GTS slot ends
-                     setTimer(SLEEP_START, irDormir - simTime());
+                    break;
+                } else {                     // Se não existir retransmissões
+                                             // set a timer to go to sleep after this GTS slot ends
+                    setTimer(SLEEP_START, irDormir - simTime());
                     // inform the decision layer that GTS has started
                     startedGTS_node();
                     break;
@@ -392,8 +368,8 @@ void Basic802154::timerFiredCallback(int index) {
             }
         }
 
-         //limpa o buffer da aplicacao antes de dormir
-         //setTimer(CLEAR_BUFFER_APP, GTSlength);
+        //limpa o buffer da aplicacao antes de dormir
+        //setTimer(CLEAR_BUFFER_APP, GTSlength);
         // set a timer to go to sleep after this GTS slot ends
         setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
 
@@ -406,7 +382,11 @@ void Basic802154::timerFiredCallback(int index) {
     case BEACON_TIMEOUT: {
         lostBeacons++;
         //Limpa o Buffer da App
-        limparBufferAplicacao();
+        if (!TXBuffer.empty()) {
+            limparBufferAplicacao();
+        } else {
+            mensagensPerdidas++;
+        }
         //cMessage *msg = new cMessage("BEACON",BEACON);
         //handleRadioControlMessage(msg);
 
@@ -417,22 +397,23 @@ void Basic802154::timerFiredCallback(int index) {
             desyncTimeStart = getClock();
             disconnectedFromPAN_node();
             /*std::vector<int>::iterator iter;
-            int i=0;
-            for (iter = nodosAssociados.begin();iter != nodosAssociados.end(); iter++) {
-                if(nodosAssociados[i] == SELF_MAC_ADDRESS){
-                    nodosAssociados.erase(iter);
-                    break;
-                }
-                i++;
-            }*/
-
+             int i=0;
+             for (iter = nodosAssociados.begin();iter != nodosAssociados.end(); iter++) {
+             if(nodosAssociados[i] == SELF_MAC_ADDRESS){
+             nodosAssociados.erase(iter);
+             break;
+             }
+             i++;
+             }*/
 
             if (currentPacket)
                 clearCurrentPacket("No PAN");
         } else if (associatedPAN != -1) {
-            trace() << "Missed beacon from PAN " << associatedPAN<< ", will wake up to receive next beacon in "<< beaconInterval * symbolLen - guardTime * 7 << " seconds";
-            beaconsPerdidos ++;
-             cout<< "Beacon Perdido NODO: "<< SELF_MAC_ADDRESS<<"\n";
+            trace() << "Missed beacon from PAN " << associatedPAN
+                    << ", will wake up to receive next beacon in "
+                    << beaconInterval * symbolLen - guardTime * 7 << " seconds";
+            beaconsPerdidos++;
+            cout << "Beacon Perdido NODO: " << SELF_MAC_ADDRESS << "\n";
             setMacState(MAC_STATE_SLEEP);
             toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
             setTimer(FRAME_START, beaconInterval * symbolLen - guardTime * 7);
@@ -502,47 +483,46 @@ void Basic802154::timerFiredCallback(int index) {
         toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
         break;
     }
-    //SUELEN
-    case GTS_RETRANS:{
-           if (macState == MAC_STATE_SLEEP) {
-               toRadioLayer(createRadioCommand(SET_STATE, RX));
-           }
-           setMacState(MAC_STATE_GTS);
+        //SUELEN
+    case GTS_RETRANS: {
+        if (macState == MAC_STATE_SLEEP) {
+            toRadioLayer(createRadioCommand(SET_STATE, RX));
+        }
+        setMacState(MAC_STATE_GTS);
 
-           // we delay transmission attempt by the time required by radio to wake up
-           // note that GTS_START timer was scheduled exactly phyDelaySleep2Tx seconds
-           // earlier than the actual start time of GTS slot
+        // we delay transmission attempt by the time required by radio to wake up
+        // note that GTS_START timer was scheduled exactly phyDelaySleep2Tx seconds
+        // earlier than the actual start time of GTS slot
 
-           GTSend = GTSendRetrans;
-           GTSstart = GTSstartRetrans;
-           GTSlength = GTSlengthRetrans;
+        GTSend = GTSendRetrans;
+        GTSstart = GTSstartRetrans;
+        GTSlength = GTSlengthRetrans;
 
+        Basic802154Packet *packetRetrans = new Basic802154Packet(
+                "Retransmissao", MAC_LAYER_PACKET);
+        packetRetrans->setPANid(SELF_MAC_ADDRESS);
+        packetRetrans->setMac802154PacketType(MAC_802154_DATA_PACKET);
+        packetRetrans->setSrcID(SELF_MAC_ADDRESS);
+        packetRetrans->setSource(SELF_MAC_ADDRESS);
+        packetRetrans->setSeqNum(seqNum++);
+        packetRetrans->setDstID(0);
+        packetRetrans->setByteLength(COMMAND_PKT_SIZE);
+        packetRetrans->setRetransmissao(true);
+        retransmitir(packetRetrans);
 
-           Basic802154Packet *packetRetrans = new Basic802154Packet("Retransmissao",
-                           MAC_LAYER_PACKET);
-           packetRetrans->setPANid(SELF_MAC_ADDRESS);
-           packetRetrans->setMac802154PacketType(MAC_802154_DATA_PACKET);
-           packetRetrans->setSrcID(SELF_MAC_ADDRESS);
-           packetRetrans->setSource(SELF_MAC_ADDRESS);
-           packetRetrans->setSeqNum(seqNum++);
-           packetRetrans->setDstID(0);
-           packetRetrans->setByteLength(COMMAND_PKT_SIZE);
-           packetRetrans->setRetransmissao(true);
-           retransmitir(packetRetrans);
-
-           //cout<<"Sou o Nodo: "<<SELF_MAC_ADDRESS << "Retransmitidos\n";
+        //cout<<"Sou o Nodo: "<<SELF_MAC_ADDRESS << "Retransmitidos\n";
 //           for(int i=0;i< packetRetrans->getDadosVizinhoArraySize();i++){
 //               cout<<"Enviando dadosVizinhos["<<i<<"]: "<<packetRetrans->getDadosVizinho(i)<<"\n";
 //               }
 
-           transmitPacket(packetRetrans);
+        transmitPacket(packetRetrans);
 
-           //limpa o buffer da aplicacao antes de dormir
-            //setTimer(CLEAR_BUFFER_APP, GTSlength);
-           // set a timer to go to sleep after this GTS slot ends
-           setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
-           break;
-       }
+        //limpa o buffer da aplicacao antes de dormir
+        //setTimer(CLEAR_BUFFER_APP, GTSlength);
+        // set a timer to go to sleep after this GTS slot ends
+        setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
+        break;
+    }
 
     case BACK_TO_SETUP: {
         // This timer is scheduled to the end of the CAP period
@@ -581,10 +561,11 @@ void Basic802154::preencherDados(Basic802154Packet *macPacket) {
 
 /* A packet is received from upper layer (Network) */
 void Basic802154::fromNetworkLayer(cPacket * pkt, int dstMacAddress) {
-    Basic802154Packet *macPacket = new Basic802154Packet("802.15.4 MAC data packet", MAC_LAYER_PACKET);
+    Basic802154Packet *macPacket = new Basic802154Packet(
+            "802.15.4 MAC data packet", MAC_LAYER_PACKET);
 
     //modificação Ríad
-    if(userelay){
+    if (userelay) {
         preencherDados(macPacket);
     }
     encapsulatePacket(macPacket, pkt);
@@ -598,7 +579,6 @@ void Basic802154::fromNetworkLayer(cPacket * pkt, int dstMacAddress) {
         seqNum = 0;
     if (!acceptNewPacket(macPacket))
         packetoverflow++;
-
 
 }
 
@@ -666,21 +646,17 @@ void Basic802154::finishSpecific() {
 
         // numero de retransmissões em que alguma mensagem foi recuperada
         declareOutput("Retransmissoes Uteis");
-        collectOutput("Retransmissoes Uteis","",retransmissoesEfetivas);
+        collectOutput("Retransmissoes Uteis", "", retransmissoesEfetivas);
 
         // numero de retransmissões em que nenhuma mensagem foi recuperada
         declareOutput("Retransmissoes Nao Uteis");
-        collectOutput("Retransmissoes Nao Uteis","",retransmissoesNaoEfetivas);
-
+        collectOutput("Retransmissoes Nao Uteis", "",
+                retransmissoesNaoEfetivas);
 
         declareOutput("Msg's Recuperadas");
-        collectOutput("Msg's Recuperadas","",mensagensRecuperadas);
+        collectOutput("Msg's Recuperadas", "", mensagensRecuperadas);
 
-
-
-
-
-      }
+    }
 }
 
 /* Helper function to change internal MAC state and print a debug statement if neccesary 
@@ -838,16 +814,12 @@ void Basic802154::selecionaNodosSmartNumVizinhos(
 // método Ríad
 //método que monta e resolve o probelma de otimização e escreve um arquivo .mod
 void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
-    cout<<"-------------->>>>>>>>>>Começou a executar"<<"\n";
-    //int numCoop;
-    //calculaNumNodosCooperantes();
-    //numCoop = numeronodoscooperantes;
     std::string fileName("prob" + std::to_string(numeroDoProblema) + ".mod");
     char *cstr = new char[fileName.length() + 1];
     strcpy(cstr, fileName.c_str());
     std::ofstream out(cstr);
-    std::map<int, Neighborhood*>::iterator iterNeighborhood;
 
+    std::map<int, Neighborhood*>::iterator iterNeighborhood;
 
     out << "min:";
     bool primeiro = true;
@@ -858,21 +830,27 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
             if (primeiro) {
                 primeiro = false;
 
-                cout<<"Energia: "<< nodo->energy<<" RSSI: "<<nodo->somaRssi<<" Vizinhos: "<<nodo->numeroDevizinhos << "Taxa de Sucesso: "<<nodo->txSucesso << " ID: "<< nodo->nodeId<<"\n";
+                cout << "Energia: " << nodo->energy << " RSSI: "
+                        << nodo->somaRssi << " Vizinhos: "
+                        << nodo->numeroDevizinhos << "Taxa de Sucesso: "
+                        << nodo->txSucesso << " ID: " << nodo->nodeId << "\n";
                 out
                         << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
-                                + (beta3 / nodo->numeroDevizinhos) + (beta4 / nodo->txSucesso)) << "*x"
+                                + (beta3 / nodo->numeroDevizinhos)
+                                + (beta4 / nodo->txSucesso)) << "*x"
                         << nodo->nodeId;
-
 
             } else {
-                cout<<"Energia: "<< nodo->energy<<" RSSI: "<<nodo->somaRssi<<" Vizinhos: "<<nodo->numeroDevizinhos << "Taxa de Sucesso: "<<nodo->txSucesso <<" ID: "<< nodo->nodeId<<"\n";
+                cout << "Energia: " << nodo->energy << " RSSI: "
+                        << nodo->somaRssi << " Vizinhos: "
+                        << nodo->numeroDevizinhos << "Taxa de Sucesso: "
+                        << nodo->txSucesso << " ID: " << nodo->nodeId << "\n";
                 out << "+"
                         << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
-                                + (beta3 / nodo->numeroDevizinhos) + (beta4 / nodo->txSucesso)) << "* x"
+                                + (beta3 / nodo->numeroDevizinhos)
+                                + (beta4 / nodo->txSucesso)) << "* x"
                         << nodo->nodeId;
             }
-
 
         }
         out << ";\n";
@@ -925,23 +903,6 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
             }
             out << ">=1;\n";
         }
-        if (listaDeNodosSoltos.size() > 0) {
-            out << "C0:";
-            primeiro = true;
-            for (iter = listaDeNodosSoltos.begin();
-                    iter != listaDeNodosSoltos.end(); iter++) {
-
-                int id = iter->first;
-
-                if (primeiro) {
-                    out << "x" << id;
-                    primeiro = false;
-                } else {
-                    out << "+x" << id;
-                }
-            }
-            out << "=0;\n";
-        }
         out << "\n";
         primeiro = true;
         int i = 0;
@@ -951,7 +912,6 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
 
             out << "bin x" << nodo->nodeId << ";" << "\n";
             i++;
-
         }
 
         out.close();
@@ -967,19 +927,24 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
         } else {
 
             solve(lp);
-            cout<<"------------>>>>>>>>>>>>>Problema resolvido"<<"\n";
-            //print_solution(lp, 1);
-            cout<<"------------>>>>>>>>>>>>>i="<<i<<"\n";
-            REAL resultado_lp[i];
+            print_solution(lp, 1);
+
+            cout << "-----------------------------------neigmap.size " << neigmap.size() << "\n";
+            REAL resultado_lp[22];
+            cout << "----------------------REAL resultado_lp cria" << "\n";
             get_variables(lp, resultado_lp);
-            cout<<"------------>>>>>>>>>>>>>get_variables"<<"\n";
-                       int j = 0;
+            cout << "----------get_variables" << "\n";
+            int j = 0;
             primeiro = true;
-            if(!nodosColaboradores.empty()){
-                nodosColaboradores.clear();
-            }
+
+            cout << "---------- inicializando as variáveis \n";
+
+            cout << nodosColaboradores.empty();
+            nodosColaboradores.clear();
+            cout << "---------- limpando os nodosColaboradores \n";
             for (iterNeighborhood = neigmap.begin();
                     iterNeighborhood != neigmap.end(); iterNeighborhood++) {
+                cout << "----------começando o for " << j << "\n";
                 Neighborhood *nodo = iterNeighborhood->second;
                 if (resultado_lp[j] == 1) {
                     nodosColaboradores.push_back(nodo->nodeId);
@@ -987,10 +952,9 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
                 j++;
 
             }
+            numeroDoProblema++;
         }
-        numeroDoProblema++;
     }
-    //cooperantes.clear();
 }
 // método Ríad
 //esse método é executado por qualquer nodo quando ele recebe uma mensagem.
@@ -1000,15 +964,14 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
      * gravadas a estrutura Neighborhood.
      */
 
-
 ///pega o ID do nodo que recebeu o pacote e verifica se ele já está em neigmap
     std::map<int, Neighborhood*>::iterator iterNeighborhood = neigmap.find(
             pkt->getSrcID());
     Neighborhood *nodo;
-    cout<<"Eu sou o: "<< SELF_MAC_ADDRESS<< "\n";
+    cout << "Eu sou o: " << SELF_MAC_ADDRESS << "\n";
     unsigned vizinhos = pkt->getVizinhosOuNodosCooperantesArraySize();
-    if(pkt->getDadosVizinhoArraySize() == 0){
-        if(rssi>limiteRSSI){
+    if (pkt->getDadosVizinhoArraySize() == 0) {
+        if (rssi > limiteRSSI) {
             if (iterNeighborhood == neigmap.end()) {
                 nodo = new Neighborhood();
                 nodo->nodeId = pkt->getSrcID();
@@ -1023,7 +986,8 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
                     //atualizar lista de vinhos
                     int i;
                     for (i = 0; i < vizinhos; i++) {
-                        nodo->vizinhos.push_back(pkt->getVizinhosOuNodosCooperantes(i));
+                        nodo->vizinhos.push_back(
+                                pkt->getVizinhosOuNodosCooperantes(i));
                     }
                 }
                 neigmap[pkt->getSrcID()] = nodo;
@@ -1041,7 +1005,8 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
                     nodo->vizinhos.clear();
                     int i;
                     for (i = 0; i < vizinhos; i++) {
-                        nodo->vizinhos.push_back(pkt->getVizinhosOuNodosCooperantes(i));
+                        nodo->vizinhos.push_back(
+                                pkt->getVizinhosOuNodosCooperantes(i));
                     }
                 }
 
@@ -1049,14 +1014,16 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
         }
     }
 }
-double Basic802154:: taxaDeSucesso(int id, int recebidas){
+double Basic802154::taxaDeSucesso(int id, int recebidas) {
     double SR, SampleSR;
     /*SampleSR = (qntMsgEnviada/qntMsgRecebida)*/
-    SampleSR = 1/recebidas;
-    for(int i = 1; i <= numhosts-1; i++){
-        if(i==id){
+    SampleSR = 1 / recebidas;
+    for (int i = 1; i <= numhosts - 1; i++) {
+        if (i == id) {
             historicoTaxaDeSucesso[i].id = id;
-            historicoTaxaDeSucesso[i].taxaDeSucesso = (1- alphaSucess)* historicoTaxaDeSucesso[i].taxaDeSucesso  + (alphaSucess*SampleSR);
+            historicoTaxaDeSucesso[i].taxaDeSucesso = (1 - alphaSucess)
+                    * historicoTaxaDeSucesso[i].taxaDeSucesso
+                    + (alphaSucess * SampleSR);
             SR = historicoTaxaDeSucesso[i].taxaDeSucesso;
             break;
         }
@@ -1064,7 +1031,6 @@ double Basic802154:: taxaDeSucesso(int id, int recebidas){
     return SR;
 
 }
-
 
 // método Ríad
 //
@@ -1082,56 +1048,52 @@ void Basic802154::souNodoCooperante(Basic802154Packet * pkt) {
     }
 }
 // método Ríad
-void Basic802154::listarNodosEscutados(Basic802154Packet *rcvPacket, double rssi) {
+void Basic802154::listarNodosEscutados(Basic802154Packet *rcvPacket,
+        double rssi) {
     int repetido = 0;
-    if(isPANCoordinator){
-        cout <<"Sou o nodo:"<< SELF_MAC_ADDRESS<<" número de sequencia: "<< rcvPacket->getSeqNum()<<" Nodo que enviou: "<< rcvPacket->getSrcID()<< "\n";
+    if (isPANCoordinator) {
+        cout << "Sou o nodo:" << SELF_MAC_ADDRESS << " número de sequencia: "
+                << rcvPacket->getSeqNum() << " Nodo que enviou: "
+                << rcvPacket->getSrcID() << "\n";
     }
-    if (rcvPacket->getDadosVizinhoArraySize() == 0 && rcvPacket->getSrcID() != 0) { // evita que retransmissoes sejam retransmitidas novamente
-        for(int i=0; i< (int)nodosEscutados.size();i++){
-            if(nodosEscutados[i].idMens == rcvPacket->getSeqNum() && nodosEscutados[i].idNodo == rcvPacket->getSrcID()){
+    if (rcvPacket->getDadosVizinhoArraySize() == 0
+            && rcvPacket->getSrcID() != 0) { // evita que retransmissoes sejam retransmitidas novamente
+        for (int i = 0; i < (int) nodosEscutados.size(); i++) {
+            if (nodosEscutados[i].idMens == rcvPacket->getSeqNum()
+                    && nodosEscutados[i].idNodo == rcvPacket->getSrcID()) {
                 repetido = 1;
                 break;
             }
         }
-        /*if(!isPANCoordinator){*/
-            if(repetido == 0 && rssi >= limiteRSSI){// nodos comuns só escutam seus vizinhos se o rssi for maior que -87Dbm
-                 MENSAGENS_ESCUTADAS escutados;
-                 escutados.idMens = rcvPacket->getSeqNum();
-                 escutados.idNodo = rcvPacket->getSrcID();
-                nodosEscutados.push_back(escutados); // insere nos nodos escutados
-                //cout<<"Inserindo Escutado: "<< nodosEscutados.front() <<"\n";
-             }
-            /*}else{ // A parte comentada é caso o coordenador não use as mesmas regras de restrição de rssi
-             if(repetido == 0){
-                  MENSAGENS_ESCUTADAS escutados;
-                  escutados.idMens = rcvPacket->getSeqNum();
-                  escutados.idNodo = rcvPacket->getSrcID();
-                 nodosEscutados.push_back(escutados); // insere nos nodos escutados
-                 //cout<<"Inserindo Escutado: "<< nodosEscutados.front() <<"\n";
-              }
-         }*/
+        if (repetido == 0 && rssi >= limiteRSSI) { // nodos comuns só escutam seus vizinhos se o rssi for maior que -87Dbm
+            MENSAGENS_ESCUTADAS escutados;
+            escutados.idMens = rcvPacket->getSeqNum();
+            escutados.idNodo = rcvPacket->getSrcID();
+            nodosEscutados.push_back(escutados); // insere nos nodos escutados
+            //cout<<"Inserindo Escutado: "<< nodosEscutados.front() <<"\n";
+        }
+
     }
 }
 //Suelen Este método armazena as retransmissoes por beacon interval
-void Basic802154::armazenaRetransmissoes(Basic802154Packet *rcvPacket){
+void Basic802154::armazenaRetransmissoes(Basic802154Packet *rcvPacket) {
 
     if (historicoDeCooperacao.find(rcvPacket->getSrcID())
-                                    != historicoDeCooperacao.end()) {
+            != historicoDeCooperacao.end()) {
 
         map<int, vector<MENSAGENS_ESCUTADAS>*>::iterator iter;
         iter = historicoDeCooperacao.find(rcvPacket->getSrcID());
         vector<MENSAGENS_ESCUTADAS>* v = iter->second;
-        for(int i = 0;i < (int)rcvPacket->getDadosVizinhoArraySize();i++){
+        for (int i = 0; i < (int) rcvPacket->getDadosVizinhoArraySize(); i++) {
             MENSAGENS_ESCUTADAS escutados;
             escutados.idMens = rcvPacket->getDadosVizinho(i).idMens;
             escutados.idNodo = rcvPacket->getDadosVizinho(i).idNodo;
             v->push_back(escutados);
         }
 
-    }else{
+    } else {
         vector<MENSAGENS_ESCUTADAS> *vetor = new vector<MENSAGENS_ESCUTADAS>;
-        for(int i = 0;i < (int)rcvPacket->getDadosVizinhoArraySize();i++){
+        for (int i = 0; i < (int) rcvPacket->getDadosVizinhoArraySize(); i++) {
             MENSAGENS_ESCUTADAS escutados;
             escutados.idMens = rcvPacket->getDadosVizinho(i).idMens;
             escutados.idNodo = rcvPacket->getDadosVizinho(i).idNodo;
@@ -1144,34 +1106,38 @@ void Basic802154::armazenaRetransmissoes(Basic802154Packet *rcvPacket){
 }
 
 void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
-    int i = 0,j = 0,repetido = 0;
+    int i = 0, j = 0, repetido = 0;
     int utilidadeRetransmissao = 0;
 
     vector<MENSAGENS_ESCUTADAS> *vetor = new vector<MENSAGENS_ESCUTADAS>;
 
-
-
     if (rcvPacket->getDadosVizinhoArraySize() > 0) {
-        cout<<"Numer de escutados: "<<rcvPacket->getDadosVizinhoArraySize()<<"\n";
+        cout << "Numer de escutados: " << rcvPacket->getDadosVizinhoArraySize()
+                << "\n";
         /** Salvando todas as cooperações para excluir cooperantes que estão repetindo as mensagens**/
         armazenaRetransmissoes(rcvPacket);
 
         if (historicoDeSucesso.find(rcvPacket->getSrcID())
-                        != historicoDeSucesso.end()) {
+                != historicoDeSucesso.end()) {
 
-            for(int c = 0;c < (int)nodosEscutados.size();c++){
-                cout<<"nodosEscutados["<<c<<"].idNodo: "<<nodosEscutados[c].idNodo<< "\n";
-                cout<<"nodosEscutados["<<c<<"].idMens: "<<nodosEscutados[c].idMens<<"\n";
+            for (int c = 0; c < (int) nodosEscutados.size(); c++) {
+                cout << "nodosEscutados[" << c << "].idNodo: "
+                        << nodosEscutados[c].idNodo << "\n";
+                cout << "nodosEscutados[" << c << "].idMens: "
+                        << nodosEscutados[c].idMens << "\n";
             }
             map<int, vector<MENSAGENS_ESCUTADAS>*>::iterator iter;
             iter = historicoDeSucesso.find(rcvPacket->getSrcID());
             vector<MENSAGENS_ESCUTADAS>* v = iter->second;
 
-            for(i = 0;i < (int)rcvPacket->getDadosVizinhoArraySize();i++){
+            for (i = 0; i < (int) rcvPacket->getDadosVizinhoArraySize(); i++) {
                 repetido = 0;
-                for(j = 0;j < (int)nodosEscutados.size();j++){
+                for (j = 0; j < (int) nodosEscutados.size(); j++) {
                     //if(nodosEscutados[j].idMens == rcvPacket->getDadosVizinho(i)){
-                    if(nodosEscutados[j].idMens == rcvPacket->getDadosVizinho(i).idMens && nodosEscutados[j].idNodo == rcvPacket->getDadosVizinho(i).idNodo){
+                    if (nodosEscutados[j].idMens
+                            == rcvPacket->getDadosVizinho(i).idMens
+                            && nodosEscutados[j].idNodo
+                                    == rcvPacket->getDadosVizinho(i).idNodo) {
                         repetido = 1;
                         //MENSAGENS_ESCUTADAS_REPETIDAS repetidos;
                         //repetidos.idMens = rcvPacket->getDadosVizinho(i).idMens;;
@@ -1181,26 +1147,31 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
                         break;
                     }
                 }
-                if(repetido==0){
-                   //cooperacoesDoBeacon[rcvPacket->getDadosVizinho(i).idNodo] = true;
-                   MENSAGENS_ESCUTADAS escutados;
-                   escutados.idMens = rcvPacket->getDadosVizinho(i).idMens;
-                   escutados.idNodo = rcvPacket->getDadosVizinho(i).idNodo;
-                   v->push_back(escutados);
-                   nodosEscutados.push_back(escutados);// Se a msg que veio da cooperação não havia sido escutada agoa foi, por isso add aqui
-                   utilidadeCoop++;
-                   utilidadeRetransmissao++;
+                if (repetido == 0) {
+                    //cooperacoesDoBeacon[rcvPacket->getDadosVizinho(i).idNodo] = true;
+                    MENSAGENS_ESCUTADAS escutados;
+                    escutados.idMens = rcvPacket->getDadosVizinho(i).idMens;
+                    escutados.idNodo = rcvPacket->getDadosVizinho(i).idNodo;
+                    v->push_back(escutados);
+                    nodosEscutados.push_back(escutados); // Se a msg que veio da cooperação não havia sido escutada agoa foi, por isso add aqui
+                    utilidadeCoop++;
+                    utilidadeRetransmissao++;
                 }
             }
-        }else{
-            for(int c = 0;c < (int)nodosEscutados.size();c++){
-                cout<<"nodosEscutados["<<c<<"].idNodo: "<<nodosEscutados[c].idNodo<< "\n";
-                cout<<"nodosEscutados["<<c<<"].idMens: "<<nodosEscutados[c].idMens<<"\n";
+        } else {
+            for (int c = 0; c < (int) nodosEscutados.size(); c++) {
+                cout << "nodosEscutados[" << c << "].idNodo: "
+                        << nodosEscutados[c].idNodo << "\n";
+                cout << "nodosEscutados[" << c << "].idMens: "
+                        << nodosEscutados[c].idMens << "\n";
             }
-           for(i = 0;i < (int)rcvPacket->getDadosVizinhoArraySize();i++){
-               repetido = 0;
-                for(j = 0;j < (int)nodosEscutados.size();j++){
-                    if(nodosEscutados[j].idMens == rcvPacket->getDadosVizinho(i).idMens && nodosEscutados[j].idNodo == rcvPacket->getDadosVizinho(i).idNodo){
+            for (i = 0; i < (int) rcvPacket->getDadosVizinhoArraySize(); i++) {
+                repetido = 0;
+                for (j = 0; j < (int) nodosEscutados.size(); j++) {
+                    if (nodosEscutados[j].idMens
+                            == rcvPacket->getDadosVizinho(i).idMens
+                            && nodosEscutados[j].idNodo
+                                    == rcvPacket->getDadosVizinho(i).idNodo) {
                         repetido = 1;
                         //MENSAGENS_ESCUTADAS_REPETIDAS repetidos;
                         //repetidos.idMens = rcvPacket->getDadosVizinho(i).idMens;
@@ -1210,58 +1181,66 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
                         break;
                     }
                 }
-                if(repetido==0){
-                   //cooperacoesDoBeacon[rcvPacket->getDadosVizinho(i).idNodo] = true;
-                   MENSAGENS_ESCUTADAS escutados;
-                   escutados.idMens = rcvPacket->getDadosVizinho(i).idMens;
-                   escutados.idNodo = rcvPacket->getDadosVizinho(i).idNodo;
-                   vetor->push_back(escutados);
-                   nodosEscutados.push_back(escutados);// Se a msg que veio da cooperação não havia sido escutada agoa foi, por isso add aqui
-                   utilidadeCoop++;
-                   utilidadeRetransmissao++;
-                   historicoDeSucesso[rcvPacket->getSrcID()] = vetor;
+                if (repetido == 0) {
+                    //cooperacoesDoBeacon[rcvPacket->getDadosVizinho(i).idNodo] = true;
+                    MENSAGENS_ESCUTADAS escutados;
+                    escutados.idMens = rcvPacket->getDadosVizinho(i).idMens;
+                    escutados.idNodo = rcvPacket->getDadosVizinho(i).idNodo;
+                    vetor->push_back(escutados);
+                    nodosEscutados.push_back(escutados); // Se a msg que veio da cooperação não havia sido escutada agoa foi, por isso add aqui
+                    utilidadeCoop++;
+                    utilidadeRetransmissao++;
+                    historicoDeSucesso[rcvPacket->getSrcID()] = vetor;
                 }
             }
-           //historicoDeSucesso[rcvPacket->getSrcID()] = vetor;
+            //historicoDeSucesso[rcvPacket->getSrcID()] = vetor;
         }
 
-        if(utilidadeRetransmissao != 0){
-                mensagensRecuperadas = mensagensRecuperadas + utilidadeRetransmissao;
-                retransmissoesEfetivas++;
-                //cout<<"Retransmissões Uteis: "<< retransmissoesEfetivas<< "\n";
-            }else{
-                retransmissoesNaoEfetivas++;
-                //cout<<"Retransmissões que não foram Uteis: "<< retransmissoesNaoEfetivas<< "\n";
-            }
-            cout<<"O nodo retransmitiu "<< (int)rcvPacket->getDadosVizinhoArraySize()<<" Mensagens e "<<utilidadeRetransmissao<< " Foram uteis.\n";
-            //cout<<"Até esta retransmissão este cooperante retransmitu "<<utilidadeCoop <<" Mensagens uteis.\n";
-            cout<<"Retransmissões Uteis: "<< retransmissoesEfetivas<< "\n";
-            cout<<"Retransmissões que não foram Uteis: "<< retransmissoesNaoEfetivas<< "\n";
+        if (utilidadeRetransmissao != 0) {
+            mensagensRecuperadas = mensagensRecuperadas
+                    + utilidadeRetransmissao;
+            retransmissoesEfetivas++;
+            //cout<<"Retransmissões Uteis: "<< retransmissoesEfetivas<< "\n";
+        } else {
+            retransmissoesNaoEfetivas++;
+            //cout<<"Retransmissões que não foram Uteis: "<< retransmissoesNaoEfetivas<< "\n";
+        }
+        cout << "O nodo retransmitiu "
+                << (int) rcvPacket->getDadosVizinhoArraySize()
+                << " Mensagens e " << utilidadeRetransmissao
+                << " Foram uteis.\n";
+        //cout<<"Até esta retransmissão este cooperante retransmitu "<<utilidadeCoop <<" Mensagens uteis.\n";
+        cout << "Retransmissões Uteis: " << retransmissoesEfetivas << "\n";
+        cout << "Retransmissões que não foram Uteis: "
+                << retransmissoesNaoEfetivas << "\n";
 
     }
 
 }
 //Suelen Verifica os nodos que retransmitiram todas as mensagens repetidas
-void Basic802154::verificaRetransmissoesRepetidas(){
+void Basic802154::verificaRetransmissoesRepetidas() {
     std::map<int, vector<MENSAGENS_ESCUTADAS>*>::iterator iter;
     std::map<int, vector<MENSAGENS_ESCUTADAS>*>::iterator iterProx;
     vector<MENSAGENS_ESCUTADAS>::iterator i;
     vector<MENSAGENS_ESCUTADAS>::iterator j;
 
-    for (iter = historicoDeCooperacao.begin(); iter != historicoDeCooperacao.end(); iter++) {
+    for (iter = historicoDeCooperacao.begin();
+            iter != historicoDeCooperacao.end(); iter++) {
         vector<MENSAGENS_ESCUTADAS> *nodo = iter->second;
-        cout<<"Cooperante: "<< iter->first<<"\n";
-        for(i =(iter->second)->begin();i!=(iter->second)->end();i++){
-            cout<<"valor 1: "<<i->idNodo<<"\n";
-            cout<<"Mens: "<<i->idMens<<"\n";
+        cout << "Cooperante: " << iter->first << "\n";
+        for (i = (iter->second)->begin(); i != (iter->second)->end(); i++) {
+            cout << "valor 1: " << i->idNodo << "\n";
+            cout << "Mens: " << i->idMens << "\n";
 
-             for (iterProx = iter++; iterProx != historicoDeCooperacao.end(); iterProx++) {
+            for (iterProx = iter++; iterProx != historicoDeCooperacao.end();
+                    iterProx++) {
                 vector<MENSAGENS_ESCUTADAS> *nodoProx = iterProx->second;
-                for(j =(iterProx->second)->begin();j!=(iterProx->second)->end();j++){
-                   cout<<"valor 2: "<<j->idNodo<<"\n";
-                        if(i->idNodo == j->idNodo && i->idMens == j->idMens){
-                                // fazer algum processamento pra guardar os nodos que enviam as mesmas mensagens
-                        }
+                for (j = (iterProx->second)->begin();
+                        j != (iterProx->second)->end(); j++) {
+                    cout << "valor 2: " << j->idNodo << "\n";
+                    if (i->idNodo == j->idNodo && i->idMens == j->idMens) {
+                        // fazer algum processamento pra guardar os nodos que enviam as mesmas mensagens
+                    }
 
                 }
             }
@@ -1270,55 +1249,51 @@ void Basic802154::verificaRetransmissoesRepetidas(){
 
 }
 
-
-
-
-
 /*
-// método Ríad
-void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
-    unsigned int i;
-    cout<<"Tamanho getDadosVizinhos: "<< rcvPacket->getDadosVizinhoArraySize() <<"\n";
-    cout<<"Escutados do Nodo: "<< rcvPacket->getSrcID()<<"\n";
-    for(int k= 0;k<cooperacoesDoBeacon.size();k++){
-        cout<<"coop beacon: "<<k<<"\n";
-    }
-    if (rcvPacket->getDadosVizinhoArraySize() > 0) {
-        if (historicoDeCooperacao.find(rcvPacket->getSrcID())
-                != historicoDeCooperacao.end()) {
+ // método Ríad
+ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
+ unsigned int i;
+ cout<<"Tamanho getDadosVizinhos: "<< rcvPacket->getDadosVizinhoArraySize() <<"\n";
+ cout<<"Escutados do Nodo: "<< rcvPacket->getSrcID()<<"\n";
+ for(int k= 0;k<cooperacoesDoBeacon.size();k++){
+ cout<<"coop beacon: "<<k<<"\n";
+ }
+ if (rcvPacket->getDadosVizinhoArraySize() > 0) {
+ if (historicoDeCooperacao.find(rcvPacket->getSrcID())
+ != historicoDeCooperacao.end()) {
 
-            map<int, vector<int>*>::iterator iter;
+ map<int, vector<int>*>::iterator iter;
 
-            iter = historicoDeCooperacao.find(rcvPacket->getSrcID());
+ iter = historicoDeCooperacao.find(rcvPacket->getSrcID());
 
-            vector<int>* v = iter->second;
+ vector<int>* v = iter->second;
 
-            for (i = 0; i < rcvPacket->getDadosVizinhoArraySize(); i++) {
-                int nodo = rcvPacket->getDadosVizinho(i);
-                v->push_back(nodo);
-                cout<<"nodo: "<< nodo<<"\n";
-                cooperacoesDoBeacon[nodo] = true;
-            }
+ for (i = 0; i < rcvPacket->getDadosVizinhoArraySize(); i++) {
+ int nodo = rcvPacket->getDadosVizinho(i);
+ v->push_back(nodo);
+ cout<<"nodo: "<< nodo<<"\n";
+ cooperacoesDoBeacon[nodo] = true;
+ }
 
-        } else {
-            vector<int> *vetor = new vector<int>;
+ } else {
+ vector<int> *vetor = new vector<int>;
 
-            for (i = 0; i < rcvPacket->getDadosVizinhoArraySize(); i++) {
-                int nodo = rcvPacket->getDadosVizinho(i);
-                vetor->push_back(nodo);
-                cout<<"nodo: "<< nodo<<"\n";
-                cooperacoesDoBeacon[nodo] = true;
-            }
-            historicoDeCooperacao[rcvPacket->getSrcID()] = vetor;
-        }
+ for (i = 0; i < rcvPacket->getDadosVizinhoArraySize(); i++) {
+ int nodo = rcvPacket->getDadosVizinho(i);
+ vetor->push_back(nodo);
+ cout<<"nodo: "<< nodo<<"\n";
+ cooperacoesDoBeacon[nodo] = true;
+ }
+ historicoDeCooperacao[rcvPacket->getSrcID()] = vetor;
+ }
 
-        for(int k= 0;k<cooperacoesDoBeacon.size();k++){
-                cout<<"coop beacon depois: "<<k<<"\n";
-            }
+ for(int k= 0;k<cooperacoesDoBeacon.size();k++){
+ cout<<"coop beacon depois: "<<k<<"\n";
+ }
 
 
-    }
-}*/
+ }
+ }*/
 
 Basic802154Packet *Basic802154::newConnectionRequest(int PANid) {
     Basic802154Packet *result = new Basic802154Packet("PAN associate request",
@@ -1354,8 +1329,8 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 //Modificação Ríad
     //cout<<"Sou o  NODO " << SELF_MAC_ADDRESS<< "Estou Na escuta\n";
     //cout<<"Pacote Recbido: "<< rcvPacket->getSrcID()<<" Energgia" <<  rcvPacket->getEnergy()<<" RSSI: "<< rcvPacket->getSomaSinais()<<"\n";
-    if(userelay){
-        if(rcvPacket->getMac802154PacketType() == MAC_802154_DATA_PACKET){// Coloquei esse if pq quero guardar as inf apenas dos pacotes de dados
+    if (userelay) {
+        if (rcvPacket->getMac802154PacketType() == MAC_802154_DATA_PACKET) { // Coloquei esse if pq quero guardar as inf apenas dos pacotes de dados
             AtualizarVizinhaca(rcvPacket, rssi); // insere o nodo que enviou o pacote como vizinho
 
             if (isPANCoordinator) {
@@ -1364,7 +1339,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
             }
 
             if (cooperador) { // essa variavel é setada ao ouvir o beacon
-               listarNodosEscutados(rcvPacket,rssi);// insere o nodo que enviou o pacote como escutado
+                listarNodosEscutados(rcvPacket, rssi); // insere o nodo que enviou o pacote como escutado
             }
         }
     }
@@ -1378,22 +1353,22 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
     /* received a BEACON frame */
     case MAC_802154_BEACON_PACKET: {
         //Modificação Ríad
-        if(userelay){
+        if (userelay) {
             //tempoDeBeacon = rcvPacket->getTempoBeacon();
             souNodoCooperante(rcvPacket);
         }
         recvBeacons++;
 
         if (isPANCoordinator)
-            break;          //PAN coordinators ignore beacons from other PANs
+            break;			//PAN coordinators ignore beacons from other PANs
         if (associatedPAN != -1 && associatedPAN != rcvPacket->getPANid())
-            break;          //Ignore, if associated to another PAN
+            break;			//Ignore, if associated to another PAN
 
         //cancel beacon timeout message (if present)
         cancelTimer(BEACON_TIMEOUT);
 
         //LimparBuffer
-        cout<<"Sou o nodo: "<< SELF_MAC_ADDRESS<<"\n";
+        cout << "Sou o nodo: " << SELF_MAC_ADDRESS << "\n";
         //cout<<"tamanho Buffer: "<<TXBuffer.size()<<"\n";
         limparBufferAplicacao();
 //        // Gerar Mensagem da aplicação
@@ -1403,7 +1378,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
         //this node is connected to this PAN (or will try to connect), update frame parameters
         double offset = TX_TIME(rcvPacket->getByteLength());
-        currentFrameStart = getClock() - offset;    //frame start is in the past
+        currentFrameStart = getClock() - offset;	//frame start is in the past
         lostBeacons = 0;
         frameOrder = rcvPacket->getFrameOrder();
         beaconOrder = rcvPacket->getBeaconOrder();
@@ -1420,72 +1395,99 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
         GTSlengthRetrans = 0;
 
         //Suelen
-        if(userelay){
+        if (userelay) {
             primeiraRetrans = 0;
             irDormir = 0;
             inicioGTSRetrans = rcvPacket->getSlotInicioRetrans();
 
             //SUELEN
-            cout<<"Beacon Recebido no Nodo:"<<SELF_MAC_ADDRESS << "\n";
+            cout << "Beacon Recebido no Nodo:" << SELF_MAC_ADDRESS << "\n";
             int teste = rcvPacket->getVizinhosOuNodosCooperantesArraySize();
-            cout<< "Este Beacon informa que tem "<< teste<< " Nodos Cooperantes\n";
-                if((int) rcvPacket->getGTSlistArraySize()>0 && rcvPacket->getVizinhosOuNodosCooperantesArraySize()>0){
-                    // seta o tempo de inicio das retransmissões
-                    primeiraRetrans = ((rcvPacket->getGTSlist(inicioGTSRetrans).start - 1)* baseSlotDuration * (1 << frameOrder) * symbolLen) + getClock();
-                }
+            cout << "Este Beacon informa que tem " << teste
+                    << " Nodos Cooperantes\n";
+            if ((int) rcvPacket->getGTSlistArraySize() > 0
+                    && rcvPacket->getVizinhosOuNodosCooperantesArraySize()
+                            > 0) {
+                // seta o tempo de inicio das retransmissões
+                primeiraRetrans =
+                        ((rcvPacket->getGTSlist(inicioGTSRetrans).start - 1)
+                                * baseSlotDuration * (1 << frameOrder)
+                                * symbolLen) + getClock();
+            }
         }
 
         //cout<<"Devia ser Associado A: "<< rcvPacket->getPANid()<<"\n";
         //cout<<"Associado A: "<< associatedPAN<<"\n";
         for (int i = 0; i < (int) rcvPacket->getGTSlistArraySize(); i++) {
-            if (rcvPacket->getGTSlist(i).owner == SELF_MAC_ADDRESS && associatedPAN == rcvPacket->getPANid()) {
+            if (rcvPacket->getGTSlist(i).owner == SELF_MAC_ADDRESS
+                    && associatedPAN == rcvPacket->getPANid()) {
 
                 //Suelen obs:antes era só o conteudo do else
-               if(rcvPacket->getGTSlist(i).retransmissor){
-                   cout<< "Tamanho Lista: "<< (int) rcvPacket->getGTSlistArraySize()<< "Lista GTS["<<i<<"]: "<<rcvPacket->getGTSlist(i).owner<<" Cooperante\n";
-                   GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
-                                           * baseSlotDuration * (1 << frameOrder) * symbolLen;
-                   GTSendRetrans = GTSstartRetrans
-                           + rcvPacket->getGTSlist(i).length * baseSlotDuration
-                                   * (1 << frameOrder) * symbolLen;
-                   GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
-                   trace() << "GTS slot from " << getClock() + GTSstartRetrans << " to "
-                           << getClock() + GTSendRetrans << " length " << GTSlengthRetrans;
-                   cout << "Nodo "<< rcvPacket->getGTSlist(i).owner  <<" Usa o GTS slot from " << getClock() + GTSstartRetrans << " to "
-                           << getClock() + GTSendRetrans << " length " << GTSlengthRetrans<< "\n";
+                if (rcvPacket->getGTSlist(i).retransmissor) {
+                    cout << "Tamanho Lista: "
+                            << (int) rcvPacket->getGTSlistArraySize()
+                            << "Lista GTS[" << i << "]: "
+                            << rcvPacket->getGTSlist(i).owner
+                            << " Cooperante\n";
+                    GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
+                            * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                    GTSendRetrans = GTSstartRetrans
+                            + rcvPacket->getGTSlist(i).length * baseSlotDuration
+                                    * (1 << frameOrder) * symbolLen;
+                    GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
+                    trace() << "GTS slot from " << getClock() + GTSstartRetrans
+                            << " to " << getClock() + GTSendRetrans
+                            << " length " << GTSlengthRetrans;
+                    cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                            << " Usa o GTS slot from "
+                            << getClock() + GTSstartRetrans << " to "
+                            << getClock() + GTSendRetrans << " length "
+                            << GTSlengthRetrans << "\n";
 
-                   // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
-                   setTimer(GTS_RETRANS, GTSstartRetrans - phyDelaySleep2Tx - offset);
+                    // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
+                    setTimer(GTS_RETRANS,
+                            GTSstartRetrans - phyDelaySleep2Tx - offset);
 
-               }else{
-                cout<< "Tamanho Lista: "<< (int) rcvPacket->getGTSlistArraySize()<< "Lista GTS["<<i<<"]: "<<rcvPacket->getGTSlist(i).owner<<"\n";
-                GTSstart = (rcvPacket->getGTSlist(i).start - 1)
-                        * baseSlotDuration * (1 << frameOrder) * symbolLen;
-                GTSend = GTSstart
-                        + rcvPacket->getGTSlist(i).length * baseSlotDuration
-                                * (1 << frameOrder) * symbolLen;
-                GTSlength = GTSend - GTSstart;
+                } else {
+                    cout << "Tamanho Lista: "
+                            << (int) rcvPacket->getGTSlistArraySize()
+                            << "Lista GTS[" << i << "]: "
+                            << rcvPacket->getGTSlist(i).owner << "\n";
+                    GTSstart = (rcvPacket->getGTSlist(i).start - 1)
+                            * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                    GTSend = GTSstart
+                            + rcvPacket->getGTSlist(i).length * baseSlotDuration
+                                    * (1 << frameOrder) * symbolLen;
+                    GTSlength = GTSend - GTSstart;
 
-                limparBufferAplicacao();
-                // Gerar Mensagem da aplicação
-                RadioControlMessage *msg1 = new RadioControlMessage("BEACON_CHEGADA",BEACON_CHEGADA1);
-                msg1->setRadioControlMessageKind(BEACON_CHEGADA1);
-                handleRadioControlMessage(msg1);
+                    limparBufferAplicacao();
+                    // Gerar Mensagem da aplicação
+                    RadioControlMessage *msg1 = new RadioControlMessage(
+                            "BEACON_CHEGADA", BEACON_CHEGADA1);
+                    msg1->setRadioControlMessageKind(BEACON_CHEGADA1);
+                    handleRadioControlMessage(msg1);
 
-                trace() << "GTS slot from " << getClock() + GTSstart << " to "
-                        << getClock() + GTSend << " length " << GTSlength;
-                cout << "Nodo "<< rcvPacket->getGTSlist(i).owner  <<" Usa o GTS slot from " << getClock() + GTSstart << " to "<< getClock() + GTSend << " length " << GTSlength<< "\n";
+                    trace() << "GTS slot from " << getClock() + GTSstart
+                            << " to " << getClock() + GTSend << " length "
+                            << GTSlength;
+                    cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                            << " Usa o GTS slot from " << getClock() + GTSstart
+                            << " to " << getClock() + GTSend << " length "
+                            << GTSlength << "\n";
 
-                  }
+                }
 
-              }
+            }
         }
         //Suelen
-        if(userelay){
-            if(associatedPAN == rcvPacket->getPANid()){
-                if((int) rcvPacket->getGTSlistArraySize()>0){
-                    irDormir = (((rcvPacket->getGTSlist(0).start - 1) * baseSlotDuration * (1 << frameOrder) * symbolLen)
-                            + (rcvPacket->getGTSlist(0).length * baseSlotDuration * (1 << frameOrder) * symbolLen) +getClock());
+        if (userelay) {
+            if (associatedPAN == rcvPacket->getPANid()) {
+                if ((int) rcvPacket->getGTSlistArraySize() > 0) {
+                    irDormir = (((rcvPacket->getGTSlist(0).start - 1)
+                            * baseSlotDuration * (1 << frameOrder) * symbolLen)
+                            + (rcvPacket->getGTSlist(0).length
+                                    * baseSlotDuration * (1 << frameOrder)
+                                    * symbolLen) + getClock());
                 }
             }
 
@@ -1496,12 +1498,13 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
         }
         setMacState(MAC_STATE_CAP);
         if (associatedPAN == rcvPacket->getPANid()) {
-            if (GTSstart != CAPend){
+            if (GTSstart != CAPend) {
                 //SUELEN
                 //COMENTEI PQ NESTE COMANDO SÓ ACORDA EM SEU MOMENTO D TRANSMISSAO
                 // set timer to sleep after CAP, unless GTS slots starts right after
                 //setTimer(SLEEP_START, CAPend - offset);
-            }if (GTSstart > 0) {
+            }
+            if (GTSstart > 0) {
                 // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
                 //cout<<"tempo atual: "<< getClock()<<"\n";
                 //cout<<"No Tempo: "<< GTSstart - phyDelaySleep2Tx - offset <<"\n";
@@ -1536,7 +1539,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
         if (associationRequest_hub(rcvPacket)) {
             trace() << "Accepting association request from "
                     << rcvPacket->getSrcID();
-            cout<< "Nodo "<< rcvPacket->getSrcID()<<" Associado \n";
+            cout << "Nodo " << rcvPacket->getSrcID() << " Associado \n";
             // update associatedDevices and reply with an ACK
             associatedDevices[rcvPacket->getSrcID()] = true;
             Basic802154Packet *ackPacket = new Basic802154Packet(
@@ -1603,10 +1606,10 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
         // data frame
     case MAC_802154_DATA_PACKET: {
-        cout<<"Eu sou o: "<< SELF_MAC_ADDRESS<< "\n";
-        if(rssi > limiteRSSI){// Só irá receber a mensagem se o RSSI for bom
+        cout << "Eu sou o: " << SELF_MAC_ADDRESS << "\n";
+        if (rssi > limiteRSSI) { // Só irá receber a mensagem se o RSSI for bom
 
-           if (isNotDuplicatePacket(rcvPacket)) {
+            if (isNotDuplicatePacket(rcvPacket)) {
                 dataReceived_hub(rcvPacket);
                 toNetworkLayer(decapsulatePacket(rcvPacket));
             } else {
@@ -1614,20 +1617,20 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                 //cout<<"Duplicado\n";
             }
             // Suelen -- Variavel utilizada para determinar o numero de coop
-            if(userelay){
-                if (isPANCoordinator){
+            if (userelay) {
+                if (isPANCoordinator) {
 
-                   if(rcvPacket->getRetransmissao() == true){
-                      msgRtrans++;
-                   }else{
-                       msgRecebidas++;
-                       numdadosrecebidosnogtstransmissao++;
-                      // if(listasgEnviadas[rcvPacket->getSrcID()] < rcvPacket->getNumMsgEnviadas()){
-                           //listasgEnviadas[rcvPacket->getSrcID()] = rcvPacket->getNumMsgEnviadas();
-                           //cout<<"Msgm Enviadas: "<<listasgEnviadas[rcvPacket->getSrcID()]<<"\n";
-                      // }
+                    if (rcvPacket->getRetransmissao() == true) {
+                        msgRtrans++;
+                    } else {
+                        msgRecebidas++;
+                        numdadosrecebidosnogtstransmissao++;
+                        // if(listasgEnviadas[rcvPacket->getSrcID()] < rcvPacket->getNumMsgEnviadas()){
+                        //listasgEnviadas[rcvPacket->getSrcID()] = rcvPacket->getNumMsgEnviadas();
+                        //cout<<"Msgm Enviadas: "<<listasgEnviadas[rcvPacket->getSrcID()]<<"\n";
+                        // }
 
-                   }
+                    }
                 }
             }
 
@@ -1635,12 +1638,12 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
             if (rcvPacket->getDstID() == BROADCAST_MAC_ADDRESS)
                 break;
 
-    //        if(rcvPacket->getDadosVizinhoArraySize()>0){
-    //            cout<<"recebi por cooperacao:\n";
-    //            for(int i=0;i<rcvPacket->getDadosVizinhoArraySize();i++){
-    //                cout<<"dadosvizinhos["<<i<<"]: "<< rcvPacket->getDadosVizinho(i)<<"\n";
-    //            }
-    //        }
+            //        if(rcvPacket->getDadosVizinhoArraySize()>0){
+            //            cout<<"recebi por cooperacao:\n";
+            //            for(int i=0;i<rcvPacket->getDadosVizinhoArraySize();i++){
+            //                cout<<"dadosvizinhos["<<i<<"]: "<< rcvPacket->getDadosVizinho(i)<<"\n";
+            //            }
+            //        }
 
             // otherwise, generate and send an ACK
             Basic802154Packet *ackPacket = new Basic802154Packet("Ack packet",
@@ -1695,7 +1698,8 @@ void Basic802154::handleAckPacket(Basic802154Packet * rcvPacket) {
             trace() << "Data packet successfully transmitted to "
                     << rcvPacket->getSrcID() << ", local clock " << getClock();
             cout << "Data packet successfully transmitted to "
-                                << rcvPacket->getSrcID() << ", local clock " << getClock()<< "\n";
+                    << rcvPacket->getSrcID() << ", local clock " << getClock()
+                    << "\n";
             clearCurrentPacket("Success", true);
         } else {
             collectPacketHistory("NoAck");
@@ -1755,7 +1759,7 @@ void Basic802154::transmitPacket(Basic802154Packet *pkt, int retries,
         bool state, double limit) {
     clearCurrentPacket();
     //trace() << "transmitPacket([" << pkt->getName() << "]," << retries << ","<< state << "," << limit << ")";
-   // cout<< "transmitPacket([" << pkt->getName() << "]," << retries << ","<< state << "," << limit << ")\n";
+    // cout<< "transmitPacket([" << pkt->getName() << "]," << retries << ","<< state << "," << limit << ")\n";
 
     currentPacket = pkt;
     currentPacketGtsOnly = state;
@@ -1779,13 +1783,14 @@ void Basic802154::attemptTransmission(const char * descr) {
     if (macState == MAC_STATE_SLEEP || macState == MAC_STATE_SETUP)
         return;
     //Suelen
-    if(currentPacket){
-       // Contabiliza mensagens perdidas por timeout de ACK
-        if(descr == "ACK timeout" && currentPacket->getMac802154PacketType() ==1003){
+    if (currentPacket) {
+        // Contabiliza mensagens perdidas por timeout de ACK
+        if (descr == "ACK timeout"
+                && currentPacket->getMac802154PacketType() == 1003) {
             mensagensPerdidas++;
             //limparBufferAplicacao();
-            trace()<<"Mensagens Perdidas: "<<mensagensPerdidas;
-            cout<<"Mensagens Perdidas: "<<mensagensPerdidas<<"\n";
+            trace() << "Mensagens Perdidas: " << mensagensPerdidas;
+            cout << "Mensagens Perdidas: " << mensagensPerdidas << "\n";
         }
     }
 
@@ -1802,9 +1807,11 @@ void Basic802154::attemptTransmission(const char * descr) {
     if (currentPacket) {
         if (macState == MAC_STATE_GTS) {
             //trace() << "Transmitting [" << currentPacket->getName()<< "] in GTS";
-            trace() << "Transmitting Nodo [" << currentPacket->getSrcID()<< "] in GTS Transmitting [" << currentPacket->getName()<< "]";
-            cout << "Nodo [" << currentPacket->getSrcID()<< "] Transmitindo no GTS\n";
-
+            trace() << "Transmitting Nodo [" << currentPacket->getSrcID()
+                    << "] in GTS Transmitting [" << currentPacket->getName()
+                    << "]";
+            cout << "Nodo [" << currentPacket->getSrcID()
+                    << "] Transmitindo no GTS\n";
 
             transmitCurrentPacket();
         } else if (macState == MAC_STATE_CAP && currentPacketGtsOnly == false) {
@@ -1834,12 +1841,12 @@ void Basic802154::retransmitir(Basic802154Packet *nextPacket) {
         nextPacket->setDadosVizinhoArraySize(nodosEscutados.size());
 
         //while (i < nodosEscutados.size()) {
-        for(int i = 0; i < (int)nodosEscutados.size();i++){
+        for (int i = 0; i < (int) nodosEscutados.size(); i++) {
 
-            nextPacket->setDadosVizinho(i,nodosEscutados[i]);
+            nextPacket->setDadosVizinho(i, nodosEscutados[i]);
 
-            cout<<"Escutado id: "<< nodosEscutados[i].idNodo<<"\n";
-            cout<<"Escutado mens: "<< nodosEscutados[i].idMens<<"\n";
+            cout << "Escutado id: " << nodosEscutados[i].idNodo << "\n";
+            cout << "Escutado mens: " << nodosEscutados[i].idMens << "\n";
             //i++;
         }
     }
@@ -1883,11 +1890,11 @@ void Basic802154::transmitCurrentPacket() {
     simtime_t txEndTime = getClock() + txTime;
     int allowTx = 1;
 
-    if (macState == MAC_STATE_CAP) {    //currently in CAP
+    if (macState == MAC_STATE_CAP) {	//currently in CAP
         if (currentFrameStart + CAPend < txEndTime && CAPend != GTSstart)
             //transmission will not fit in CAP
             allowTx = 0;
-    } else if (macState == MAC_STATE_GTS) { //currently in GTS
+    } else if (macState == MAC_STATE_GTS) {	//currently in GTS
         if (currentFrameStart + GTSend < txEndTime)
             //transmission will not fit in GTS
             allowTx = 0;
@@ -1895,32 +1902,38 @@ void Basic802154::transmitCurrentPacket() {
 
     if (allowTx) {
         if (currentPacket->getMac802154PacketType() == MAC_802154_DATA_PACKET) {
-            if (macState == MAC_STATE_CAP){
+            if (macState == MAC_STATE_CAP) {
                 collectOutput("pkt TX state breakdown", "Contention");
-            }else{
+            } else {
                 collectOutput("pkt TX state breakdown", "Contention-free");
 
             }
         }
         //decrement retry counter, set transmission end timer and modify mac and radio states.
         currentPacketRetries--;
-        trace() << "Nodo "<<currentPacket->getSrcID() <<" |Transmitting [" << currentPacket->getName()<< "] now, remaining attempts " << currentPacketRetries;
+        trace() << "Nodo " << currentPacket->getSrcID() << " |Transmitting ["
+                << currentPacket->getName() << "] now, remaining attempts "
+                << currentPacketRetries;
         //cout << "Nodo [" << currentPacket->getSrcID()<< "] Transmitindo no GTS\n";
-        cout << "Transmitting [" << currentPacket->getName()<< "] now, remaining attempts " << currentPacketRetries<< "\n";
+        cout << "Transmitting [" << currentPacket->getName()
+                << "] now, remaining attempts " << currentPacketRetries << "\n";
         /*if(userelay){//Suelen
-        //Modificação Ríad
-            retransmitir(currentPacket);
-            //cout<< "transmitPacket([" << currentPacket->getName() << "]): Nodo: "<<currentPacket->getSrcID() << "\n";
+         //Modificação Ríad
+         retransmitir(currentPacket);
+         //cout<< "transmitPacket([" << currentPacket->getName() << "]): Nodo: "<<currentPacket->getSrcID() << "\n";
 
-        }*/
+         }*/
 
         setTimer(currentPacketResponse > 0 ? ACK_TIMEOUT : ATTEMPT_TX, txTime);
         toRadioLayer(currentPacket->dup());
         toRadioLayer(createRadioCommand(SET_STATE, TX));// realiza a transmissão
     } else {
         //transmission not allowed
-        trace() << "txTime " << txTime << " CAP:"<< (currentFrameStart + CAPend - getClock()) << " GTS:"<< (currentFrameStart + GTSend - getClock());
-        trace() << "Transmission of [" << currentPacket->getName()<< "] stopped, not enough time";
+        trace() << "txTime " << txTime << " CAP:"
+                << (currentFrameStart + CAPend - getClock()) << " GTS:"
+                << (currentFrameStart + GTSend - getClock());
+        trace() << "Transmission of [" << currentPacket->getName()
+                << "] stopped, not enough time";
     }
 }
 
@@ -1942,8 +1955,8 @@ void Basic802154::collectPacketHistory(const char *s) {
 //--- DECISION LAYER FUNCTIONS ---//
 
 // A function to accept new packet from the Network layer
-// ACTION:  check if packet can be transmitted immediately
-//          otherwise accept only if there is room in the buffer
+// ACTION: 	check if packet can be transmitted immediately
+//			otherwise accept only if there is room in the buffer
 bool Basic802154::acceptNewPacket(Basic802154Packet *newPacket) {
     if (getAssociatedPAN() != -1 && getCurrentPacket() == NULL) {
         transmitPacket(newPacket);
@@ -1979,20 +1992,22 @@ int Basic802154::associationRequest_hub(Basic802154Packet *) {
         return 0;
 }
 
-
 //Suelen
-void Basic802154::calculaNumNodosCooperantes(){
+void Basic802154::calculaNumNodosCooperantes() {
     //taxa de perda
-    SamLoss = numhosts - numdadosrecebidosnogtstransmissao -1;
+    SamLoss = numhosts - numdadosrecebidosnogtstransmissao - 1;
 
     std::map<int, int>::iterator iter;
     int msgEnviadasTotal = 0;
 
-    vectortaxaperda.recordWithTimestamp(simTime(),SamLoss);
+    vectortaxaperda.recordWithTimestamp(simTime(), SamLoss);
 
-    EV << "#####numdadosrecebidosnogtstransmissao:" << numdadosrecebidosnogtstransmissao << "#####SamLoss:" << SamLoss << endl;
-    cout << "#####numdadosrecebidosnogtstransmissao:" << numdadosrecebidosnogtstransmissao << "#####SamLoss:" << SamLoss << "\n";
-
+    EV << "#####numdadosrecebidosnogtstransmissao:"
+              << numdadosrecebidosnogtstransmissao << "#####SamLoss:" << SamLoss
+              << endl;
+    cout << "#####numdadosrecebidosnogtstransmissao:"
+            << numdadosrecebidosnogtstransmissao << "#####SamLoss:" << SamLoss
+            << "\n";
 
     //reinciando a variável que contabiliza a quantidade de msg que chegaram no período de transmissão.
     numdadosrecebidosnogtstransmissao = 0;
@@ -2005,54 +2020,71 @@ void Basic802154::calculaNumNodosCooperantes(){
     EstLoss = (1 - alpha) * EstLoss + alpha * SamLoss;
 
     DevLoss = (1 - betha) * DevLoss + betha * fabs(SamLoss);
-            //abs(SamLoss - EstLoss);
+    //abs(SamLoss - EstLoss);
 
+    EV << " alpha " << alpha << " betha " << betha << "DevLoss:" << DevLoss
+              << "EstLoss:" << EstLoss << endl;
 
-    EV << " alpha " << alpha << " betha " << betha <<  "DevLoss:" << DevLoss << "EstLoss:" << EstLoss << endl;
+    numeronodoscooperantes = (int) (ceil(ganho * EstLoss + DevLoss));
 
-    numeronodoscooperantes = (int)(ceil(ganho * EstLoss + DevLoss));
-
-    EV << "[Conferencia] numeronodoscooperantes:" << numeronodoscooperantes << endl;
-    cout << "[Conferencia] numeronodoscooperantes:" << numeronodoscooperantes << "\n";
+    EV << "[Conferencia] numeronodoscooperantes:" << numeronodoscooperantes
+              << endl;
+    cout << "[Conferencia] numeronodoscooperantes:" << numeronodoscooperantes
+            << "\n";
 
 }
-void Basic802154::limparBufferAplicacao(){
+void Basic802154::limparBufferAplicacao() {
     while (!TXBuffer.empty()) {
-        cout<<"Limpando Buffer: "<<TXBuffer.front();
+        cout << "Limpando Buffer: " << TXBuffer.front();
         cancelAndDelete(TXBuffer.front()); // cancela todos os eventos do omnet
         TXBuffer.pop();
         mensagensPerdidas++;
-        cout<<"Mens Perdidas Por limpeza de buffer: "<<mensagensPerdidas<<" Nodo: "<<SELF_MAC_ADDRESS <<"\n";
-        trace()<<"Mens Perdidas Por limpeza de buffer: "<<mensagensPerdidas<<" Nodo: "<<SELF_MAC_ADDRESS <<"\n";
-     }
+        cout << "Mens Perdidas Por limpeza de buffer: " << mensagensPerdidas
+                << " Nodo: " << SELF_MAC_ADDRESS << "\n";
+        trace() << "Mens Perdidas Por limpeza de buffer: " << mensagensPerdidas
+                << " Nodo: " << SELF_MAC_ADDRESS << "\n";
+    }
 
 }
 
-void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket){
-    int numCoop = 0, qntNodosCoordEscuta = 0, coop = 0;
+void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
+    int numCoop = 0, qntNodosCoordEscuta = 0, qntNodosCoordNaoEscuta = 0, coop =
+            0;
+    int limiteCoop = 0;
 
     qntNodosCoordEscuta = neigmap.size();
+    qntNodosCoordNaoEscuta = (numhosts - 1) - neigmap.size();
 
-    cout<<"qntNodosAssociados: "<<qntNodosCoordEscuta<<"\n";
-    numCoop = rand()%(qntNodosCoordEscuta+1);
-    cout<<"numCoop: "<<numCoop<<"\n";
+    cout << "Quantdad de Nodos que o Cood Escuta: " << qntNodosCoordEscuta
+            << "\n";
+    cout << "Coord Nao escuta: " << qntNodosCoordNaoEscuta << "\n";
 
-    int j=0;
+    limiteCoop = min(qntNodosCoordEscuta, qntNodosCoordNaoEscuta);
+    numCoop = rand() % (limiteCoop) + 1; // seleciona de 1 ao min(escutaCoord,naoEscutaCoord);
+
+    cout << "numCoop: " << numCoop << "\n";
+    trace() << "Comunicacao direta: " << neigmap.size();
+    trace() << "Comunicacao Falha: " << qntNodosCoordNaoEscuta;
+    trace() << "Seleção de cooperantes:";
+    trace() << "numCoop: " << numCoop << "\n";
+
+    int j = 0;
     std::map<int, Neighborhood*>::iterator iterNeighborhood;
-        while(j!=numCoop){
-        coop = rand()%(numhosts+1);
-              for (iterNeighborhood = neigmap.begin();
-                      iterNeighborhood != neigmap.end(); iterNeighborhood++) {
-                  Neighborhood *nodo = iterNeighborhood->second;
+    while (j != numCoop) {
+        coop = rand() % (numhosts - 1) + 1;
+        for (iterNeighborhood = neigmap.begin();
+                iterNeighborhood != neigmap.end(); iterNeighborhood++) {
+            Neighborhood *nodo = iterNeighborhood->second;
 
-                  if (nodo->nodeId == coop) {
-                      nodosColaboradores.push_back(nodo->nodeId);
-                      cout<<"Selecionado: "<<coop <<"\n";
-                      j++;
-                      break;
-                  }
+            if (nodo->nodeId == coop) {
+                nodosColaboradores.push_back(nodo->nodeId);
+                cout << "Selecionado: " << coop << "\n";
+                j++;
+                break;
+            }
 
-              }
+        }
 
-       }
+    }
 }
+

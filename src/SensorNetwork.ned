@@ -10,9 +10,9 @@
 //*                                                                              *
 //*******************************************************************************/
 
-import wirelessChannel;
-import physicalProcess;
-import node;
+import wirelessChannel.*;
+import physicalProcess.*;
+import node.*;
 
 network SN {
 	

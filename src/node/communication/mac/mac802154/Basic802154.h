@@ -302,6 +302,7 @@ class Basic802154: public VirtualMac {
 	    void limparBufferAplicacao();//Suelen
 	    double taxaDeSucesso(int id, int recebidas); //Suelen
 	    void selecaoCoopAleatoria(Basic802154Packet *beaconPacket);//Suelen
+	    void contabilizarMsgRetransmissores(); //Suelen
 
 	    int retransmissoesEfetivas=0; // que o coordenador escutou apenas por retransmissão
 	    int retransmissoesNaoEfetivas=0; // que o coordenador escutou na transmissão direta e que foi por retransmissão também
@@ -326,7 +327,7 @@ class Basic802154: public VirtualMac {
 	    int mensagensRecuperadas;
 	    int mensagensPerdidas;
 	    std::map<int, int> listasgEnviadas;
-	    //std::vector<MENSAGENS_ESCUTADAS_REPETIDAS> retransmissoesRepetidas;
+	    std::vector<MENSAGENS_ESCUTADAS_REPETIDAS> retransmissoesRepetidas;
 	    //std::vector<RETRANSMISSORES_REPETIDOS> retransmissoresDuplicados;
 	    std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeSucesso; // armazena as mensagens de cooperação que o coordenador não havia escutado diretamente
 	    std::vector<POSSIVEIS_COOPERANTES> cooperantes;
@@ -334,6 +335,7 @@ class Basic802154: public VirtualMac {
 	    double alphaSucess;
 	    std::vector<TAXA_DE_SUCESSO> historicoTaxaDeSucesso;
 	    std::vector<int> nodosAssociados;
+	    std::vector<int> msgRecuperadas; // armazena a quantidade de msg que chegaram por cooperação de cada nodo origem
 
 
 };

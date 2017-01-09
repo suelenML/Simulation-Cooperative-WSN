@@ -70,7 +70,10 @@ void Basic802154::startup() {
         txSucess.id = i;
         txSucess.taxaDeSucesso = 0.001;
         historicoTaxaDeSucesso.push_back(txSucess);
+
     }
+
+
     //Parâmetro da taxa de sucesso
     alphaSucess = par("alphaSucess");
 
@@ -140,7 +143,19 @@ void Basic802154::startup() {
             beta2 = par("beta2");
             beta3 = par("beta3");
             beta4 = par("beta4");
+
+            //Limpa a lista de msg de coop repetidas
+            retransmissoesRepetidas.clear();
+            //Limpa a lista de mensagens retransmitidas
+            historicoDeSucesso.clear();
+
+            // Inicializa o vetor de mensagens recuperadas por retransmissao de cada nodo
+            for (int i = 0; i < numhosts; i++) {
+                  msgRecuperadas.push_back(0);
+            }
         }
+
+
 
         associatedPAN = SELF_MAC_ADDRESS;
         macBSN = genk_intrand(0, 255) + 1;
@@ -633,6 +648,22 @@ void Basic802154::finishSpecific() {
         //collectOutput("Msg's enviadas", "", msgEnviadas);
 
     } else {
+        if(userelay){
+            contabilizarMsgRetransmissores();//Suelen
+
+            int cont = 1;
+            declareOutput("Mensagens Individuais retransmitidas");
+
+            for(int i = 1; i < msgRecuperadas.size(); i++){
+                collectOutput("Mensagens Individuais retransmitidas", cont, "Mensagens", msgRecuperadas[i]);
+                cont++;
+
+            }
+            declareOutput("Overhead de retransmissoes");
+            collectOutput("Overhead de retransmissoes", "", retransmissoesRepetidas.size());
+
+        }
+
         declareOutput("Beacons sent");
         collectOutput("Beacons sent", "", sentBeacons);
 
@@ -788,7 +819,7 @@ void Basic802154::selecionaNodosSmartNumVizinhos(
         } else {
 
             solve(lp);
-            //print_solution(lp, 1);
+            print_solution(lp, 1);
             REAL resultado_lp[i];
             get_variables(lp, resultado_lp);
             int j = 0;
@@ -930,7 +961,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
             print_solution(lp, 1);
 
             cout << "-----------------------------------neigmap.size " << neigmap.size() << "\n";
-            REAL resultado_lp[22];
+            REAL resultado_lp[i];
             cout << "----------------------REAL resultado_lp cria" << "\n";
             get_variables(lp, resultado_lp);
             cout << "----------get_variables" << "\n";
@@ -1139,11 +1170,11 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
                             && nodosEscutados[j].idNodo
                                     == rcvPacket->getDadosVizinho(i).idNodo) {
                         repetido = 1;
-                        //MENSAGENS_ESCUTADAS_REPETIDAS repetidos;
-                        //repetidos.idMens = rcvPacket->getDadosVizinho(i).idMens;;
-                        //repetidos.idNodo = rcvPacket->getDadosVizinho(i).idNodo;
-                        //repetidos.idRetransmissor =  rcvPacket->getSrcID();
-                        //retransmissoesRepetidas.push_back(repetidos);
+                        MENSAGENS_ESCUTADAS_REPETIDAS repetidos;
+                        repetidos.idMens = rcvPacket->getDadosVizinho(i).idMens;;
+                        repetidos.idNodo = rcvPacket->getDadosVizinho(i).idNodo;
+                        repetidos.idRetransmissor =  rcvPacket->getSrcID();
+                        retransmissoesRepetidas.push_back(repetidos);
                         break;
                     }
                 }
@@ -1173,11 +1204,11 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
                             && nodosEscutados[j].idNodo
                                     == rcvPacket->getDadosVizinho(i).idNodo) {
                         repetido = 1;
-                        //MENSAGENS_ESCUTADAS_REPETIDAS repetidos;
-                        //repetidos.idMens = rcvPacket->getDadosVizinho(i).idMens;
-                        //repetidos.idNodo = rcvPacket->getDadosVizinho(i).idNodo;
-                        //repetidos.idRetransmissor =  rcvPacket->getSrcID();
-                        //retransmissoesRepetidas.push_back(repetidos);
+                        MENSAGENS_ESCUTADAS_REPETIDAS repetidos;
+                        repetidos.idMens = rcvPacket->getDadosVizinho(i).idMens;
+                        repetidos.idNodo = rcvPacket->getDadosVizinho(i).idNodo;
+                        repetidos.idRetransmissor =  rcvPacket->getSrcID();
+                        retransmissoesRepetidas.push_back(repetidos);
                         break;
                     }
                 }
@@ -1205,10 +1236,7 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
             retransmissoesNaoEfetivas++;
             //cout<<"Retransmissões que não foram Uteis: "<< retransmissoesNaoEfetivas<< "\n";
         }
-        cout << "O nodo retransmitiu "
-                << (int) rcvPacket->getDadosVizinhoArraySize()
-                << " Mensagens e " << utilidadeRetransmissao
-                << " Foram uteis.\n";
+        cout << "O nodo retransmitiu " << (int) rcvPacket->getDadosVizinhoArraySize() << " Mensagens e " << utilidadeRetransmissao << " Foram uteis.\n";
         //cout<<"Até esta retransmissão este cooperante retransmitu "<<utilidadeCoop <<" Mensagens uteis.\n";
         cout << "Retransmissões Uteis: " << retransmissoesEfetivas << "\n";
         cout << "Retransmissões que não foram Uteis: "
@@ -1217,26 +1245,31 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket) {
     }
 
 }
-//Suelen Verifica os nodos que retransmitiram todas as mensagens repetidas
-/*void Basic802154::contabilizarRetransmissores() {
+//Suelen contabiliza as mensagens recuperadas por nodo
+void Basic802154::contabilizarMsgRetransmissores() {
     std::map<int, vector<MENSAGENS_ESCUTADAS>*>::iterator iter;
     vector<MENSAGENS_ESCUTADAS>::iterator i;
 
 
-    for (iter = historicoDeSucesso.begin();
-            iter != historicoDeSucesso.end(); iter++) {
+    for (iter = historicoDeSucesso.begin();iter != historicoDeSucesso.end(); iter++) {
         vector<MENSAGENS_ESCUTADAS> *nodo = iter->second;
         cout << "Cooperante: " << iter->first << "\n";
         for (i = (iter->second)->begin(); i != (iter->second)->end(); i++) {
             cout << "valor 1: " << i->idNodo << "\n";
             cout << "Mens: " << i->idMens << "\n";
+                for(int j = 0; j < numhosts;j++){
+                    if(i->idNodo == j){
+                        msgRecuperadas[j] = msgRecuperadas[j] + 1;
+                        break;
+                    }
 
+                }
 
 
         }
     }
 
-}*/
+}
 
 
 
@@ -2073,15 +2106,13 @@ void Basic802154::limparBufferAplicacao() {
 }
 
 void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
-    int numCoop = 0, qntNodosCoordEscuta = 0, qntNodosCoordNaoEscuta = 0, coop =
-            0;
+    int numCoop = 0, qntNodosCoordEscuta = 0, qntNodosCoordNaoEscuta = 0, coop = 0;
     int limiteCoop = 0;
 
     qntNodosCoordEscuta = neigmap.size();
     qntNodosCoordNaoEscuta = (numhosts - 1) - neigmap.size();
 
-    cout << "Quantdad de Nodos que o Cood Escuta: " << qntNodosCoordEscuta
-            << "\n";
+    cout << "Quantdad de Nodos que o Cood Escuta: " << qntNodosCoordEscuta<< "\n";
     cout << "Coord Nao escuta: " << qntNodosCoordNaoEscuta << "\n";
 
     limiteCoop = min(qntNodosCoordEscuta, qntNodosCoordNaoEscuta);
@@ -2095,6 +2126,7 @@ void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
 
     int j = 0;
     std::map<int, Neighborhood*>::iterator iterNeighborhood;
+    nodosColaboradores.clear();
     while (j != numCoop) {
         coop = rand() % (numhosts - 1) + 1;
         for (iterNeighborhood = neigmap.begin();

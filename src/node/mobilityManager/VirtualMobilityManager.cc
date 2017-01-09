@@ -28,8 +28,14 @@ void VirtualMobilityManager::initialize()
 		opp_error("Unable to obtain wchannel pointer");
 	
 	parseDeployment();	
-	trace() << "initial location(x:y:z) is " << nodeLocation.x << ":" << 
-			nodeLocation.y << ":" << nodeLocation.z;
+	//trace() << "initial location(x:y:z) is " << nodeLocation.x << ":" <<
+			//nodeLocation.y << ":" << nodeLocation.z;
+
+	trace() << "SN.node["<<index<<"].xCoor = "<< nodeLocation.x;
+	trace() << "SN.node["<<index<<"].yCoor = "<< nodeLocation.y;
+	trace() << "SN.node["<<index<<"].zCoor = "<< nodeLocation.z;
+
+
 }
 
 void VirtualMobilityManager::parseDeployment() {

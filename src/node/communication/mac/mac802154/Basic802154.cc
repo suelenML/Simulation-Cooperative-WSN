@@ -2109,39 +2109,41 @@ void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
     int numCoop = 0, qntNodosCoordEscuta = 0, qntNodosCoordNaoEscuta = 0, coop = 0;
     int limiteCoop = 0;
 
-    qntNodosCoordEscuta = neigmap.size();
-    qntNodosCoordNaoEscuta = (numhosts - 1) - neigmap.size();
+    if(neigmap.size()>0){
+        qntNodosCoordEscuta = neigmap.size();
+        qntNodosCoordNaoEscuta = (numhosts - 1) - neigmap.size();
 
-    cout << "Quantdad de Nodos que o Cood Escuta: " << qntNodosCoordEscuta<< "\n";
-    cout << "Coord Nao escuta: " << qntNodosCoordNaoEscuta << "\n";
+        cout << "Quantdad de Nodos que o Cood Escuta: " << qntNodosCoordEscuta<< "\n";
+        cout << "Coord Nao escuta: " << qntNodosCoordNaoEscuta << "\n";
 
-    limiteCoop = min(qntNodosCoordEscuta, qntNodosCoordNaoEscuta);
-    numCoop = rand() % (limiteCoop) + 1; // seleciona de 1 ao min(escutaCoord,naoEscutaCoord);
+        limiteCoop = min(qntNodosCoordEscuta, qntNodosCoordNaoEscuta);
+        numCoop = rand() % (limiteCoop) + 1; // seleciona de 1 ao min(escutaCoord,naoEscutaCoord);
 
-    cout << "numCoop: " << numCoop << "\n";
-    trace() << "Comunicacao direta: " << neigmap.size();
-    trace() << "Comunicacao Falha: " << qntNodosCoordNaoEscuta;
-    trace() << "Seleção de cooperantes:";
-    trace() << "numCoop: " << numCoop << "\n";
+        cout << "numCoop: " << numCoop << "\n";
+        trace() << "Comunicacao direta: " << neigmap.size();
+        trace() << "Comunicacao Falha: " << qntNodosCoordNaoEscuta;
+        trace() << "Seleção de cooperantes:";
+        trace() << "numCoop: " << numCoop << "\n";
 
-    int j = 0;
-    std::map<int, Neighborhood*>::iterator iterNeighborhood;
-    nodosColaboradores.clear();
-    while (j != numCoop) {
-        coop = rand() % (numhosts - 1) + 1;
-        for (iterNeighborhood = neigmap.begin();
-                iterNeighborhood != neigmap.end(); iterNeighborhood++) {
-            Neighborhood *nodo = iterNeighborhood->second;
+        int j = 0;
+        std::map<int, Neighborhood*>::iterator iterNeighborhood;
+        nodosColaboradores.clear();
+        while (j != numCoop) {
+            coop = rand() % (numhosts - 1) + 1;
+            for (iterNeighborhood = neigmap.begin();
+                    iterNeighborhood != neigmap.end(); iterNeighborhood++) {
+                Neighborhood *nodo = iterNeighborhood->second;
 
-            if (nodo->nodeId == coop) {
-                nodosColaboradores.push_back(nodo->nodeId);
-                cout << "Selecionado: " << coop << "\n";
-                j++;
-                break;
+                if (nodo->nodeId == coop) {
+                    nodosColaboradores.push_back(nodo->nodeId);
+                    cout << "Selecionado: " << coop << "\n";
+                    j++;
+                    break;
+                }
+
             }
 
         }
-
     }
 }
 

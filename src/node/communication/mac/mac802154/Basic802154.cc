@@ -341,7 +341,7 @@ void Basic802154::timerFiredCallback(int index) {
         } else {	// if not a PAN coordinator, then wait for beacon
             //cout<<"Setar RX: "<< SELF_MAC_ADDRESS<<"\n";
             toRadioLayer(createRadioCommand(SET_STATE, RX));
-            setTimer(BEACON_TIMEOUT, guardTime * 7);
+            setTimer(BEACON_TIMEOUT, guardTime * 12);//era 3 o default
         }
         break;
     }
@@ -426,12 +426,12 @@ void Basic802154::timerFiredCallback(int index) {
         } else if (associatedPAN != -1) {
             trace() << "Missed beacon from PAN " << associatedPAN
                     << ", will wake up to receive next beacon in "
-                    << beaconInterval * symbolLen - guardTime * 7 << " seconds";
+                    << beaconInterval * symbolLen - guardTime * 12 << " seconds";
             beaconsPerdidos++;
             cout << "Beacon Perdido NODO: " << SELF_MAC_ADDRESS << "\n";
             setMacState(MAC_STATE_SLEEP);
             toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
-            setTimer(FRAME_START, beaconInterval * symbolLen - guardTime * 7);
+            setTimer(FRAME_START, beaconInterval * symbolLen - guardTime * 12);
         }
         break;
     }

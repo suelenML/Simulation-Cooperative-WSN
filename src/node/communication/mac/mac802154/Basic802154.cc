@@ -845,7 +845,9 @@ void Basic802154::selecionaNodosSmartNumVizinhos(
 // método Ríad
 //método que monta e resolve o probelma de otimização e escreve um arquivo .mod
 void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
-    std::string fileName("prob" + std::to_string(numeroDoProblema) + ".mod");
+    int nameRand = rand() % (1000) + 1;
+    std::string fileName("prob" + std::to_string(numeroDoProblema) + "- Name" + __TIME__ +std::to_string(nameRand) +".mod");
+    //std::string fileName("prob" + std::to_string(numeroDoProblema) + ".mod");
     char *cstr = new char[fileName.length() + 1];
     strcpy(cstr, fileName.c_str());
     std::ofstream out(cstr);

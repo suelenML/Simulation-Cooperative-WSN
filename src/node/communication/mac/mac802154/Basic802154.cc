@@ -842,14 +842,52 @@ void Basic802154::selecionaNodosSmartNumVizinhos(
         numeroDoProblema++;
     }
 }
+//Pegar hora
+const std::string currentDateTime() {
+   char            fmt[64], buf[64];
+   struct timeval  tv;
+   struct tm       *tm;
+
+   gettimeofday(&tv, NULL);
+   tm = localtime(&tv.tv_sec);
+   //strftime(fmt, sizeof fmt, "%Y-%m-%d--%H:%M:%S.%%06u", tm);
+   strftime(fmt, sizeof fmt, "%H:%M:%S.%%06u", tm);
+   snprintf(buf, sizeof buf, fmt, tv.tv_usec);
+   return buf;
+}
+void Basic802154::tratarDivisao(Neighborhood *nodo){
+    double energy, somaRssi, rssi, txSucesso;
+    int numeroDevizinhos;
+    if(nodo->energy == 0){
+        cout<<"entrei na restricao\n";
+        nodo->energy = 0.1;
+    }
+    if(nodo->rssi == 0){
+        nodo->rssi= 0.1;
+    }
+    if(nodo->somaRssi == 0){
+        nodo->somaRssi= 0.1;
+    }
+    if(nodo->txSucesso == 0){
+        nodo->txSucesso= 0.1;
+    }
+    if(nodo->numeroDevizinhos == 0){
+        nodo->numeroDevizinhos= 0.1;
+    }
+
+}
 // método Ríad
 //método que monta e resolve o probelma de otimização e escreve um arquivo .mod
 void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
+    double result;
     struct timeval  tv = { 0 };
     gettimeofday(&tv, NULL);
     double mill = (tv.tv_usec) / 1000 ; // Para pegar milisegundos
+    string tempo = currentDateTime();
 
-    std::string fileName("prob" + std::to_string(numeroDoProblema) + "- TIME" + __TIME__+":"+std::to_string(mill) + ".mod");
+    std::string fileName("prob" + std::to_string(numeroDoProblema) + "-" +tempo + ".mod");
+    trace()<<"prob"<<std::to_string(numeroDoProblema)<<"-"<<tempo <<".mod";
+    //std::string fileName("prob" + std::to_string(numeroDoProblema) + "- TIME" + __TIME__+":"+std::to_string(mill) + ".mod");
     //std::string fileName("prob" + std::to_string(numeroDoProblema) + ".mod");
     char *cstr = new char[fileName.length() + 1];
     strcpy(cstr, fileName.c_str());
@@ -863,13 +901,17 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
         for (iterNeighborhood = neigmap.begin();
                 iterNeighborhood != neigmap.end(); iterNeighborhood++) {
             Neighborhood *nodo = iterNeighborhood->second;
+            //nodo->energy=0;
+            result = 0;
+            tratarDivisao(nodo);
             if (primeiro) {
                 primeiro = false;
-
-                cout << "Energia: " << nodo->energy << " RSSI: "
+                trace() << "Energia: " << nodo->energy << " RSSI: "
                         << nodo->somaRssi << " Vizinhos: "
                         << nodo->numeroDevizinhos << "Taxa de Sucesso: "
-                        << nodo->txSucesso << " ID: " << nodo->nodeId << "\n";
+                        << nodo->txSucesso << " ID: " << nodo->nodeId;
+                result = ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)+ (beta3 / nodo->numeroDevizinhos)+ (beta4 / nodo->txSucesso));
+                trace()<<"Result: "<<result << "*x"<< nodo->nodeId;
                 out
                         << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
                                 + (beta3 / nodo->numeroDevizinhos)
@@ -877,10 +919,16 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
                         << nodo->nodeId;
 
             } else {
-                cout << "Energia: " << nodo->energy << " RSSI: "
+                trace() << "Energia: " << nodo->energy << " RSSI: "
                         << nodo->somaRssi << " Vizinhos: "
                         << nodo->numeroDevizinhos << "Taxa de Sucesso: "
-                        << nodo->txSucesso << " ID: " << nodo->nodeId << "\n";
+                        << nodo->txSucesso << " ID: " << nodo->nodeId;
+                trace() << "Energia: " << nodo->energy << " RSSI: "
+                        << nodo->somaRssi << " Vizinhos: "
+                        << nodo->numeroDevizinhos << "Taxa de Sucesso: "
+                        << nodo->txSucesso << " ID: " << nodo->nodeId;
+                result = ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)+ (beta3 / nodo->numeroDevizinhos)+ (beta4 / nodo->txSucesso));
+                trace()<<"Result: "<<result << "*x"<< nodo->nodeId;
                 out << "+"
                         << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
                                 + (beta3 / nodo->numeroDevizinhos)
@@ -1012,6 +1060,9 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
                 nodo = new Neighborhood();
                 nodo->nodeId = pkt->getSrcID();
                 nodo->rssi = (rssi / MAX_RSSI);
+                //if(isnan(nodo->rssi)){
+                    trace()<<"NAN rssi: "<<rssi;
+                //}
                 somaDeSinais = somaDeSinais + (rssi / MAX_RSSI);
                 nodo->energy = pkt->getEnergy();
                 nodo->numeroDevizinhos = vizinhos;

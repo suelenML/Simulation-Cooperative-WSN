@@ -243,7 +243,7 @@ class Basic802154: public VirtualMac {
 
 
 	/*----riad----*/
-	    double MAX_RSSI = -100;
+	    double MAX_RSSI = -87; //-100;
 	    double EstLoss; // usei
 	    double DevLoss; // usei
 	    double SamLoss;
@@ -303,6 +303,7 @@ class Basic802154: public VirtualMac {
 	    double taxaDeSucesso(int id, int recebidas); //Suelen
 	    void selecaoCoopAleatoria(Basic802154Packet *beaconPacket);//Suelen
 	    void contabilizarMsgRetransmissores(); //Suelen
+	    void tratarDivisao(Neighborhood *nodo);
 
 	    int retransmissoesEfetivas=0; // que o coordenador escutou apenas por retransmissão
 	    int retransmissoesNaoEfetivas=0; // que o coordenador escutou na transmissão direta e que foi por retransmissão também

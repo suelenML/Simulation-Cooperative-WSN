@@ -2180,9 +2180,9 @@ void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
 
         cout << "Quantdad de Nodos que o Cood Escuta: " << qntNodosCoordEscuta<< "\n";
         cout << "Coord Nao escuta: " << qntNodosCoordNaoEscuta << "\n";
-
+        //limiteCoop = min(qntNodosCoordEscuta, qntNodosCoordNaoEscuta);// Limitar em 40 como o número máximo de cooperantes
         limiteCoop = min(min(qntNodosCoordEscuta, qntNodosCoordNaoEscuta),40);// Limitar em 40 como o número máximo de cooperantes
-        numCoop = rand() % (novoLimit) + 1; // seleciona de 1 ao min(escutaCoord,naoEscutaCoord);
+        numCoop = rand() % (limiteCoop) + 1; // seleciona de 1 ao min(escutaCoord,naoEscutaCoord);
         cout << "numCoop: " << numCoop << "\n";
         trace() << "Comunicacao direta: " << neigmap.size();
         trace() << "Comunicacao Falha: " << qntNodosCoordNaoEscuta;

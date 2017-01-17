@@ -68,26 +68,26 @@ enum macApp{
 };
 //Suelen
 struct  MENSAGENS_ESCUTADAS_REPETIDAS {
-    int idNodo;
-    int idMens;
-    int idRetransmissor;
+    short idNodo;
+    short idMens;
+    short idRetransmissor;
 
 };
 //Suelen
 struct RETRANSMISSORES_REPETIDOS{
-    int idNodo1;
-    int idNodo2;
+    short idNodo1;
+    short idNodo2;
 
 };
 //Suelen
 struct POSSIVEIS_COOPERANTES{
-    int id;
+    short id;
     double valor;
 };
 
 //Suelen
 struct  TAXA_DE_SUCESSO{
-    int id;
+    short id;
     double taxaDeSucesso;
 };
 
@@ -196,7 +196,7 @@ class Basic802154: public VirtualMac {
     simtime_t GTSstartRetrans;             // Absolute time of the start of GTS of retransmission period for current node
     simtime_t GTSendRetrans;               // Absolute time of the end of GTS of retransmission period for current node
     simtime_t GTSlengthRetrans;            // length of the GTS of retransmission period for current node
-    int inicioGTSRetrans;
+    short inicioGTSRetrans;
     simtime_t primeiraRetrans;
     simtime_t irDormir;
 

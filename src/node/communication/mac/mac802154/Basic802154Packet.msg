@@ -31,8 +31,8 @@ struct Basic802154GTSspec {
 	bool retransmissor;
 }
 struct MENSAGENS_ESCUTADAS {
-	int idMens;
-	int idNodo;
+	short idMens;
+	short idNodo;
 	
 }
 
@@ -51,7 +51,7 @@ packet Basic802154Packet extends MacPacket {
 	int GTSlength;
 	Basic802154GTSspec GTSlist[];
 	//modificações Ríad
-	int vizinhosOuNodosCooperantes[];//quando enviado pelo coordenador será a lista de colaboradores selecionado e quando enviado pelos outros nodos será a lista de vizinhos
+	short vizinhosOuNodosCooperantes[];//quando enviado pelo coordenador será a lista de colaboradores selecionado e quando enviado pelos outros nodos será a lista de vizinhos
 	double somaSinais;
 	double energy;
 	//int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos

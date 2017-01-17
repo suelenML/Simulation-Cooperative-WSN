@@ -405,8 +405,8 @@ const char *MENSAGENS_ESCUTADASDescriptor::getFieldTypeString(void *object, int 
         field -= basedesc->getFieldCount(object);
     }
     static const char *fieldTypeStrings[] = {
-        "int",
-        "int",
+        "short",
+        "short",
     };
     return (field>=0 && field<2) ? fieldTypeStrings[field] : NULL;
 }
@@ -567,7 +567,7 @@ void Basic802154Packet::copy(const Basic802154Packet& other)
     for (unsigned int i=0; i<GTSlist_arraysize; i++)
         this->GTSlist_var[i] = other.GTSlist_var[i];
     delete [] this->vizinhosOuNodosCooperantes_var;
-    this->vizinhosOuNodosCooperantes_var = (other.vizinhosOuNodosCooperantes_arraysize==0) ? NULL : new int[other.vizinhosOuNodosCooperantes_arraysize];
+    this->vizinhosOuNodosCooperantes_var = (other.vizinhosOuNodosCooperantes_arraysize==0) ? NULL : new short[other.vizinhosOuNodosCooperantes_arraysize];
     vizinhosOuNodosCooperantes_arraysize = other.vizinhosOuNodosCooperantes_arraysize;
     for (unsigned int i=0; i<vizinhosOuNodosCooperantes_arraysize; i++)
         this->vizinhosOuNodosCooperantes_var[i] = other.vizinhosOuNodosCooperantes_var[i];
@@ -633,7 +633,7 @@ void Basic802154Packet::parsimUnpack(cCommBuffer *b)
     if (vizinhosOuNodosCooperantes_arraysize==0) {
         this->vizinhosOuNodosCooperantes_var = 0;
     } else {
-        this->vizinhosOuNodosCooperantes_var = new int[vizinhosOuNodosCooperantes_arraysize];
+        this->vizinhosOuNodosCooperantes_var = new short[vizinhosOuNodosCooperantes_arraysize];
         doUnpacking(b,this->vizinhosOuNodosCooperantes_var,vizinhosOuNodosCooperantes_arraysize);
     }
     doUnpacking(b,this->somaSinais_var);
@@ -780,7 +780,7 @@ void Basic802154Packet::setGTSlist(unsigned int k, const Basic802154GTSspec& GTS
 
 void Basic802154Packet::setVizinhosOuNodosCooperantesArraySize(unsigned int size)
 {
-    int *vizinhosOuNodosCooperantes_var2 = (size==0) ? NULL : new int[size];
+    short *vizinhosOuNodosCooperantes_var2 = (size==0) ? NULL : new short[size];
     unsigned int sz = vizinhosOuNodosCooperantes_arraysize < size ? vizinhosOuNodosCooperantes_arraysize : size;
     for (unsigned int i=0; i<sz; i++)
         vizinhosOuNodosCooperantes_var2[i] = this->vizinhosOuNodosCooperantes_var[i];
@@ -796,13 +796,13 @@ unsigned int Basic802154Packet::getVizinhosOuNodosCooperantesArraySize() const
     return vizinhosOuNodosCooperantes_arraysize;
 }
 
-int Basic802154Packet::getVizinhosOuNodosCooperantes(unsigned int k) const
+short Basic802154Packet::getVizinhosOuNodosCooperantes(unsigned int k) const
 {
     if (k>=vizinhosOuNodosCooperantes_arraysize) throw cRuntimeError("Array of size %d indexed by %d", vizinhosOuNodosCooperantes_arraysize, k);
     return vizinhosOuNodosCooperantes_var[k];
 }
 
-void Basic802154Packet::setVizinhosOuNodosCooperantes(unsigned int k, int vizinhosOuNodosCooperantes)
+void Basic802154Packet::setVizinhosOuNodosCooperantes(unsigned int k, short vizinhosOuNodosCooperantes)
 {
     if (k>=vizinhosOuNodosCooperantes_arraysize) throw cRuntimeError("Array of size %d indexed by %d", vizinhosOuNodosCooperantes_arraysize, k);
     this->vizinhosOuNodosCooperantes_var[k] = vizinhosOuNodosCooperantes;
@@ -1030,7 +1030,7 @@ const char *Basic802154PacketDescriptor::getFieldTypeString(void *object, int fi
         "int",
         "int",
         "Basic802154GTSspec",
-        "int",
+        "short",
         "double",
         "double",
         "MENSAGENS_ESCUTADAS",

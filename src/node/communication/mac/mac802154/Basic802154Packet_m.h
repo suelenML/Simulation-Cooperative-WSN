@@ -62,8 +62,8 @@ void doUnpacking(cCommBuffer *b, Basic802154GTSspec& a);
 struct MENSAGENS_ESCUTADAS
 {
     MENSAGENS_ESCUTADAS();
-    int idMens;
-    int idNodo;
+    short idMens;
+    short idNodo;
 };
 
 void doPacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
@@ -88,7 +88,7 @@ void doUnpacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
  *     int GTSlength;
  *     Basic802154GTSspec GTSlist[];
  *     //modificações Ríad
- *     int vizinhosOuNodosCooperantes[];//quando enviado pelo coordenador será a lista de colaboradores selecionado e quando enviado pelos outros nodos será a lista de vizinhos
+ *     short vizinhosOuNodosCooperantes[];//quando enviado pelo coordenador será a lista de colaboradores selecionado e quando enviado pelos outros nodos será a lista de vizinhos
  *     double somaSinais;
  *     double energy;
  *     //int dadosVizinho[];//identificação dos vizinhos, dados retransmitidos
@@ -115,7 +115,7 @@ class Basic802154Packet : public ::MacPacket
     int GTSlength_var;
     Basic802154GTSspec *GTSlist_var; // array ptr
     unsigned int GTSlist_arraysize;
-    int *vizinhosOuNodosCooperantes_var; // array ptr
+    short *vizinhosOuNodosCooperantes_var; // array ptr
     unsigned int vizinhosOuNodosCooperantes_arraysize;
     double somaSinais_var;
     double energy_var;
@@ -168,8 +168,8 @@ class Basic802154Packet : public ::MacPacket
     virtual void setGTSlist(unsigned int k, const Basic802154GTSspec& GTSlist);
     virtual void setVizinhosOuNodosCooperantesArraySize(unsigned int size);
     virtual unsigned int getVizinhosOuNodosCooperantesArraySize() const;
-    virtual int getVizinhosOuNodosCooperantes(unsigned int k) const;
-    virtual void setVizinhosOuNodosCooperantes(unsigned int k, int vizinhosOuNodosCooperantes);
+    virtual short getVizinhosOuNodosCooperantes(unsigned int k) const;
+    virtual void setVizinhosOuNodosCooperantes(unsigned int k, short vizinhosOuNodosCooperantes);
     virtual double getSomaSinais() const;
     virtual void setSomaSinais(double somaSinais);
     virtual double getEnergy() const;

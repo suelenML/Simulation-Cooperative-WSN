@@ -292,9 +292,9 @@ void Basic802154::timerFiredCallback(int index) {
                 nodosEscutados.clear();
 
                 if (tempoDeBeacon == selecao) {
-                    selecionaNodosSmart(beaconPacket); // Função Correta
+                    //selecionaNodosSmart(beaconPacket); // Função Correta
                     //selecionaNodosSmartNumVizinhos(beaconPacket);
-                    //selecaoCoopAleatoria(beaconPacket);// Seleção Aleatória
+                    selecaoCoopAleatoria(beaconPacket);// Seleção Aleatória
                     enviarNodosCooperantes(beaconPacket);
                     tempoDeBeacon = 0;
                     primeiraSelecao = 1;
@@ -316,7 +316,6 @@ void Basic802154::timerFiredCallback(int index) {
             // GTS fields and CAP length are set in the decision layer
             prepareBeacon_hub(beaconPacket);
 
-            // Verifica os nodos que tinham GTS e não estao mais associados
 
             beaconPacket->setByteLength(
                     BASE_BEACON_PKT_SIZE
@@ -330,6 +329,9 @@ void Basic802154::timerFiredCallback(int index) {
             trace() << "Transmitting [PAN beacon packet] now, BSN = " << macBSN;
             cout << "Transmitting [PAN beacon packet] now, BSN = " << macBSN
                     << "\n";
+            trace()<<"beaconPacket->getByteLength(): "<<beaconPacket->getByteLength();
+            cout<<"beaconPacket->getByteLength(): "<<beaconPacket->getByteLength()<<"\n";
+            cout<<"calculo TX_TIME"<<(phyLayerOverhead + beaconPacket->getByteLength())*1/(1000*phyDataRate/8.0)<<"\n";
             setMacState(MAC_STATE_CAP);
             toRadioLayer(beaconPacket);
             toRadioLayer(createRadioCommand(SET_STATE, TX));
@@ -341,7 +343,8 @@ void Basic802154::timerFiredCallback(int index) {
         } else {	// if not a PAN coordinator, then wait for beacon
             //cout<<"Setar RX: "<< SELF_MAC_ADDRESS<<"\n";
             toRadioLayer(createRadioCommand(SET_STATE, RX));
-            setTimer(BEACON_TIMEOUT, guardTime * 12);//era 3 o default
+            setTimer(BEACON_TIMEOUT, guardTime * 15);//era 3 o default
+            trace()<<"TimeOut de Beacon em: "<< guardTime * 15;
         }
         break;
     }
@@ -395,6 +398,8 @@ void Basic802154::timerFiredCallback(int index) {
 
         // beacon timeout fired - indicates that beacon was missed by this node
     case BEACON_TIMEOUT: {
+        cout<<"Nodo: "<<SELF_MAC_ADDRESS<<"\n";
+        trace()<<"TimeoutBeacon Nodo: "<<SELF_MAC_ADDRESS;
         lostBeacons++;
         //Limpa o Buffer da App
         if (!TXBuffer.empty()) {
@@ -426,12 +431,12 @@ void Basic802154::timerFiredCallback(int index) {
         } else if (associatedPAN != -1) {
             trace() << "Missed beacon from PAN " << associatedPAN
                     << ", will wake up to receive next beacon in "
-                    << beaconInterval * symbolLen - guardTime * 12 << " seconds";
+                    << beaconInterval * symbolLen - guardTime * 15 << " seconds";
             beaconsPerdidos++;
             cout << "Beacon Perdido NODO: " << SELF_MAC_ADDRESS << "\n";
             setMacState(MAC_STATE_SLEEP);
             toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
-            setTimer(FRAME_START, beaconInterval * symbolLen - guardTime * 12);
+            setTimer(FRAME_START, beaconInterval * symbolLen - guardTime * 15);
         }
         break;
     }
@@ -880,9 +885,9 @@ void Basic802154::tratarDivisao(Neighborhood *nodo){
 //método que monta e resolve o probelma de otimização e escreve um arquivo .mod
 void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
     double result;
-    struct timeval  tv = { 0 };
+    /*struct timeval  tv = { 0 };
     gettimeofday(&tv, NULL);
-    double mill = (tv.tv_usec) / 1000 ; // Para pegar milisegundos
+    double mill = (tv.tv_usec) / 1000 ; // Para pegar milisegundos*/
     string tempo = currentDateTime();
 
     std::string fileName("prob" + std::to_string(numeroDoProblema) + "-" +tempo + ".mod");
@@ -1466,6 +1471,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
     /* received a BEACON frame */
     case MAC_802154_BEACON_PACKET: {
+        trace()<<"Recebi beacon "<< SELF_MAC_ADDRESS;
         //Modificação Ríad
         if (userelay) {
             //tempoDeBeacon = rcvPacket->getTempoBeacon();
@@ -1483,6 +1489,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
         //LimparBuffer
         cout << "Sou o nodo: " << SELF_MAC_ADDRESS << "\n";
+
         //cout<<"tamanho Buffer: "<<TXBuffer.size()<<"\n";
         limparBufferAplicacao();
 //        // Gerar Mensagem da aplicação
@@ -2164,6 +2171,8 @@ void Basic802154::limparBufferAplicacao() {
 void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
     int numCoop = 0, qntNodosCoordEscuta = 0, qntNodosCoordNaoEscuta = 0, coop = 0;
     int limiteCoop = 0;
+    int repetido=0;
+    int novoLimit=0;
 
     if(neigmap.size()>0){
         qntNodosCoordEscuta = neigmap.size();
@@ -2172,9 +2181,8 @@ void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
         cout << "Quantdad de Nodos que o Cood Escuta: " << qntNodosCoordEscuta<< "\n";
         cout << "Coord Nao escuta: " << qntNodosCoordNaoEscuta << "\n";
 
-        limiteCoop = min(qntNodosCoordEscuta, qntNodosCoordNaoEscuta);
-        numCoop = rand() % (limiteCoop) + 1; // seleciona de 1 ao min(escutaCoord,naoEscutaCoord);
-
+        limiteCoop = min(min(qntNodosCoordEscuta, qntNodosCoordNaoEscuta),40);// Limitar em 40 como o número máximo de cooperantes
+        numCoop = rand() % (novoLimit) + 1; // seleciona de 1 ao min(escutaCoord,naoEscutaCoord);
         cout << "numCoop: " << numCoop << "\n";
         trace() << "Comunicacao direta: " << neigmap.size();
         trace() << "Comunicacao Falha: " << qntNodosCoordNaoEscuta;
@@ -2186,6 +2194,15 @@ void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
         nodosColaboradores.clear();
         while (j != numCoop) {
             coop = rand() % (numhosts - 1) + 1;
+            repetido=0;
+            for (j = 0; j < (int) nodosColaboradores.size(); j++) {
+                if (nodosColaboradores[j] == coop) {
+                    repetido = 1;
+                    break;
+                }
+
+            }
+            if(repetido==0){
             for (iterNeighborhood = neigmap.begin();
                     iterNeighborhood != neigmap.end(); iterNeighborhood++) {
                 Neighborhood *nodo = iterNeighborhood->second;
@@ -2197,6 +2214,7 @@ void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
                     break;
                 }
 
+            }
             }
 
         }

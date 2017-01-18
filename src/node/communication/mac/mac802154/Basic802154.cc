@@ -29,6 +29,9 @@ void Basic802154::startup() {
     //Informa se deve usar retransmissão ou não
     userelay = par("userelay");
     selecao = par("selecao");
+    //Informa qual das sele\oes usara
+    smart = par("smart");
+    aleatoria = par("aleatoria");
 
     //Suelen
     beaconsPerdidos = 0;
@@ -292,9 +295,13 @@ void Basic802154::timerFiredCallback(int index) {
                 nodosEscutados.clear();
 
                 if (tempoDeBeacon == selecao) {
-                    //selecionaNodosSmart(beaconPacket); // Função Correta
+                    if(smart){
+                       selecionaNodosSmart(beaconPacket); // Função Correta
+                    }
                     //selecionaNodosSmartNumVizinhos(beaconPacket);
-                    selecaoCoopAleatoria(beaconPacket);// Seleção Aleatória
+                    if(aleatoria){
+                       selecaoCoopAleatoria(beaconPacket);// Seleção Aleatória
+                    }
                     enviarNodosCooperantes(beaconPacket);
                     tempoDeBeacon = 0;
                     primeiraSelecao = 1;
@@ -566,8 +573,8 @@ void Basic802154::preencherDados(Basic802154Packet *macPacket) {
 
         macPacket->setVizinhosOuNodosCooperantesArraySize(i);
         macPacket->setSomaSinais(somaDeSinais);
-        //macPacket->setEnergy(resMgrModule->getRemainingEnergy()/ resMgrModule->getInitialEnergy()); // Considera a energia restante no nodo
-        macPacket->setEnergy(resMgrModule->getSpentEnergy()); //Considera a energia gasta
+        macPacket->setEnergy(resMgrModule->getRemainingEnergy()/ resMgrModule->getInitialEnergy()); // Considera a energia restante no nodo
+        //macPacket->setEnergy(resMgrModule->getSpentEnergy()); //Considera a energia gasta
         //cout<<"Energia Gasta: "<< resMgrModule->getSpentEnergy()<< "  Nodo: "<< SELF_MAC_ADDRESS<<"\n";
         //cout<<"Energia rstante: "<< resMgrModule->getRemainingEnergy()<< "  Nodo: "<< SELF_MAC_ADDRESS<<"\n";
         i = 0;
@@ -887,6 +894,7 @@ void Basic802154::tratarDivisao(Neighborhood *nodo){
 //método que monta e resolve o probelma de otimização e escreve um arquivo .mod
 void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
     double result;
+    double energyRemaining;
     /*struct timeval  tv = { 0 };
     gettimeofday(&tv, NULL);
     double mill = (tv.tv_usec) / 1000 ; // Para pegar milisegundos*/
@@ -908,6 +916,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
         for (iterNeighborhood = neigmap.begin();
                 iterNeighborhood != neigmap.end(); iterNeighborhood++) {
             Neighborhood *nodo = iterNeighborhood->second;
+
             //nodo->energy=0;
             result = 0;
             tratarDivisao(nodo);
@@ -1068,13 +1077,20 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
                 nodo = new Neighborhood();
                 nodo->nodeId = pkt->getSrcID();
                 nodo->rssi = (rssi / MAX_RSSI);
-                //if(isnan(nodo->rssi)){
-                    trace()<<"NAN rssi: "<<rssi;
-                //}
-                somaDeSinais = somaDeSinais + (rssi / MAX_RSSI);
+//                trace()<<"NAN rssi: "<<rssi;
+//                if(isnan(nodo->rssi)){
+//                    trace()<<"DEU NAN rssi: "<<rssi;
+//                }
+//                trace()<<"SOMASINAIS ANTES.  "<<somaDeSinais;
+                somaDeSinais = somaDeSinais + nodo->rssi;
+//                trace()<<"SOMASINAIS DEPOIS. > "<<somaDeSinais;
                 nodo->energy = pkt->getEnergy();
                 nodo->numeroDevizinhos = vizinhos;
                 nodo->somaRssi = pkt->getSomaSinais(); //atulizar soma de rssi
+//                trace()<<"SomaRSSI> "<<nodo->somaRssi;
+//                if(isnan(nodo->somaRssi)){
+//                  trace()<<"DEU NAN somaRSSI: "<<nodo->somaRssi;
+//                }
                 nodo->txSucesso = taxaDeSucesso(pkt->getSrcID(), 1);
 
                 if (isPANCoordinator && vizinhos > 0) {
@@ -1090,10 +1106,22 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
                 nodo = iterNeighborhood->second;
                 somaDeSinais = somaDeSinais - nodo->rssi;
                 nodo->rssi = (rssi / MAX_RSSI);
-                somaDeSinais = somaDeSinais + (rssi / MAX_RSSI);
+//                trace()<<"NAN rssi: "<<rssi;
+//                if(isnan(nodo->rssi)){
+//                   trace()<<"DEU NAN rssi: "<<rssi;
+//                }
+//                trace()<<"SOMASINAIS ANTES. "<<somaDeSinais;
+
+                somaDeSinais = somaDeSinais + nodo->rssi;
+
+//                trace()<<"SOMASINAIS DEPOIS. "<<somaDeSinais;
                 nodo->energy = pkt->getEnergy();
                 nodo->numeroDevizinhos = vizinhos;
                 nodo->somaRssi = pkt->getSomaSinais();
+//                trace()<<"SomaRSSI> "<<nodo->somaRssi;
+//                if(isnan(nodo->somaRssi)){
+//                    trace()<<"DEU NAN somaRSSI: "<<nodo->somaRssi;
+//                }
                 nodo->txSucesso = taxaDeSucesso(pkt->getSrcID(), 1);
                 if (isPANCoordinator && vizinhos > 0) {
                     //atualizar lista de vinhos

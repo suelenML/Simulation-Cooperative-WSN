@@ -58,6 +58,8 @@ simple Basic802154 like node.communication.mac.iMac {
 	
 	//Suelen 
 	bool userelay = default(false);
+	bool smart = default(false);
+	bool aleatoria = default(false);
 	int selecao = default(10);
 	
 	// Para determinar o numero de cooperantes

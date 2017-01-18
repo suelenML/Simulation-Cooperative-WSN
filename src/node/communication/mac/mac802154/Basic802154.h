@@ -243,7 +243,7 @@ class Basic802154: public VirtualMac {
 
 
 	/*----riad----*/
-	    double MAX_RSSI = -87; //-100;
+	    double MAX_RSSI = -87.0; //-100;
 	    double EstLoss; // usei
 	    double DevLoss; // usei
 	    double SamLoss;
@@ -272,9 +272,9 @@ class Basic802154: public VirtualMac {
 	    double beta4=-1.0;
 
 	    //dados que eu preciso
-	    double somaDeSinais;
-	    int totalDevizinhos;
-	    double meuRSSI;
+	    double somaDeSinais = 0.0;
+	    int totalDevizinhos = 0;
+	    double meuRSSI = 0.0;
 
 	    int numeroDoProblema=0;
 
@@ -318,7 +318,9 @@ class Basic802154: public VirtualMac {
 
 	    /*----------------SUELEN------------------*/
 	    double limiteRSSI;
-	    bool userelay= false;
+	    bool userelay = false;
+	    bool smart = false;
+	    bool aleatoria = false;
 	    int utilidadeCoop;
 	    int primeiraSelecao;
 	    int msgEnviadas;

@@ -343,6 +343,8 @@ void Basic802154::timerFiredCallback(int index) {
         } else {	// if not a PAN coordinator, then wait for beacon
             //cout<<"Setar RX: "<< SELF_MAC_ADDRESS<<"\n";
             toRadioLayer(createRadioCommand(SET_STATE, RX));
+            // tamanho do maior beacon*8/ 250000(taxa de transmissao 250kbps)= timeout beacon
+            //410*8/250000=0,014 ---> vou deixar o guardTime*15 pois eh quase o mesmo
             setTimer(BEACON_TIMEOUT, guardTime * 15);//era 3 o default
             trace()<<"TimeOut de Beacon em: "<< guardTime * 15;
         }
@@ -943,7 +945,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
 
         }
         out << ";\n";
-
+        // restricoes dos nodos que se veem
         for (iterNeighborhood = neigmap.begin();
                 iterNeighborhood != neigmap.end(); iterNeighborhood++) {
             Neighborhood *nodo = iterNeighborhood->second;
@@ -973,7 +975,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
         }
         out << "\n";
         std::map<int, vector<int>*>::iterator iter;
-
+        // nodos que só são enchergados por um nodo
         for (iter = listaDeNodosSoltos.begin();
                 iter != listaDeNodosSoltos.end(); iter++) {
 
@@ -995,6 +997,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
         out << "\n";
         primeiro = true;
         int i = 0;
+        // mostra quem sao as variaveis binarias
         for (iterNeighborhood = neigmap.begin();
                 iterNeighborhood != neigmap.end(); iterNeighborhood++) {
             Neighborhood *nodo = iterNeighborhood->second;

@@ -79,11 +79,6 @@ struct RETRANSMISSORES_REPETIDOS{
     short idNodo2;
 
 };
-//Suelen
-struct POSSIVEIS_COOPERANTES{
-    short id;
-    double valor;
-};
 
 //Suelen
 struct  TAXA_DE_SUCESSO{
@@ -303,7 +298,9 @@ class Basic802154: public VirtualMac {
 	    double taxaDeSucesso(int id, int recebidas); //Suelen
 	    void selecaoCoopAleatoria(Basic802154Packet *beaconPacket);//Suelen
 	    void contabilizarMsgRetransmissores(); //Suelen
-	    void tratarDivisao(Neighborhood *nodo);
+	    void tratarDivisao(Neighborhood *nodo);//Suelen
+	    void selecaoOportunista(Basic802154Packet *beaconPacket);//Suelen
+	    void ordenaPossiveisCoop();//Suelen
 
 	    int retransmissoesEfetivas=0; // que o coordenador escutou apenas por retransmissão
 	    int retransmissoesNaoEfetivas=0; // que o coordenador escutou na transmissão direta e que foi por retransmissão também
@@ -333,13 +330,15 @@ class Basic802154: public VirtualMac {
 	    std::vector<MENSAGENS_ESCUTADAS_REPETIDAS> retransmissoesRepetidas;
 	    //std::vector<RETRANSMISSORES_REPETIDOS> retransmissoresDuplicados;
 	    std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeSucesso; // armazena as mensagens de cooperação que o coordenador não havia escutado diretamente
-	    std::vector<POSSIVEIS_COOPERANTES> cooperantes;
+
 	    /*Variáveis taxa de sucesso*/
 	    double alphaSucess;
 	    std::vector<TAXA_DE_SUCESSO> historicoTaxaDeSucesso;
 	    std::vector<int> nodosAssociados;
 	    std::vector<int> msgRecuperadas; // armazena a quantidade de msg que chegaram por cooperação de cada nodo origem
 
+	    /*Metodo Oportunista*/
+	    std::vector<Neighborhood> possiveisCooperantes;
 
 };
 

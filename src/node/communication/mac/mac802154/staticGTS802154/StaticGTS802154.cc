@@ -277,7 +277,7 @@ int StaticGTS802154::gtsRequest_hubRetransmissao(int id, int length) {
        }*/
     return newGTSspec.length;
 }
-
+//inverte a ordem da lista do GTS (o primeiro serao ultimo e o ultimo se torna o primeiro)
 void StaticGTS802154::ordenaListGTS(Basic802154Packet *beaconPacket) {
     beaconPacket->setGTSlistArraySize(GTSlist.size());
     int j = 0;
@@ -292,7 +292,7 @@ void StaticGTS802154::ordenaListGTS(Basic802154Packet *beaconPacket) {
 //             cout<< "Lista GTS Depois de ordenar["<<i<<"]: "<<GTSlist[i].owner<<"\n";
 //         }
 }
-
+//Acho que posso apagar
 void StaticGTS802154::TempoNodosNaoCoopDormir(Basic802154Packet *beaconPacket){
     for (int i = (int)beaconPacket->getGTSlistArraySize(); i >= 0; i--) {
         if(beaconPacket->getGTSlist(i+1).retransmissor){

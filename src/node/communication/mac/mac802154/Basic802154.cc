@@ -2211,7 +2211,6 @@ void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
 
         cout << "Quantdad de Nodos que o Cood Escuta: " << qntNodosCoordEscuta<< "\n";
         cout << "Coord Nao escuta: " << qntNodosCoordNaoEscuta << "\n";
-        //limiteCoop = min(qntNodosCoordEscuta, qntNodosCoordNaoEscuta);// Limitar em 40 como o número máximo de cooperantes
         limiteCoop = min(min(qntNodosCoordEscuta, qntNodosCoordNaoEscuta),40);// Limitar em 40 como o número máximo de cooperantes
         numCoop = rand() % (limiteCoop) + 1; // seleciona de 1 ao min(escutaCoord,naoEscutaCoord);
         cout << "numCoop: " << numCoop << "\n";
@@ -2250,5 +2249,64 @@ void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
 
         }
     }
+}
+//Tecnica utilizada na metodologia do Odilson
+void Basic802154::selecaoOportunista(Basic802154Packet *beaconPacket){
+    double snrMedio = 0.0;
+    calculaNumNodosCooperantes();
+    possiveisCooperantes.clear();
+    nodosColaboradores.clear();
+    std::map<int, Neighborhood*>::iterator iterNeighborhood;
+
+    // Obtem a soma de todos os RSSI dos nodos que comunicaram com o coordenador
+    for (iterNeighborhood = neigmap.begin();
+                     iterNeighborhood != neigmap.end(); iterNeighborhood++) {
+                 Neighborhood *nodo = iterNeighborhood->second;
+
+                 snrMedio +=  nodo->rssi;
+     }
+    // Faz a media dos RSSI
+    snrMedio = snrMedio/neigmap.size();
+
+    //Insere na lista de possiveis cooperantes os nodos que apresentarem o RSSI maior que a media
+    for (iterNeighborhood = neigmap.begin();
+                         iterNeighborhood != neigmap.end(); iterNeighborhood++) {
+                     Neighborhood *nodo = iterNeighborhood->second;
+
+           if(nodo->rssi > snrMedio){
+               possiveisCooperantes.push_back(*nodo);
+           }
+     }
+    //Verifico se existe possiveis cooperantes para suprir a demanda
+     if(possiveisCooperantes.size() > numeronodoscooperantes){
+         ordenaPossiveisCoop();
+         for(int i = 0; i < numeronodoscooperantes;i++){
+             nodosColaboradores.push_back(possiveisCooperantes[i].nodeId);
+         }
+
+     }else{
+         if(possiveisCooperantes.size() > 0){
+             for(int i = 0; i < possiveisCooperantes.size();i++){
+                  nodosColaboradores.push_back(possiveisCooperantes[i].nodeId);
+             }
+
+         }
+     }
+
+
+}
+void Basic802154::ordenaPossiveisCoop(){
+    Neighborhood aux;
+
+    for (int i = 0; i < possiveisCooperantes.size(); i++){
+        for (int j = 0; j < possiveisCooperantes.size(); j++){
+            if (possiveisCooperantes[i].rssi < possiveisCooperantes[j].rssi){
+                aux = possiveisCooperantes[i];
+                possiveisCooperantes[i] = possiveisCooperantes[j];
+                possiveisCooperantes[j] = aux;
+            }
+        }
+    }
+
 }
 

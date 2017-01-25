@@ -311,13 +311,14 @@ class Basic802154: public VirtualMac {
 	    //std::map<int, vector<int>*> historicoDeCooperacao; // pelo que entendi salva o id do nodo e um vetor com os nodos que ele escutou
 	    std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeCooperacao; // pelo que entendi salva o id do nodo e um vetor com os nodos que ele escutou
 	    std::map<int, vector<int>*> listaDeNodosSoltos;//são nodos que não conseguiram trocar ms com o coordenador
-	    std::map<int, Neighborhood*> neigmap; // Acho que são todos os nodos da rede
+	    std::map<int, Neighborhood*> neigmap; // são os nodos que cada nodo possiu como vizinho
 
 	    /*----------------SUELEN------------------*/
 	    double limiteRSSI;
 	    bool userelay = false;
 	    bool smart = false;
 	    bool aleatoria = false;
+	    bool oportunista = false;
 	    int utilidadeCoop;
 	    int primeiraSelecao;
 	    int msgEnviadas;

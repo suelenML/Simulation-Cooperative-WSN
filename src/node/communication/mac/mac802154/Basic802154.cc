@@ -32,6 +32,7 @@ void Basic802154::startup() {
     //Informa qual das sele\oes usara
     smart = par("smart");
     aleatoria = par("aleatoria");
+    oportunista = par("oportunista");
 
     //Suelen
     beaconsPerdidos = 0;
@@ -301,6 +302,9 @@ void Basic802154::timerFiredCallback(int index) {
                     //selecionaNodosSmartNumVizinhos(beaconPacket);
                     if(aleatoria){
                        selecaoCoopAleatoria(beaconPacket);// Seleção Aleatória
+                    }
+                    if(oportunista){
+                        selecaoOportunista(beaconPacket); // Seleção Odilson
                     }
                     enviarNodosCooperantes(beaconPacket);
                     tempoDeBeacon = 0;
@@ -2171,7 +2175,7 @@ void Basic802154::calculaNumNodosCooperantes() {
 
     EstLoss = (1 - alpha) * EstLoss + alpha * SamLoss;
 
-    DevLoss = (1 - betha) * DevLoss + betha * fabs(SamLoss);
+    DevLoss = (1 - betha) * DevLoss + betha * fabs(SamLoss - EstLoss);
     //abs(SamLoss - EstLoss);
 
     EV << " alpha " << alpha << " betha " << betha << "DevLoss:" << DevLoss
@@ -2254,6 +2258,9 @@ void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
 void Basic802154::selecaoOportunista(Basic802154Packet *beaconPacket){
     double snrMedio = 0.0;
     calculaNumNodosCooperantes();
+
+    cout<< "Num Coop: "<<numeronodoscooperantes<<"\n";
+
     possiveisCooperantes.clear();
     nodosColaboradores.clear();
     std::map<int, Neighborhood*>::iterator iterNeighborhood;
@@ -2278,15 +2285,15 @@ void Basic802154::selecaoOportunista(Basic802154Packet *beaconPacket){
            }
      }
     //Verifico se existe possiveis cooperantes para suprir a demanda
-     if(possiveisCooperantes.size() > numeronodoscooperantes){
+     if((int) possiveisCooperantes.size() > numeronodoscooperantes){
          ordenaPossiveisCoop();
          for(int i = 0; i < numeronodoscooperantes;i++){
              nodosColaboradores.push_back(possiveisCooperantes[i].nodeId);
          }
 
-     }else{
-         if(possiveisCooperantes.size() > 0){
-             for(int i = 0; i < possiveisCooperantes.size();i++){
+     }else{// Se não há tantos possiveis coop quanto a demanda necessita coloco todos os que estão habilitados a serem
+         if((int) possiveisCooperantes.size() > 0){
+             for(int i = 0; i < (int) possiveisCooperantes.size();i++){
                   nodosColaboradores.push_back(possiveisCooperantes[i].nodeId);
              }
 
@@ -2297,16 +2304,28 @@ void Basic802154::selecaoOportunista(Basic802154Packet *beaconPacket){
 }
 void Basic802154::ordenaPossiveisCoop(){
     Neighborhood aux;
+   /* cout<<"possiveisCooperantes ANTES\n";
+    for (int i = 0; i < (int) possiveisCooperantes.size(); i++){
+        cout<<"possiveisCooperantes["<<i<<"] ID: "<< possiveisCooperantes[i].nodeId<<"\n";
+        cout<<"possiveisCooperantes["<<i<<"] RSSI: "<< possiveisCooperantes[i].rssi<<"\n";
+    }*/
 
-    for (int i = 0; i < possiveisCooperantes.size(); i++){
-        for (int j = 0; j < possiveisCooperantes.size(); j++){
-            if (possiveisCooperantes[i].rssi < possiveisCooperantes[j].rssi){
+
+    for (int i = 0; i < (int) possiveisCooperantes.size(); i++){
+        for (int j = 0; j < (int) possiveisCooperantes.size(); j++){
+            if (possiveisCooperantes[i].rssi > possiveisCooperantes[j].rssi){
                 aux = possiveisCooperantes[i];
                 possiveisCooperantes[i] = possiveisCooperantes[j];
                 possiveisCooperantes[j] = aux;
             }
         }
     }
+
+    /*cout<<"possiveisCooperantes Depois\n";
+        for (int i = 0; i < (int) possiveisCooperantes.size(); i++){
+            cout<<"possiveisCooperantes["<<i<<"] ID: "<< possiveisCooperantes[i].nodeId<<"\n";
+            cout<<"possiveisCooperantes["<<i<<"] RSSI: "<< possiveisCooperantes[i].rssi<<"\n";
+        }*/
 
 }
 

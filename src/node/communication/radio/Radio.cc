@@ -288,6 +288,7 @@ void Radio::handleMessage(cMessage * msg)
 			if (!radioBuffer.empty()) {
 				double timeToTxPacket = popAndSendToWirelessChannel();
 				powerDrawn(TxLevel->txPowerConsumed);
+
 				// flush the total received power history
 				totalPowerReceived.clear();
 				scheduleAt(simTime() + timeToTxPacket, new cMessage("continueTX", RADIO_CONTINUE_TX));
@@ -556,6 +557,8 @@ void Radio::completeStateTransition()
 			if (!radioBuffer.empty()) {
 				double timeToTxPacket = popAndSendToWirelessChannel();
 				powerDrawn(TxLevel->txPowerConsumed);
+				trace()<<"TxLevel->txPowerConsumed: "<< TxLevel->txPowerConsumed;
+				qntidadeTx = qntidadeTx +1;
 				// flush the total received power history
 				totalPowerReceived.clear();
 				scheduleAt(simTime() + timeToTxPacket, new cMessage("continueTX", RADIO_CONTINUE_TX));
@@ -572,6 +575,8 @@ void Radio::completeStateTransition()
 
 		case RX:{
 			powerDrawn(RXmode->power);
+			trace()<<"RXmode->power: "<< RXmode->power;
+			qntidadeRx = qntidadeRx +1;
 			/* Our total received power history was flushed before
 			 * we need to recalculated it, adding all currently received signals
 			 */
@@ -581,6 +586,8 @@ void Radio::completeStateTransition()
 
 		case SLEEP:{
 			powerDrawn(sleepLevel->power);
+			trace()<<"sleepLevel->power: "<< sleepLevel->power;
+			qntidadeSleep = qntidadeSleep +1;
 			// flush the total received power history
 			totalPowerReceived.clear();
 			break;
@@ -605,6 +612,16 @@ void Radio::finishSpecific()
 	sleepLevelList.clear();
 	receivedSignals.clear();
 	totalPowerReceived.clear();
+
+	// Suelen
+    declareOutput("Quantidade de Vezes que ficou em TX");
+    collectOutput("Quantidade de Vezes que ficou em TX", "", qntidadeTx);
+
+    declareOutput("Quantidade de Vezes que ficou em RX");
+    collectOutput("Quantidade de Vezes que ficou em RX", "", qntidadeRx);
+
+    declareOutput("Quantidade de Vezes que ficou em Sleep");
+    collectOutput("Quantidade de Vezes que ficou em Sleep", "", qntidadeSleep);
 
 	if (stats.transmissions > 0)
 		collectOutput("TXed pkts", "TX pkts", stats.transmissions);

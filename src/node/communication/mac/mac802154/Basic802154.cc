@@ -50,6 +50,7 @@ void Basic802154::startup() {
     mensagensPerdidas = 0;
     limiteRSSI = -87;
     mensagensRecuperadas = 0;
+    qntidadeVezesCooperou = 0;
     nodosAssociados.clear();
 
     //Suelen
@@ -157,6 +158,7 @@ void Basic802154::startup() {
             for (int i = 0; i < numhosts; i++) {
                   msgRecuperadas.push_back(0);
             }
+
         }
 
 
@@ -384,7 +386,7 @@ void Basic802154::timerFiredCallback(int index) {
             } else {
                 if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
                     // Se não for cooperante e existir retranmissores, dorme ao iniciar a retransmissao
-                    setTimer(SLEEP_START, primeiraRetrans - simTime());
+                    setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
 
                     // inform the decision layer that GTS has started
                     startedGTS_node();
@@ -549,6 +551,7 @@ void Basic802154::timerFiredCallback(int index) {
 //               }
 
         transmitPacket(packetRetrans);
+        qntidadeVezesCooperou = qntidadeVezesCooperou + 1;
 
         //limpa o buffer da aplicacao antes de dormir
         //setTimer(CLEAR_BUFFER_APP, GTSlength);
@@ -656,6 +659,9 @@ void Basic802154::finishSpecific() {
         declareOutput("Beacons received");
         collectOutput("Beacons received", "", recvBeacons);
         // Suelen
+        declareOutput("Quantidade de Vezes que Cooperou");
+        collectOutput("Quantidade de Vezes que Cooperou", "", qntidadeVezesCooperou);
+
         declareOutput("Total de Beacons Perdidos");
         collectOutput("Total de Beacons Perdidos", "", beaconsPerdidos);
 
@@ -667,6 +673,7 @@ void Basic802154::finishSpecific() {
 
     } else {
         if(userelay){
+
             contabilizarMsgRetransmissores();//Suelen
 
             int cont = 1;
@@ -677,7 +684,7 @@ void Basic802154::finishSpecific() {
                 cont++;
 
             }
-            declareOutput("Overhead de retransmissoes");
+             declareOutput("Overhead de retransmissoes");
             collectOutput("Overhead de retransmissoes", "", retransmissoesRepetidas.size());
 
         }
@@ -889,34 +896,34 @@ void Basic802154::tratarDivisao(Neighborhood *nodo){
     if(nodo->txSucesso == 0){
         nodo->txSucesso= 0.1;
     }
-    if(nodo->numeroDevizinhos == 0){
-        nodo->numeroDevizinhos= 0.1;
-    }
+
 
 }
 // método Ríad
 //método que monta e resolve o probelma de otimização e escreve um arquivo .mod
 void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
-    double result;
-    double energyRemaining;
-    /*struct timeval  tv = { 0 };
-    gettimeofday(&tv, NULL);
-    double mill = (tv.tv_usec) / 1000 ; // Para pegar milisegundos*/
-    string tempo = currentDateTime();
-
-    std::string fileName("prob" + std::to_string(numeroDoProblema) + "-" +tempo + ".mod");
-    trace()<<"prob"<<std::to_string(numeroDoProblema)<<"-"<<tempo <<".mod";
-    //std::string fileName("prob" + std::to_string(numeroDoProblema) + "- TIME" + __TIME__+":"+std::to_string(mill) + ".mod");
-    //std::string fileName("prob" + std::to_string(numeroDoProblema) + ".mod");
-    char *cstr = new char[fileName.length() + 1];
-    strcpy(cstr, fileName.c_str());
-    std::ofstream out(cstr);
-
-    std::map<int, Neighborhood*>::iterator iterNeighborhood;
-
-    out << "min:";
-    bool primeiro = true;
     if (neigmap.size() > 0) {
+        double result;
+        double energyRemaining;
+        int alteradoVizinho = 0;
+        /*struct timeval  tv = { 0 };
+        gettimeofday(&tv, NULL);
+        double mill = (tv.tv_usec) / 1000 ; // Para pegar milisegundos*/
+        string tempo = currentDateTime();
+
+        std::string fileName("prob" + std::to_string(numeroDoProblema) + "-" +tempo + ".mod");
+        //trace()<<"prob"<<std::to_string(numeroDoProblema)<<"-"<<tempo <<".mod";
+        //std::string fileName("prob" + std::to_string(numeroDoProblema) + "- TIME" + __TIME__+":"+std::to_string(mill) + ".mod");
+        //std::string fileName("prob" + std::to_string(numeroDoProblema) + ".mod");
+        char *cstr = new char[fileName.length() + 1];
+        strcpy(cstr, fileName.c_str());
+        std::ofstream out(cstr);
+
+        std::map<int, Neighborhood*>::iterator iterNeighborhood;
+
+        out << "min:";
+        bool primeiro = true;
+    //if (neigmap.size() > 0) {
         for (iterNeighborhood = neigmap.begin();
                 iterNeighborhood != neigmap.end(); iterNeighborhood++) {
             Neighborhood *nodo = iterNeighborhood->second;
@@ -926,34 +933,49 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
             tratarDivisao(nodo);
             if (primeiro) {
                 primeiro = false;
+                if(nodo->numeroDevizinhos == 0){
+                      alteradoVizinho = 1;
+                      nodo->numeroDevizinhos= 1;
+                }
                 trace() << "Energia: " << nodo->energy << " RSSI: "
                         << nodo->somaRssi << " Vizinhos: "
                         << nodo->numeroDevizinhos << "Taxa de Sucesso: "
                         << nodo->txSucesso << " ID: " << nodo->nodeId;
                 result = ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)+ (beta3 / nodo->numeroDevizinhos)+ (beta4 / nodo->txSucesso));
                 trace()<<"Result: "<<result << "*x"<< nodo->nodeId;
+
                 out
                         << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
                                 + (beta3 / nodo->numeroDevizinhos)
                                 + (beta4 / nodo->txSucesso)) << "*x"
                         << nodo->nodeId;
+                if(alteradoVizinho == 1){
+                    nodo->numeroDevizinhos = 0;
+                    alteradoVizinho = 0;
+                }
 
             } else {
-                trace() << "Energia: " << nodo->energy << " RSSI: "
-                        << nodo->somaRssi << " Vizinhos: "
-                        << nodo->numeroDevizinhos << "Taxa de Sucesso: "
-                        << nodo->txSucesso << " ID: " << nodo->nodeId;
+                if(nodo->numeroDevizinhos == 0){
+                  alteradoVizinho = 1;
+                  nodo->numeroDevizinhos= 1;
+                }
                 trace() << "Energia: " << nodo->energy << " RSSI: "
                         << nodo->somaRssi << " Vizinhos: "
                         << nodo->numeroDevizinhos << "Taxa de Sucesso: "
                         << nodo->txSucesso << " ID: " << nodo->nodeId;
                 result = ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)+ (beta3 / nodo->numeroDevizinhos)+ (beta4 / nodo->txSucesso));
                 trace()<<"Result: "<<result << "*x"<< nodo->nodeId;
+
                 out << "+"
                         << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
                                 + (beta3 / nodo->numeroDevizinhos)
                                 + (beta4 / nodo->txSucesso)) << "* x"
                         << nodo->nodeId;
+
+                if(alteradoVizinho == 1){
+                    nodo->numeroDevizinhos = 0;
+                    alteradoVizinho = 0;
+                }
             }
 
         }
@@ -1058,6 +1080,19 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
 
             }
             numeroDoProblema++;
+
+           /* for(int j=0;j< (int) nodosColaboradores.size();j++){
+                cout<<"Colaborador: "<< nodosColaboradores[j] <<"\n";
+                for(int l = 1; l< numhosts;l++){
+                    if(nodosColaboradores[j] == l){
+                        qntidadeVezesCooperou[l] = qntidadeVezesCooperou[l] + selecao + 1;
+                        cout<<"Quantidade que vezes nodo"<<l<< "Colaborou: "<< qntidadeVezesCooperou[l]  <<"\n";
+                       break;
+                     }
+                 }
+            }*/
+
+
         }
     }
 }
@@ -1556,6 +1591,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
             irDormir = 0;
             inicioGTSRetrans = rcvPacket->getSlotInicioRetrans();
 
+
             //SUELEN
             cout << "Beacon Recebido no Nodo:" << SELF_MAC_ADDRESS << "\n";
             int teste = rcvPacket->getVizinhosOuNodosCooperantesArraySize();
@@ -1564,11 +1600,14 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
             if ((int) rcvPacket->getGTSlistArraySize() > 0
                     && rcvPacket->getVizinhosOuNodosCooperantesArraySize()
                             > 0) {
+                trace()<<"primeiraRetrans: "<<((rcvPacket->getGTSlist(inicioGTSRetrans).start - 1)
+                        * baseSlotDuration * (1 << frameOrder)
+                        * symbolLen) + getClock() - phyDelaySleep2Tx - offset;
                 // seta o tempo de inicio das retransmissões
                 primeiraRetrans =
                         ((rcvPacket->getGTSlist(inicioGTSRetrans).start - 1)
                                 * baseSlotDuration * (1 << frameOrder)
-                                * symbolLen) + getClock();
+                                * symbolLen) + getClock() - phyDelaySleep2Tx - offset;
             }
         }
 

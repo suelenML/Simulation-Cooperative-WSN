@@ -236,6 +236,11 @@ class Radio: public CastaliaModule {
  public:
 	double readRSSI();
 	CCA_result isChannelClear();
+
+	//Suelen
+	int qntidadeTx;
+	int qntidadeRx;
+	int qntidadeSleep;
 };
 
 #endif				//_RADIOMODULE_H_

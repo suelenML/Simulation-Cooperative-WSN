@@ -241,6 +241,15 @@ class Radio: public CastaliaModule {
 	int qntidadeTx;
 	int qntidadeRx;
 	int qntidadeSleep;
+	double tempoEntradaTx;
+	double tempoEntradaRx;
+	double tempoEntradaSleep;
+
+	double tempoTx;
+	double tempoRx;
+	double tempoSleep;
+
+
 };
 
 #endif				//_RADIOMODULE_H_

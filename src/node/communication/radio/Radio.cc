@@ -27,6 +27,16 @@ void Radio::initialize()
 	stateTransitionMsg = NULL;
 	latestCSinterruptTime = 0;
 	stateAfterTX = RX;
+	qntidadeTx = 0;
+	qntidadeRx = 0;
+	qntidadeSleep = 0;
+
+	tempoEntradaTx = 0;
+	tempoEntradaRx = 0;
+	tempoEntradaSleep = 0;
+	tempoTx = 0;
+	tempoRx = 0;
+	tempoSleep = 0;
 
 	declareOutput("RX pkt breakdown");
 	declareOutput("TXed pkts");
@@ -546,6 +556,11 @@ void Radio::delayStateTransition(simtime_t delay)
  */
 void Radio::completeStateTransition()
 {
+
+    BasicState_type estadoAnterior;
+    estadoAnterior = state;
+    double tempo = 0;
+
 	state = (BasicState_type) changingToState;
 	trace() << "completing transition to " << state << " (" <<
 			(state == TX ? "TX" : (state == RX ? "RX" : "SLEEP")) << ")";
@@ -557,8 +572,19 @@ void Radio::completeStateTransition()
 			if (!radioBuffer.empty()) {
 				double timeToTxPacket = popAndSendToWirelessChannel();
 				powerDrawn(TxLevel->txPowerConsumed);
+				//Suelen
 				trace()<<"TxLevel->txPowerConsumed: "<< TxLevel->txPowerConsumed;
 				qntidadeTx = qntidadeTx +1;
+				tempoEntradaTx = SIMTIME_DBL(simTime());
+				if(estadoAnterior == RX){
+				    tempo = SIMTIME_DBL(simTime()) - tempoEntradaRx;
+				    tempoRx = tempoRx + tempo;
+				}
+				if(estadoAnterior == SLEEP){
+                    tempo = SIMTIME_DBL(simTime()) - tempoEntradaSleep;
+                    tempoSleep = tempoSleep + tempo;
+                }
+
 				// flush the total received power history
 				totalPowerReceived.clear();
 				scheduleAt(simTime() + timeToTxPacket, new cMessage("continueTX", RADIO_CONTINUE_TX));
@@ -575,8 +601,20 @@ void Radio::completeStateTransition()
 
 		case RX:{
 			powerDrawn(RXmode->power);
+			//Suelen
 			trace()<<"RXmode->power: "<< RXmode->power;
 			qntidadeRx = qntidadeRx +1;
+			tempoEntradaRx = SIMTIME_DBL(simTime());
+			if(estadoAnterior == TX){
+                tempo = SIMTIME_DBL(simTime()) - tempoEntradaTx;
+                tempoTx = tempoTx + tempo;
+            }
+            if(estadoAnterior == SLEEP){
+                tempo = SIMTIME_DBL(simTime()) - tempoEntradaSleep;
+                tempoSleep = tempoSleep + tempo;
+            }
+
+
 			/* Our total received power history was flushed before
 			 * we need to recalculated it, adding all currently received signals
 			 */
@@ -586,8 +624,19 @@ void Radio::completeStateTransition()
 
 		case SLEEP:{
 			powerDrawn(sleepLevel->power);
+			//Suelen
 			trace()<<"sleepLevel->power: "<< sleepLevel->power;
 			qntidadeSleep = qntidadeSleep +1;
+			tempoEntradaSleep = SIMTIME_DBL(simTime());
+			if(estadoAnterior == RX){
+                tempo = SIMTIME_DBL(simTime()) - tempoEntradaRx;
+                tempoRx = tempoRx + tempo;
+            }
+            if(estadoAnterior == TX){
+                tempo = SIMTIME_DBL(simTime()) - tempoEntradaTx;
+                tempoTx = tempoTx + tempo;
+            }
+
 			// flush the total received power history
 			totalPowerReceived.clear();
 			break;
@@ -622,6 +671,15 @@ void Radio::finishSpecific()
 
     declareOutput("Quantidade de Vezes que ficou em Sleep");
     collectOutput("Quantidade de Vezes que ficou em Sleep", "", qntidadeSleep);
+
+    declareOutput("Tempo que ficou em Sleep");
+    collectOutput("Tempo que ficou em Sleep", "", tempoSleep);
+
+    declareOutput("Tempo que ficou em Tx");
+    collectOutput("Tempo que ficou em Tx", "", tempoTx);
+
+    declareOutput("Tempo que ficou em Rx");
+    collectOutput("Tempo que ficou em Rx", "", tempoRx);
 
 	if (stats.transmissions > 0)
 		collectOutput("TXed pkts", "TX pkts", stats.transmissions);

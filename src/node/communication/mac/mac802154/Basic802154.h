@@ -61,6 +61,7 @@ enum Mac802154Timers {
 	FRAME_START = 7,
 	BACK_TO_SETUP = 8,
 	GTS_RETRANS = 9,
+	WAKE_UP_START = 10,
 };
 
 enum macApp{
@@ -194,6 +195,7 @@ class Basic802154: public VirtualMac {
     short inicioGTSRetrans;
     simtime_t primeiraRetrans;
     simtime_t irDormir;
+
 
 
 

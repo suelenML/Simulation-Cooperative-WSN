@@ -363,6 +363,13 @@ void Basic802154::timerFiredCallback(int index) {
         }
         break;
     }
+    case WAKE_UP_START:{
+        if (macState == MAC_STATE_SLEEP) {
+            toRadioLayer(createRadioCommand(SET_STATE, RX));
+        }
+        break;
+
+    }
         //Suelen
     case GTS_START: {
         if (macState == MAC_STATE_SLEEP) {
@@ -379,12 +386,16 @@ void Basic802154::timerFiredCallback(int index) {
         // Aqui fazer o controle de quando ir dormir se for retransmissor
         if (userelay) {
             if (cooperador) {
+                cout<<"Nodos: "<<SELF_MAC_ADDRESS <<"\n";
+                cout<<"Sou cooperante, vou dormi depois da retransmissao\n";
                 //Se for cooperante só dorme depois da retransmissão
                 // inform the decision layer that GTS has started
                 startedGTS_node();
                 break;
             } else {
                 if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
+                    cout<<"Tem Retransmissão \n";
+                    cout<<"Nodos: "<<SELF_MAC_ADDRESS <<" Vai Dormir no Tempo: "<< primeiraRetrans - simTime() - phyDelaySleep2Tx <<"\n";
                     // Se não for cooperante e existir retranmissores, dorme ao iniciar a retransmissao
                     setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
 
@@ -393,6 +404,9 @@ void Basic802154::timerFiredCallback(int index) {
                     break;
                 } else {                     // Se não existir retransmissões
                                              // set a timer to go to sleep after this GTS slot ends
+                    cout<<"NAO Tem Retransmissão \n";
+                    cout<<"Nodos: "<<SELF_MAC_ADDRESS <<" Vai Dormir no Tempo: "<< irDormir - simTime() <<"\n";
+
                     setTimer(SLEEP_START, irDormir - simTime());
                     // inform the decision layer that GTS has started
                     startedGTS_node();
@@ -556,6 +570,9 @@ void Basic802154::timerFiredCallback(int index) {
         //limpa o buffer da aplicacao antes de dormir
         //setTimer(CLEAR_BUFFER_APP, GTSlength);
         // set a timer to go to sleep after this GTS slot ends
+        cout<<"Sou Cooperante \n";
+        cout<<"Nodos: "<<SELF_MAC_ADDRESS <<" Vai Dormir no Tempo: "<< phyDelaySleep2Tx + GTSlength <<"\n";
+
         setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
         break;
     }
@@ -1569,6 +1586,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
         //this node is connected to this PAN (or will try to connect), update frame parameters
         double offset = TX_TIME(rcvPacket->getByteLength());
+        trace()<<"offset: "<< offset;
         currentFrameStart = getClock() - offset;	//frame start is in the past
         lostBeacons = 0;
         frameOrder = rcvPacket->getFrameOrder();
@@ -1630,6 +1648,14 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                             + rcvPacket->getGTSlist(i).length * baseSlotDuration
                                     * (1 << frameOrder) * symbolLen;
                     GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
+
+                    trace()<<"tempo Atual: " << simTime();
+                    trace()<<"getClok(): " << getClock();
+                    trace()<<"GTSstartRetrans: " << GTSstartRetrans;
+                    trace()<<"GTSendRetrans: " << GTSendRetrans;
+                    trace()<<"GTSlengthRetrans: " << GTSlengthRetrans;
+
+
                     trace() << "GTS slot from " << getClock() + GTSstartRetrans
                             << " to " << getClock() + GTSendRetrans
                             << " length " << GTSlengthRetrans;
@@ -1654,6 +1680,12 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                             + rcvPacket->getGTSlist(i).length * baseSlotDuration
                                     * (1 << frameOrder) * symbolLen;
                     GTSlength = GTSend - GTSstart;
+
+                    trace()<<"tempo Atual: " << simTime();
+                    trace()<<"getClok(): " << getClock();
+                    trace()<<"GTSstart: " << GTSstart;
+                    trace()<<"GTSend: " << GTSend;
+                    trace()<<"GTSlength: " << GTSlength;
 
                     limparBufferAplicacao();
                     // Gerar Mensagem da aplicação
@@ -1693,6 +1725,9 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
         }
         setMacState(MAC_STATE_CAP);
         if (associatedPAN == rcvPacket->getPANid()) {
+//            if((int) rcvPacket->getGTSlistArraySize() 0){
+//                setTimer(SLEEP_START, CAPend - offset);
+//            }
             if (GTSstart != CAPend) {
                 //SUELEN
                 //COMENTEI PQ NESTE COMANDO SÓ ACORDA EM SEU MOMENTO D TRANSMISSAO
@@ -1715,6 +1750,14 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
         setTimer(FRAME_START,
                 baseSuperframeDuration * (1 << beaconOrder) * symbolLen
                         - guardTime - offset);
+        if (associatedPAN == rcvPacket->getPANid() && GTSstart > 0) {
+            if((int) rcvPacket->getGTSlistArraySize()>0){
+
+                setTimer(SLEEP_START, 0);
+                setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+            }
+        }
+
         break;
     }
 

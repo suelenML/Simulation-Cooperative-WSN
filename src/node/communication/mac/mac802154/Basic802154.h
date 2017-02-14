@@ -302,6 +302,7 @@ class Basic802154: public VirtualMac {
 	    void contabilizarMsgRetransmissores(); //Suelen
 	    void tratarDivisao(Neighborhood *nodo);//Suelen
 	    void selecaoOportunista(Basic802154Packet *beaconPacket);//Suelen
+	    void selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket);//Suelen
 	    void ordenaPossiveisCoop();//Suelen
 
 	    int retransmissoesEfetivas=0; // que o coordenador escutou apenas por retransmissão
@@ -317,10 +318,11 @@ class Basic802154: public VirtualMac {
 
 	    /*----------------SUELEN------------------*/
 	    double limiteRSSI;
-	    bool userelay = false;
-	    bool smart = false;
-	    bool aleatoria = false;
-	    bool oportunista = false;
+	    bool userelay;
+	    bool smart;
+	    bool aleatoria;
+	    bool oportunista;
+	    bool completamenteAleatoria;
 	    int utilidadeCoop;
 	    int primeiraSelecao;
 	    int msgEnviadas;

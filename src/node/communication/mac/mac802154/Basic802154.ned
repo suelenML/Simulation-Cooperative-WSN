@@ -61,6 +61,7 @@ simple Basic802154 like node.communication.mac.iMac {
 	bool smart = default(false);
 	bool aleatoria = default(false);
 	bool oportunista = default(false);
+	bool completamenteAleatoria = default(false);
 	int selecao = default(10);
 	
 	// Para determinar o numero de cooperantes

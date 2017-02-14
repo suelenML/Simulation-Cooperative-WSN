@@ -33,6 +33,7 @@ void Basic802154::startup() {
     smart = par("smart");
     aleatoria = par("aleatoria");
     oportunista = par("oportunista");
+    completamenteAleatoria = par("completamenteAleatoria");
     numCoopMax = 40; // definido 40 como numero maximo de cooperantes na rede
 
     //Suelen
@@ -302,12 +303,14 @@ void Basic802154::timerFiredCallback(int index) {
                     if(smart){
                        selecionaNodosSmart(beaconPacket); // Função Correta
                     }
-                    //selecionaNodosSmartNumVizinhos(beaconPacket);
                     if(aleatoria){
-                       selecaoCoopAleatoria(beaconPacket);// Seleção Aleatória
+                       selecaoCoopAleatoria(beaconPacket);// Seleção Aleatória dentre os que escutam o coordenador
                     }
                     if(oportunista){
                         selecaoOportunista(beaconPacket); // Seleção Odilson
+                    }
+                    if(completamenteAleatoria){
+                        selecaoCompletamenteAleatoria(beaconPacket); // Seleção Aleaoria
                     }
                     enviarNodosCooperantes(beaconPacket);
                     tempoDeBeacon = 0;
@@ -2320,6 +2323,40 @@ void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
         }
     }
 }
+void Basic802154::selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket){
+    int numCoop = 0, j = 0, coop = 0, repetido=0, maxCoop;
+    nodosColaboradores.clear();
+    if(numCoopMax > (numhosts-1)){
+        maxCoop = (numhosts-1);
+    }else{
+        maxCoop = numCoopMax;
+    }
+    // número de cooperantes a serem selecionados
+    numCoop = rand() % (maxCoop) + 1;
+    cout << "NumCoop: " << numCoop << "\n";
+
+    while (j != numCoop) {
+           coop = rand() % (numhosts - 1) + 1;
+           repetido=0;
+           for (int k = 0; k < (int) nodosColaboradores.size(); k++) {
+               if (nodosColaboradores[j] == coop) {
+                   repetido = 1;
+                   break;
+               }
+
+           }
+           if(repetido==0){
+                 nodosColaboradores.push_back(coop);
+                 cout << "Selecionado: " << coop << "\n";
+                 j++;
+           }
+
+     }
+
+}
+
+
+
 //Tecnica utilizada na metodologia do Odilson
 void Basic802154::selecaoOportunista(Basic802154Packet *beaconPacket){
     double snrMedio = 0.0;

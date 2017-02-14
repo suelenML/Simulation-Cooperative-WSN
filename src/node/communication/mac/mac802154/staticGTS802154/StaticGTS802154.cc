@@ -123,11 +123,11 @@ void StaticGTS802154::prepareBeacon_hub(Basic802154Packet *beaconPacket) {
        GTSlist.push_back(*iter);
     }
     // verifica se o nodo continua associado e possuí GTS
-    for (int j= 0; j < GTSlist.size(); j++) {
-        if(GTSlist[j].retransmissor){
-           //GTSlist.erase(GTSlist.begin()+j);
-        }
-    }
+//    for (int j= 0; j < GTSlist.size(); j++) {
+//        if(GTSlist[j].retransmissor){
+//           //GTSlist.erase(GTSlist.begin()+j);
+//        }
+//    }
 
 
 
@@ -140,11 +140,11 @@ void StaticGTS802154::prepareBeacon_hub(Basic802154Packet *beaconPacket) {
             for (int j = 0; j < (int) beaconPacket->getVizinhosOuNodosCooperantesArraySize(); j++){
                gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
             }
-            trace()<<"GTS Antes Ordenar";
-            for (int k = 0; k < (int)GTSlist.size(); k++) {
-                trace()<< "GTS["<<k<<"]: "<<GTSlist[k].owner<<"\n";
-                trace()<< "GTS["<<k<<"].start: "<<GTSlist[k].start<<"\n";
-            }
+//            trace()<<"GTS Antes Ordenar";
+//            for (int k = 0; k < (int)GTSlist.size(); k++) {
+//                trace()<< "GTS["<<k<<"]: "<<GTSlist[k].owner<<"\n";
+//                trace()<< "GTS["<<k<<"].start: "<<GTSlist[k].start<<"\n";
+//            }
             // Ao inserir os slots para os cooperantes eles acabam ficando antes das transmissoes, por isso ordemo para deixar ele para o fim.
            ordenaListGTS(beaconPacket);
 
@@ -157,7 +157,7 @@ void StaticGTS802154::prepareBeacon_hub(Basic802154Packet *beaconPacket) {
 			CAPlength -= GTSlist[i].length;
 			//cout<<"GTSlist["<<i<<"].length;"<< GTSlist[i].length<<"\n";
 			GTSlist[i].start = CAPlength + 1;
-			trace()<<"GTSlist["<<i<< "].start: "<< GTSlist[i].start;
+			//trace()<<"GTSlist["<<i<< "].start: "<< GTSlist[i].start;
 			//cout<<"GTS["<<GTSlist[i].owner<<"] inicia no slot: "<< CAPlength + 1  << "\n";
 			cout <<"GTS[ "<< i<< "]:"<<GTSlist[i].owner << "\n";
 

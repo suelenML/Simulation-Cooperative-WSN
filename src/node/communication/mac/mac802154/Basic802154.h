@@ -334,6 +334,7 @@ class Basic802154: public VirtualMac {
 	    //std::vector<RETRANSMISSORES_REPETIDOS> retransmissoresDuplicados;
 	    std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeSucesso; // armazena as mensagens de cooperação que o coordenador não havia escutado diretamente
 	    int qntidadeVezesCooperou;
+	    int numCoopMax;
 
 
 	    /*Variáveis taxa de sucesso*/

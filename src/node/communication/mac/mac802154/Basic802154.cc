@@ -2339,7 +2339,7 @@ void Basic802154::selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket)
            coop = rand() % (numhosts - 1) + 1;
            repetido=0;
            for (int k = 0; k < (int) nodosColaboradores.size(); k++) {
-               if (nodosColaboradores[j] == coop) {
+               if (nodosColaboradores[k] == coop) {
                    repetido = 1;
                    break;
                }

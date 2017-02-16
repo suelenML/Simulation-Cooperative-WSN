@@ -56,13 +56,12 @@ void Basic802154::startup() {
 
 
     //Vetores
-    nodosAssociados.clear();
     nodosEscutados.clear();
     cooperacoesDoBeacon.clear();
     historicoDeCooperacao.clear();
     listaDeNodosSoltos.clear();
     neigmap.clear();
-    possiveisCooperantes.clear();
+
 
 
     //Suelen
@@ -165,6 +164,10 @@ void Basic802154::startup() {
             retransmissoesRepetidas.clear();
             //Limpa a lista de mensagens retransmitidas
             historicoDeSucesso.clear();
+            //Limpa a lsat de associados
+            nodosAssociados.clear();
+            //limpa a lista de possiveis coop
+            possiveisCooperantes.clear();
 
             // Inicializa o vetor de mensagens recuperadas por retransmissao de cada nodo
             // e também o de pacotes recebidos por transmissao
@@ -2374,10 +2377,10 @@ void Basic802154::selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket)
     std::vector<int>::iterator iter;
     nodosColaboradores.clear();
 
-
-    nodosRede = nodosAssociados.size();
-    cout << "Nodos Associados: " << nodosRede << "\n";
-    trace()<<"Nodos Associados: " << nodosRede;
+    nodosRede = numhosts-1;
+    //nodosRede = nodosAssociados.size();
+    trace() << "Nodos Rede: " << nodosRede;
+    trace()<<"Nodos Associados: " << nodosAssociados.size();
 
     if(numCoopMax > (nodosRede)){
         maxCoop = nodosRede;
@@ -2393,16 +2396,15 @@ void Basic802154::selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket)
     while (j != numCoop) {
            coop = rand() % nodosRede + 1;
            repetido=0;
-           i=0;
-           associado = 1;
-           for (iter = nodosAssociados.begin();iter != nodosAssociados.end(); iter++) {
+
+            associado = 1;
+            for (int i = 0;i <nodosAssociados.size() ; i++) {
                if(nodosAssociados[i] == coop){
                    associado = 0;
                    break;
                }
-               i++;
            }
-           if(associado == 0){
+         if(associado == 0){
                for (int k = 0; k < (int) nodosColaboradores.size(); k++) {
                    if (nodosColaboradores[k] == coop) {
                        repetido = 1;

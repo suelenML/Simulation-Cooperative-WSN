@@ -1328,10 +1328,8 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket, double rs
                                 << nodosEscutados[c].idNodo << "\n";
                         cout << "nodosEscutados[" << c << "].idMens: "
                                 << nodosEscutados[c].idMens << "\n";
-                        trace() << "nodosEscutados[" << c << "].idNodo: "
-                                                << nodosEscutados[c].idNodo ;
-                        trace() << "nodosEscutados[" << c << "].idMens: "
-                                << nodosEscutados[c].idMens;
+                        //trace() << "nodosEscutados[" << c << "].idNodo: " << nodosEscutados[c].idNodo ;
+                        //trace() << "nodosEscutados[" << c << "].idMens: " << nodosEscutados[c].idMens;
                     }
                     for (i = 0; i < (int) rcvPacket->getDadosVizinhoArraySize(); i++) {
                         trace() << "getDadosVizinho[" << i << "].idNodo: "<< rcvPacket->getDadosVizinho(i).idNodo ;
@@ -1439,17 +1437,17 @@ void Basic802154::contabilizarMsgRetransmissores() {
     for (iter = historicoDeSucesso.begin();iter != historicoDeSucesso.end(); iter++) {
         vector<MENSAGENS_ESCUTADAS> *nodo = iter->second;
         cout << "Cooperante: " << iter->first << "\n";
-        trace() << "Cooperante: " << iter->first;
+        //trace() << "Cooperante: " << iter->first;
         for (i = (iter->second)->begin(); i != (iter->second)->end(); i++) {
             cout << "Nodo: " << i->idNodo << "\n";
             cout << "Mens: " << i->idMens << "\n";
-            trace() << "Hist-Nodo: " << i->idNodo;
-            trace() << "Mens: " << i->idMens;
+            //trace() << "Hist-Nodo: " << i->idNodo;
+            //trace() << "Mens: " << i->idMens;
 
                 for(int j = 0; j < numhosts;j++){
                     if(i->idNodo == j){
                         msgRecuperadas[j] = msgRecuperadas[j] + 1;
-                        trace()<<"recuperadas: "<<msgRecuperadas[j];
+                        //trace()<<"recuperadas: "<<msgRecuperadas[j];
                         break;
                     }
 
@@ -2116,9 +2114,9 @@ void Basic802154::retransmitir(Basic802154Packet *nextPacket) {
 
             nextPacket->setDadosVizinho(i, nodosEscutados[i]);
 
-            cout << "Escutado id: " << nodosEscutados[i].idNodo << "\n";
+            cout << "Escutado vou retransmitir id: " << nodosEscutados[i].idNodo << "\n";
             cout << "Escutado mens: " << nodosEscutados[i].idMens << "\n";
-            trace()<<"Escutado id: " << nodosEscutados[i].idNodo;
+            trace()<<"Escutado vou retransmitir id: " << nodosEscutados[i].idNodo;
             trace()<<"Escutado mens: " << nodosEscutados[i].idMens;
             //i++;
         }
@@ -2373,13 +2371,13 @@ void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
 }
 void Basic802154::selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket){
     trace()<<"Entrei para selecionar coop";
-    int numCoop = 0, j = 0, coop = 0, repetido=0, maxCoop = 0, nodosRede = 0, associado = 1, i = 0;
+    int numCoop = 0, j = 0, coop = 0, repetido=0, maxCoop = 0, nodosRede = 0, associado = 1;
     std::vector<int>::iterator iter;
     nodosColaboradores.clear();
 
-    nodosRede = numhosts-1;
-    //nodosRede = nodosAssociados.size();
-    trace() << "Nodos Rede: " << nodosRede;
+    //nodosRede = numhosts-1;
+    nodosRede = nodosAssociados.size();
+    trace() << "Nodos Rede: " << numhosts-1;
     trace()<<"Nodos Associados: " << nodosAssociados.size();
 
     if(numCoopMax > (nodosRede)){
@@ -2391,6 +2389,9 @@ void Basic802154::selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket)
     numCoop = rand() % (maxCoop) + 1;
     cout << "NumCoop: " << numCoop << "\n";
     trace()<<"NumCoop: " << numCoop;
+    for(int i = 0;i <nodosAssociados.size() ; i++){
+        trace()<<"Associado: "<<nodosAssociados[i];
+    }
 
 
     while (j != numCoop) {
@@ -2398,12 +2399,16 @@ void Basic802154::selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket)
            repetido=0;
 
             associado = 1;
-            for (int i = 0;i <nodosAssociados.size() ; i++) {
+            for (int i = 0;i < (int) nodosAssociados.size() ; i++) {
                if(nodosAssociados[i] == coop){
                    associado = 0;
                    break;
                }
            }
+            if(associado!=0){
+                trace()<<"nao associado: "<<coop;
+
+            }
          if(associado == 0){
                for (int k = 0; k < (int) nodosColaboradores.size(); k++) {
                    if (nodosColaboradores[k] == coop) {

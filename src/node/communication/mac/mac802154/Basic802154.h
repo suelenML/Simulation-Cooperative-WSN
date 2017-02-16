@@ -292,7 +292,7 @@ class Basic802154: public VirtualMac {
 	    void AtualizarVizinhaca(Basic802154Packet * pkt, double rssi);
 	    void adicionarNodoSolto(int pai, int filho);
 	    void retransmitir(Basic802154Packet *nextPacket);
-	    void verificarRetransmissao(Basic802154Packet *rcvPacket);
+	    void verificarRetransmissao(Basic802154Packet *rcvPacket, double rssi);
 	    void enviarNodosCooperantes(Basic802154Packet *beaconPacket);
 	    void verificaRetransmissoesRepetidas();//Suelen
 	    void armazenaRetransmissoes(Basic802154Packet *rcvPacket);//Suelen
@@ -315,6 +315,7 @@ class Basic802154: public VirtualMac {
 	    std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeCooperacao; // pelo que entendi salva o id do nodo e um vetor com os nodos que ele escutou
 	    std::map<int, vector<int>*> listaDeNodosSoltos;//são nodos que não conseguiram trocar ms com o coordenador
 	    std::map<int, Neighborhood*> neigmap; // são os nodos que cada nodo possiu como vizinho
+	    vector<int> pacotesEscutadosT;
 
 	    /*----------------SUELEN------------------*/
 	    double limiteRSSI;
@@ -331,7 +332,6 @@ class Basic802154: public VirtualMac {
 	    int beaconsRecebidos;
 	    int mensagensRecuperadas;
 	    int mensagensPerdidas;
-	    std::map<int, int> listasgEnviadas;
 	    std::vector<MENSAGENS_ESCUTADAS_REPETIDAS> retransmissoesRepetidas;
 	    //std::vector<RETRANSMISSORES_REPETIDOS> retransmissoresDuplicados;
 	    std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeSucesso; // armazena as mensagens de cooperação que o coordenador não havia escutado diretamente

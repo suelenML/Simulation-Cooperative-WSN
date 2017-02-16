@@ -1313,6 +1313,7 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket, double rs
             if(rssi > limiteRSSI){
                 cout << "Numer de escutados: " << rcvPacket->getDadosVizinhoArraySize()
                         << "\n";
+                trace()<< "Numer de escutados: " << rcvPacket->getDadosVizinhoArraySize();
                 /** Salvando todas as cooperações para excluir cooperantes que estão repetindo as mensagens**/
                 armazenaRetransmissoes(rcvPacket);
 
@@ -1328,6 +1329,10 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket, double rs
                                                 << nodosEscutados[c].idNodo ;
                         trace() << "nodosEscutados[" << c << "].idMens: "
                                 << nodosEscutados[c].idMens;
+                    }
+                    for (i = 0; i < (int) rcvPacket->getDadosVizinhoArraySize(); i++) {
+                        trace() << "getDadosVizinho[" << i << "].idNodo: "<< rcvPacket->getDadosVizinho(i).idNodo ;
+                        trace() << "getDadosVizinho([" << i << "].idMens: "<< rcvPacket->getDadosVizinho(i).idMens;
                     }
                     map<int, vector<MENSAGENS_ESCUTADAS>*>::iterator iter;
                     iter = historicoDeSucesso.find(rcvPacket->getSrcID());
@@ -1889,9 +1894,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
             if (userelay) {
                 if (isPANCoordinator) {
 
-                    if (rcvPacket->getRetransmissao() == true) {
-                        //msgRtrans++;
-                    } else {
+                    if (rcvPacket->getRetransmissao() == false) {
                         msgRecebidas++;
                         numdadosrecebidosnogtstransmissao++;
 
@@ -2112,6 +2115,8 @@ void Basic802154::retransmitir(Basic802154Packet *nextPacket) {
 
             cout << "Escutado id: " << nodosEscutados[i].idNodo << "\n";
             cout << "Escutado mens: " << nodosEscutados[i].idMens << "\n";
+            trace()<<"Escutado id: " << nodosEscutados[i].idNodo;
+            trace()<<"Escutado mens: " << nodosEscutados[i].idMens;
             //i++;
         }
     }
@@ -2364,13 +2369,15 @@ void Basic802154::selecaoCoopAleatoria(Basic802154Packet *beaconPacket) {
     }
 }
 void Basic802154::selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket){
-    int numCoop = 0, j = 0, coop = 0, repetido=0, maxCoop, nodosRede = 0, associado = 1, i = 0;
+    trace()<<"Entrei para selecionar coop";
+    int numCoop = 0, j = 0, coop = 0, repetido=0, maxCoop = 0, nodosRede = 0, associado = 1, i = 0;
     std::vector<int>::iterator iter;
     nodosColaboradores.clear();
 
 
     nodosRede = nodosAssociados.size();
     cout << "Nodos Associados: " << nodosRede << "\n";
+    trace()<<"Nodos Associados: " << nodosRede;
 
     if(numCoopMax > (nodosRede)){
         maxCoop = nodosRede;
@@ -2380,6 +2387,8 @@ void Basic802154::selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket)
     // número de cooperantes a serem selecionados
     numCoop = rand() % (maxCoop) + 1;
     cout << "NumCoop: " << numCoop << "\n";
+    trace()<<"NumCoop: " << numCoop;
+
 
     while (j != numCoop) {
            coop = rand() % nodosRede + 1;
@@ -2404,6 +2413,7 @@ void Basic802154::selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket)
                if(repetido == 0){
                      nodosColaboradores.push_back(coop);
                      cout << "Selecionado: " << coop << "\n";
+                     trace()<<"Selecionado: " << coop;
                      j++;
                }
            }

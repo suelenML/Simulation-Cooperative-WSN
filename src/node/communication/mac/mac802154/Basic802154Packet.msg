@@ -59,6 +59,6 @@ packet Basic802154Packet extends MacPacket {
 	short slotInicioRetrans;// posição do GTS em que inicia a retransmisso
 	bool retransmissao = false; 
 	//short numMsgEnviadas;
-	//short tempoBeacon;
+	short tempoBeacon;
 }
 

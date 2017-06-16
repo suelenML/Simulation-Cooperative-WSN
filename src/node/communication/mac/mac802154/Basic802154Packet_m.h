@@ -97,6 +97,9 @@ void doUnpacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
  *     bool retransmissao = false;
  *     //short numMsgEnviadas;
  *     short tempoBeacon;
+ *     short primeiraSelecao;
+ *     short idBeacon;
+ * 
  * }
  * </pre>
  */
@@ -124,6 +127,8 @@ class Basic802154Packet : public ::MacPacket
     short slotInicioRetrans_var;
     bool retransmissao_var;
     short tempoBeacon_var;
+    short primeiraSelecao_var;
+    short idBeacon_var;
 
   private:
     void copy(const Basic802154Packet& other);
@@ -186,6 +191,10 @@ class Basic802154Packet : public ::MacPacket
     virtual void setRetransmissao(bool retransmissao);
     virtual short getTempoBeacon() const;
     virtual void setTempoBeacon(short tempoBeacon);
+    virtual short getPrimeiraSelecao() const;
+    virtual void setPrimeiraSelecao(short primeiraSelecao);
+    virtual short getIdBeacon() const;
+    virtual void setIdBeacon(short idBeacon);
 };
 
 inline void doPacking(cCommBuffer *b, Basic802154Packet& obj) {obj.parsimPack(b);}

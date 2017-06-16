@@ -60,5 +60,8 @@ packet Basic802154Packet extends MacPacket {
 	bool retransmissao = false; 
 	//short numMsgEnviadas;
 	short tempoBeacon;
+	short primeiraSelecao;
+	short idBeacon;
+	
 }
 

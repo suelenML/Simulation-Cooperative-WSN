@@ -29,7 +29,7 @@ void Basic802154::startup() {
     //Informa se deve usar retransmissão ou não
     userelay = par("userelay");
     selecao = par("selecao");
-    //Informa qual das sele\oes usara
+    //Informa qual das seleçoes usará
     smart = par("smart");
     aleatoria = par("aleatoria");
     oportunista = par("oportunista");
@@ -53,6 +53,8 @@ void Basic802154::startup() {
     limiteRSSI = -87;
     mensagensRecuperadas = 0;
     qntidadeVezesCooperou = 0;
+    idBeacon = 0;
+    atualizarVizinhanca = 5; //periodicidade para realizar a escuta dos vizinhos;
 
 
     //Vetores
@@ -78,7 +80,7 @@ void Basic802154::startup() {
     limiarbetha = par("limiabetha");
     EstLoss = 0.0;
     DevLoss = 0.0;
-    numeronodoscooperantes = 0; // no do Odilson iniciava em 20 ver o pq??
+    numeronodoscooperantes = 0;
 
     //Vetor de taxa de Sucesso
     for (int i = 0; i < numhosts; i++) {
@@ -331,6 +333,8 @@ void Basic802154::timerFiredCallback(int index) {
                     }
                     enviarNodosCooperantes(beaconPacket);
                     tempoDeBeacon = 0;
+                    idBeacon ++;
+                    beaconPacket->setIdBeacon(idBeacon);
                     primeiraSelecao = 1;
                     if (selecao == 3)
                         selecao = 5;
@@ -339,8 +343,10 @@ void Basic802154::timerFiredCallback(int index) {
                         //Para manter os colaboradores até a próxima seleção
                         enviarNodosCooperantes(beaconPacket);
                     }
-
+                    idBeacon ++;
+                    beaconPacket->setIdBeacon(idBeacon);
                     beaconPacket->setTempoBeacon(tempoDeBeacon);
+                    beaconPacket->setPrimeiraSelecao(primeiraSelecao);
                     tempoDeBeacon++;
                     // ver para manter os cooperantes aqui
                 }
@@ -412,30 +418,69 @@ void Basic802154::timerFiredCallback(int index) {
                 // inform the decision layer that GTS has started
                 startedGTS_node();
                 break;
-            } else {
-                if(/*tempoDeBeacon >= selecao -2 &&*/ smart){ // -2 pq ele preenche a lista de vizinhos ao receber o beacon, assim no 2º beacon fica escutando no 3 envia qm escutou e no 4 o coor seleciona os coop
-                    if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
-                        // Se não for cooperante e existir retranmissores, dorme ao iniciar a retransmissao
-                        setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
+            } else{
+                if(smart){
+                    trace()<<"idBeacon GTS_START: "<<idBeacon;
+                    if(idBeacon < 5){ //período de configuração da rede, escuta os vizinhos nos primeiros 5 beacons
+                        if (primeiraRetrans > 0) {
+                            setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
+                           // inform the decision layer that GTS has started
+                           startedGTS_node();
+                           break;
+                        }else{
+                            setTimer(SLEEP_START, irDormir - simTime());
+                           // inform the decision layer that GTS has started
+                           startedGTS_node();
+                           break;
+                        }
+                    }else{//Nao é periodo de configuraçao da rede
+                           // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
+                           if(idBeacon == atualizarVizinhanca){ // verifica se ja está no periodo de escutar os vizinhos
+                               atualizarVizinhanca = idBeacon + 5;
+                                   if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
+                                       // Se não for cooperante e existir retranmissores, dorme ao iniciar a retransmissao
+                                       setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
 
+                                       // inform the decision layer that GTS has started
+                                       startedGTS_node();
+                                       break;
+                                   } else {     // Se não existir retransmissões
+                                                // set a timer to go to sleep after this GTS slot ends
+                                       setTimer(SLEEP_START, irDormir - simTime());
+                                       // inform the decision layer that GTS has started
+                                       startedGTS_node();
+                                       break;
+                                   }
+                              }else{// dorme apos transmitir (não fica escutando os vizinhos)
+                                  setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
+                                  // inform the decision layer that GTS has started
+                                  startedGTS_node();
+                                  break;
+                               }
+                               //Esse bloco comentado foi antes de mudar para os nodos do smart dormirem as vezes
+                              //if(/*tempoDeBeacon >= selecao -2 &&*/ smart){ // -2 pq ele preenche a lista de vizinhos ao receber o beacon, assim no 2º beacon fica escutando no 3 envia qm escutou e no 4 o coor seleciona os coop
+                                //if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
+                                    // Se não for cooperante e existir retranmissores, dorme ao iniciar a retransmissao
+                                   // setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
+
+                                    // inform the decision layer that GTS has started
+                                    //startedGTS_node();
+                                    //break;
+                                //} else {                     // Se não existir retransmissões
+                                                             // set a timer to go to sleep after this GTS slot ends
+                                    //setTimer(SLEEP_START, irDormir - simTime());
+                                    // inform the decision layer that GTS has started
+                                    //startedGTS_node();
+                                    //break;
+                                //}
+                              }
+                    }else{
+                        // set a timer to go to sleep after this GTS slot ends
+                        setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
                         // inform the decision layer that GTS has started
                         startedGTS_node();
                         break;
-                    } else {                     // Se não existir retransmissões
-                                                 // set a timer to go to sleep after this GTS slot ends
-                        setTimer(SLEEP_START, irDormir - simTime());
-                        // inform the decision layer that GTS has started
-                        startedGTS_node();
-                        break;
-                    }
-
-                }else{
-                    // set a timer to go to sleep after this GTS slot ends
-                    setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
-                    // inform the decision layer that GTS has started
-                    startedGTS_node();
-                    break;
-                    }
+                        }
                 }
                 /*// Era isso antes
                 if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
@@ -1053,10 +1098,18 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
 
                     if (neigmap.find(nodo->vizinhos[i]) == neigmap.end()) {
                         adicionarNodoSolto(nodo->nodeId, nodo->vizinhos[i]);
+                        //TESTE
+                        /*if (primeiro) {
+                            out << "ConectCoordX" << nodo->nodeId << ":x" << nodo->nodeId
+                                    << "+ x" << nodo->vizinhos[i];
+                            primeiro = false;
+                        } else {
+                            out << "+x" << nodo->vizinhos[i];
+                        }*/
                     } else {
                         nodosConectados++;
                         if (primeiro) {
-                            out << "C" << nodo->nodeId << ":x" << nodo->nodeId
+                            out << "ConectCoordX" << nodo->nodeId << ":x" << nodo->nodeId
                                     << "+ x" << nodo->vizinhos[i];
                             primeiro = false;
                         } else {
@@ -1077,7 +1130,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
 
             vector<int>::iterator v = iter->second->begin();
 
-            out << "C" << iter->first << ":";
+            out << "NotConetCoordX" << iter->first << ":";
             primeiro = true;
             while (iter->second->end() != v) {
                 if (primeiro) {
@@ -1633,6 +1686,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
         //Modificação Ríad
         if (userelay) {
             tempoDeBeacon = rcvPacket->getTempoBeacon();
+            idBeacon = rcvPacket->getIdBeacon();//Verificará se ja é o id de ficar escutando os vizinhos
             souNodoCooperante(rcvPacket);
         }
         recvBeacons++;
@@ -1818,17 +1872,35 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                         - guardTime - offset);
         if (associatedPAN == rcvPacket->getPANid() && GTSstart > 0) {
             if((int) rcvPacket->getGTSlistArraySize()>0){
-
+                trace()<<"idBeacon FromRadio: "<<idBeacon;
                 setTimer(SLEEP_START, 0);
                 //Verificação para acordar ao iniciar as transmissoes se for a técnica smart e estiver um beacon antes de realizar a selecao
-                if(/*tempoDeBeacon >= selecao -2 &&*/ smart){ // -2 pq ele preenche a lista de vizinhos ao receber o beacon, assim no 2º beacon fica escutando no 3 envia qm escutou e no 4 o coor seleciona os coop
-                    setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
-                }else{// acorda apenas antes de transmitir
-                    setTimer(WAKE_UP_START, GTSstart - phyDelaySleep2Tx - offset);
-                }
+                //if(/*tempoDeBeacon >= selecao -2 &&*/ smart){ // -2 pq ele preenche a lista de vizinhos ao receber o beacon, assim no 2º beacon fica escutando no 3 envia qm escutou e no 4 o coor seleciona os coop
+                    //setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+                //}else{// acorda apenas antes de transmitir
+                    //setTimer(WAKE_UP_START, GTSstart - phyDelaySleep2Tx - offset);
+                //}
 
-                //Essa isso antes
+                //Essa isso antes de alterar para as outras técnicas serem diferentes da smart
                 //setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+
+                //Alteração para que na smart os nodos nao escutem a vizinhança o tempo todo
+                if(!cooperador && smart && idBeacon < 5){ //período de configuração da rede, escuta os vizinhos nos primeiros 5 beacons
+                   setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+                }
+                //Se for cooperante irá escutar todos os vizinhos
+                if(smart && cooperador){// Se o nodo for cooperante acorda no inicio para escutar os vizinhos
+                    setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+                }else{
+                    // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
+                   if(idBeacon == atualizarVizinhanca && smart){ // verifica se ja está no periodo de escutar os vizinhos
+                       //atualizarVizinhanca = idBeacon + 5;
+                       setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+
+                   }else{// acorda apenas antes de transmitir (não fica escutando os vizinhos)
+                       setTimer(WAKE_UP_START, GTSstart - phyDelaySleep2Tx - offset);
+                   }
+                }
             }
         }
 

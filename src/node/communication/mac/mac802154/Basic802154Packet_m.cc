@@ -522,6 +522,8 @@ Basic802154Packet::Basic802154Packet(const char *name, int kind) : ::MacPacket(n
     this->slotInicioRetrans_var = 0;
     this->retransmissao_var = false;
     this->tempoBeacon_var = 0;
+    this->primeiraSelecao_var = 0;
+    this->idBeacon_var = 0;
 }
 
 Basic802154Packet::Basic802154Packet(const Basic802154Packet& other) : ::MacPacket(other)
@@ -582,6 +584,8 @@ void Basic802154Packet::copy(const Basic802154Packet& other)
     this->slotInicioRetrans_var = other.slotInicioRetrans_var;
     this->retransmissao_var = other.retransmissao_var;
     this->tempoBeacon_var = other.tempoBeacon_var;
+    this->primeiraSelecao_var = other.primeiraSelecao_var;
+    this->idBeacon_var = other.idBeacon_var;
 }
 
 void Basic802154Packet::parsimPack(cCommBuffer *b)
@@ -608,6 +612,8 @@ void Basic802154Packet::parsimPack(cCommBuffer *b)
     doPacking(b,this->slotInicioRetrans_var);
     doPacking(b,this->retransmissao_var);
     doPacking(b,this->tempoBeacon_var);
+    doPacking(b,this->primeiraSelecao_var);
+    doPacking(b,this->idBeacon_var);
 }
 
 void Basic802154Packet::parsimUnpack(cCommBuffer *b)
@@ -652,6 +658,8 @@ void Basic802154Packet::parsimUnpack(cCommBuffer *b)
     doUnpacking(b,this->slotInicioRetrans_var);
     doUnpacking(b,this->retransmissao_var);
     doUnpacking(b,this->tempoBeacon_var);
+    doUnpacking(b,this->primeiraSelecao_var);
+    doUnpacking(b,this->idBeacon_var);
 }
 
 int Basic802154Packet::getMac802154PacketType() const
@@ -890,6 +898,26 @@ void Basic802154Packet::setTempoBeacon(short tempoBeacon)
     this->tempoBeacon_var = tempoBeacon;
 }
 
+short Basic802154Packet::getPrimeiraSelecao() const
+{
+    return primeiraSelecao_var;
+}
+
+void Basic802154Packet::setPrimeiraSelecao(short primeiraSelecao)
+{
+    this->primeiraSelecao_var = primeiraSelecao;
+}
+
+short Basic802154Packet::getIdBeacon() const
+{
+    return idBeacon_var;
+}
+
+void Basic802154Packet::setIdBeacon(short idBeacon)
+{
+    this->idBeacon_var = idBeacon;
+}
+
 class Basic802154PacketDescriptor : public cClassDescriptor
 {
   public:
@@ -937,7 +965,7 @@ const char *Basic802154PacketDescriptor::getProperty(const char *propertyname) c
 int Basic802154PacketDescriptor::getFieldCount(void *object) const
 {
     cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 18+basedesc->getFieldCount(object) : 18;
+    return basedesc ? 20+basedesc->getFieldCount(object) : 20;
 }
 
 unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int field) const
@@ -967,8 +995,10 @@ unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int fi
         FD_ISEDITABLE,
         FD_ISEDITABLE,
         FD_ISEDITABLE,
+        FD_ISEDITABLE,
+        FD_ISEDITABLE,
     };
-    return (field>=0 && field<18) ? fieldTypeFlags[field] : 0;
+    return (field>=0 && field<20) ? fieldTypeFlags[field] : 0;
 }
 
 const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) const
@@ -998,8 +1028,10 @@ const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) c
         "slotInicioRetrans",
         "retransmissao",
         "tempoBeacon",
+        "primeiraSelecao",
+        "idBeacon",
     };
-    return (field>=0 && field<18) ? fieldNames[field] : NULL;
+    return (field>=0 && field<20) ? fieldNames[field] : NULL;
 }
 
 int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) const
@@ -1024,6 +1056,8 @@ int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) 
     if (fieldName[0]=='s' && strcmp(fieldName, "slotInicioRetrans")==0) return base+15;
     if (fieldName[0]=='r' && strcmp(fieldName, "retransmissao")==0) return base+16;
     if (fieldName[0]=='t' && strcmp(fieldName, "tempoBeacon")==0) return base+17;
+    if (fieldName[0]=='p' && strcmp(fieldName, "primeiraSelecao")==0) return base+18;
+    if (fieldName[0]=='i' && strcmp(fieldName, "idBeacon")==0) return base+19;
     return basedesc ? basedesc->findField(object, fieldName) : -1;
 }
 
@@ -1054,8 +1088,10 @@ const char *Basic802154PacketDescriptor::getFieldTypeString(void *object, int fi
         "short",
         "bool",
         "short",
+        "short",
+        "short",
     };
-    return (field>=0 && field<18) ? fieldTypeStrings[field] : NULL;
+    return (field>=0 && field<20) ? fieldTypeStrings[field] : NULL;
 }
 
 const char *Basic802154PacketDescriptor::getFieldProperty(void *object, int field, const char *propertyname) const
@@ -1119,6 +1155,8 @@ std::string Basic802154PacketDescriptor::getFieldAsString(void *object, int fiel
         case 15: return long2string(pp->getSlotInicioRetrans());
         case 16: return bool2string(pp->getRetransmissao());
         case 17: return long2string(pp->getTempoBeacon());
+        case 18: return long2string(pp->getPrimeiraSelecao());
+        case 19: return long2string(pp->getIdBeacon());
         default: return "";
     }
 }
@@ -1149,6 +1187,8 @@ bool Basic802154PacketDescriptor::setFieldAsString(void *object, int field, int 
         case 15: pp->setSlotInicioRetrans(string2long(value)); return true;
         case 16: pp->setRetransmissao(string2bool(value)); return true;
         case 17: pp->setTempoBeacon(string2long(value)); return true;
+        case 18: pp->setPrimeiraSelecao(string2long(value)); return true;
+        case 19: pp->setIdBeacon(string2long(value)); return true;
         default: return false;
     }
 }

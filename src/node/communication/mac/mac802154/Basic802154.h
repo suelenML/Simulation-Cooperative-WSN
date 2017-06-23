@@ -318,6 +318,7 @@ class Basic802154: public VirtualMac {
 	    std::map<int, vector<int>*> listaDeNodosSoltos;//são nodos que não conseguiram trocar ms com o coordenador
 	    std::map<int, Neighborhood*> neigmap; // são os nodos que cada nodo possiu como vizinho
 	    vector<int> pacotesEscutadosT;
+	    vector<int> vizinhosAntigos;
 
 	    /*----------------SUELEN------------------*/
 	    double limiteRSSI;

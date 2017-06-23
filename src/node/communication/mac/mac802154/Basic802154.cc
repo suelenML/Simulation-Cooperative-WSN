@@ -81,6 +81,7 @@ void Basic802154::startup() {
     EstLoss = 0.0;
     DevLoss = 0.0;
     numeronodoscooperantes = 0;
+    vizinhosAntigos.clear();
 
     //Vetor de taxa de Sucesso
     for (int i = 0; i < numhosts; i++) {
@@ -329,7 +330,7 @@ void Basic802154::timerFiredCallback(int index) {
                         selecaoOportunista(beaconPacket); // Seleção Odilson
                     }
                     if(completamenteAleatoria){
-                        selecaoCompletamenteAleatoria(beaconPacket); // Seleção Aleaoria
+                        selecaoCompletamenteAleatoria(beaconPacket); // Seleção Aleatoria
                     }
                     enviarNodosCooperantes(beaconPacket);
                     tempoDeBeacon = 0;
@@ -370,6 +371,7 @@ void Basic802154::timerFiredCallback(int index) {
             trace() << "Transmitting [PAN beacon packet] now, BSN = " << macBSN;
             cout << "Transmitting [PAN beacon packet] now, BSN = " << macBSN
                     << "\n";
+            neigmap.clear();//limpa a lista de vizinhos do coord ao enviar o beacon
             //trace()<<"beaconPacket->getByteLength(): "<<beaconPacket->getByteLength();
             cout<<"beaconPacket->getByteLength(): "<<beaconPacket->getByteLength()<<"\n";
             cout<<"calculo TX_TIME"<<(phyLayerOverhead + beaconPacket->getByteLength())*1/(1000*phyDataRate/8.0)<<"\n";
@@ -436,7 +438,9 @@ void Basic802154::timerFiredCallback(int index) {
                     }else{//Nao é periodo de configuraçao da rede
                            // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
                            if(idBeacon == atualizarVizinhanca){ // verifica se ja está no periodo de escutar os vizinhos
-                               atualizarVizinhanca = idBeacon + 5;
+                               atualizarVizinhanca = idBeacon + 1;
+                               trace()<<"idBeacon GTS_START: "<<idBeacon;
+                               trace()<<"atualizarVizinhanca: "<<atualizarVizinhanca;
                                    if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
                                        // Se não for cooperante e existir retranmissores, dorme ao iniciar a retransmissao
                                        setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
@@ -668,8 +672,11 @@ void Basic802154::timerFiredCallback(int index) {
 }
 // método Ríad
 void Basic802154::preencherDados(Basic802154Packet *macPacket) {
-    cout << "Eu sou o: " << SELF_MAC_ADDRESS << "\n";
+    trace() << "Vizinhos Enviados Ao Coord: "<<neigmap.size() ;
+    trace() << "Eu sou o: " << SELF_MAC_ADDRESS;
     if (neigmap.size() > 0) {
+
+        //Aqui seria o local para realizar a comparação entre as duas listas, vizinhança atual (neigmap) e a antiga (vizinhosAntigos)
 
         unsigned i = neigmap.size();
         std::map<int, Neighborhood*>::iterator iter;
@@ -680,13 +687,18 @@ void Basic802154::preencherDados(Basic802154Packet *macPacket) {
         //macPacket->setEnergy(resMgrModule->getSpentEnergy()); //Considera a energia gasta
         //cout<<"Energia Gasta: "<< resMgrModule->getSpentEnergy()<< "  Nodo: "<< SELF_MAC_ADDRESS<<"\n";
         //cout<<"Energia rstante: "<< resMgrModule->getRemainingEnergy()<< "  Nodo: "<< SELF_MAC_ADDRESS<<"\n";
+        //limpar a vizinhança antiga  Aqui
+        vizinhosAntigos.clear();
         i = 0;
         for (iter = neigmap.begin(); iter != neigmap.end(); iter++) {
             Neighborhood *nodo = iter->second;
-
+            trace() << "Vizinho["<<i<<"]: " << nodo->nodeId;
+            vizinhosAntigos.push_back(nodo->nodeId);
             macPacket->setVizinhosOuNodosCooperantes(i, nodo->nodeId);
             i++;
         }
+        //limpar a vizinhança atual Aqui
+        neigmap.clear();
     }
 
 }
@@ -1103,7 +1115,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
                             out << "ConectCoordX" << nodo->nodeId << ":x" << nodo->nodeId
                                     << "+ x" << nodo->vizinhos[i];
                             primeiro = false;
-                        } else {
+                        }else {
                             out << "+x" << nodo->vizinhos[i];
                         }*/
                     } else {
@@ -1884,22 +1896,24 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                 //Essa isso antes de alterar para as outras técnicas serem diferentes da smart
                 //setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
 
-                //Alteração para que na smart os nodos nao escutem a vizinhança o tempo todo
-                if(!cooperador && smart && idBeacon < 5){ //período de configuração da rede, escuta os vizinhos nos primeiros 5 beacons
-                   setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
-                }
+
                 //Se for cooperante irá escutar todos os vizinhos
-                if(smart && cooperador){// Se o nodo for cooperante acorda no inicio para escutar os vizinhos
+                if(cooperador){// Se o nodo for cooperante acorda no inicio para escutar os vizinhos
                     setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
                 }else{
-                    // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
-                   if(idBeacon == atualizarVizinhanca && smart){ // verifica se ja está no periodo de escutar os vizinhos
-                       //atualizarVizinhanca = idBeacon + 5;
+                    //Alteração para que na smart os nodos nao escutem a vizinhança o tempo todo
+                    if(smart && idBeacon < 5){ //período de configuração da rede, escuta os vizinhos nos primeiros 5 beacons
                        setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+                    }else{
+                        // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
+                       if(idBeacon == atualizarVizinhanca && smart){ // verifica se ja está no periodo de escutar os vizinhos
+                           //atualizarVizinhanca = idBeacon + 5;
+                           setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
 
-                   }else{// acorda apenas antes de transmitir (não fica escutando os vizinhos)
-                       setTimer(WAKE_UP_START, GTSstart - phyDelaySleep2Tx - offset);
-                   }
+                       }else{// acorda apenas antes de transmitir (não fica escutando os vizinhos)
+                           setTimer(WAKE_UP_START, GTSstart - phyDelaySleep2Tx - offset);
+                       }
+                    }
                 }
             }
         }

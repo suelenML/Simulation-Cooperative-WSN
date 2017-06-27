@@ -35,6 +35,7 @@ void Basic802154::startup() {
     oportunista = par("oportunista");
     completamenteAleatoria = par("completamenteAleatoria");
     numCoopMax = 40; // definido 40 como numero maximo de cooperantes na rede
+    pausar = getParentModule()->getParentModule()->par("pausar");
 
     //Suelen
     beaconsPerdidos = 0;
@@ -150,6 +151,14 @@ void Basic802154::startup() {
     desyncTimeStart = 0;
     packetBreak.clear();
     declareOutput("pkt TX state breakdown");
+
+    if(pausar){
+        pausarNoTempo = getParentModule()->getParentModule()->par("pausarNoTempo");
+
+        setTimer(PAUSE_NODE, pausarNoTempo);
+    }
+
+
 
     // Coordinator initialisation
     if (isPANCoordinator) {
@@ -397,6 +406,12 @@ void Basic802154::timerFiredCallback(int index) {
         if (macState == MAC_STATE_SLEEP) {
             toRadioLayer(createRadioCommand(SET_STATE, RX));
         }
+        break;
+
+    }
+    case PAUSE_NODE:{
+        trace()<<"Sou o nodo["<<SELF_MAC_ADDRESS <<"] Vou Pausar";
+        resMgrModule->destroyNode();
         break;
 
     }

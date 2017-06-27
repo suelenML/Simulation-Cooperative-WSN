@@ -30,6 +30,8 @@ module Node {
 	double startupRandomization = default (0.05);				//node startup randomisation, in seconds
 	// Node will become active startupOffset + random(startupRandomization) 
 	// seconds after the start of simulation
+	double pausarNoTempo = default(0);
+	bool pausar = default(false);
 
 	string ApplicationName;										//the name of the implemented Application Module
 	string MobilityManagerName = default ("NoMobilityManager");	//the name of the implemented Mobility Module

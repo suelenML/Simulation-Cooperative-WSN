@@ -63,6 +63,7 @@ enum Mac802154Timers {
 	GTS_RETRANS = 9,
 	WAKE_UP_START = 10,
 	PAUSE_NODE = 11,
+	RESTART_NODE = 12,
 };
 
 enum macApp{
@@ -341,8 +342,10 @@ class Basic802154: public VirtualMac {
 	    std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeSucesso; // armazena as mensagens de cooperação que o coordenador não havia escutado diretamente
 	    int qntidadeVezesCooperou;
 	    int numCoopMax;
-	    bool pausar;
-	    double pausarNoTempo;
+	    bool pausar;// para silenciar o nodo
+	    double pausarNoTempo;// para silenciar o nodo
+	    double retornarNoTempo;
+	    bool pausado; // para silenciar nodo
 
 
 	    /*Variáveis taxa de sucesso*/

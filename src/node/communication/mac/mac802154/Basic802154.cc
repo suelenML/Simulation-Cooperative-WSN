@@ -36,6 +36,7 @@ void Basic802154::startup() {
     completamenteAleatoria = par("completamenteAleatoria");
     numCoopMax = 40; // definido 40 como numero maximo de cooperantes na rede
     pausar = getParentModule()->getParentModule()->par("pausar");
+    pausado = false;
 
     //Suelen
     beaconsPerdidos = 0;
@@ -154,8 +155,12 @@ void Basic802154::startup() {
 
     if(pausar){
         pausarNoTempo = getParentModule()->getParentModule()->par("pausarNoTempo");
+        retornarNoTempo = getParentModule()->getParentModule()->par("retornarNoTempo");
 
-        setTimer(PAUSE_NODE, pausarNoTempo);
+        setTimer(PAUSE_NODE, getClock() + pausarNoTempo);
+        cout<<"getClock() + pausarNoTempo: "<<getClock() + pausarNoTempo<<"\n";
+        setTimer(RESTART_NODE, getClock() + retornarNoTempo);
+        cout<<"getClock() + retornarNoTempo: "<<getClock() + retornarNoTempo<<"\n";
     }
 
 
@@ -403,172 +408,202 @@ void Basic802154::timerFiredCallback(int index) {
         break;
     }
     case WAKE_UP_START:{
-        if (macState == MAC_STATE_SLEEP) {
+        if (macState == MAC_STATE_SLEEP && !pausado) {
             toRadioLayer(createRadioCommand(SET_STATE, RX));
         }
         break;
 
     }
     case PAUSE_NODE:{
+        cout<<"Sou o Nodo: "<< SELF_MAC_ADDRESS <<"\n";
         trace()<<"Sou o nodo["<<SELF_MAC_ADDRESS <<"] Vou Pausar";
-        resMgrModule->destroyNode();
+        setMacState(MAC_STATE_SETUP);
+        associatedPAN = -1;
+        desyncTimeStart = getClock();
+        disconnectedFromPAN_node();
+        int t=0;
+        std::vector<int>::iterator iter;
+         for (iter = nodosAssociados.begin();iter != nodosAssociados.end(); iter++) {
+             if(nodosAssociados[t] == SELF_MAC_ADDRESS){
+                 nodosAssociados.erase(iter);
+                 break;
+             }
+             t++;
+         }
+        toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
+        setMacState(MAC_STATE_SLEEP);
+        pausado = true;
+        //resMgrModule->destroyNode();
         break;
 
     }
+    case RESTART_NODE:{
+        cout<<"Sou o Nodo: "<< SELF_MAC_ADDRESS <<"\n";
+        trace()<<"Sou o nodo["<<SELF_MAC_ADDRESS <<"] Estou Reiniciando";
+        toRadioLayer(createRadioCommand(SET_STATE, RX));
+        pausado = false;
+        //resMgrModule->destroyNode();
+        break;
+
+        }
         //Suelen
     case GTS_START: {
-        if (macState == MAC_STATE_SLEEP) {
-            toRadioLayer(createRadioCommand(SET_STATE, RX));
-        }
-        setMacState(MAC_STATE_GTS);
+        if(!pausado){
+            if (macState == MAC_STATE_SLEEP) {
+                toRadioLayer(createRadioCommand(SET_STATE, RX));
+            }
+            setMacState(MAC_STATE_GTS);
 
-        // we delay transmission attempt by the time required by radio to wake up
-        // note that GTS_START timer was scheduled exactly phyDelaySleep2Tx seconds
-        // earlier than the actual start time of GTS slot
-        setTimer(ATTEMPT_TX, phyDelaySleep2Tx);
+            // we delay transmission attempt by the time required by radio to wake up
+            // note that GTS_START timer was scheduled exactly phyDelaySleep2Tx seconds
+            // earlier than the actual start time of GTS slot
+            setTimer(ATTEMPT_TX, phyDelaySleep2Tx);
 
-        //SUELEN
-        // Aqui fazer o controle de quando ir dormir se for retransmissor
-        if (userelay){
-            if (cooperador) {
-                //Se for cooperante só dorme depois da retransmissão
-                // inform the decision layer that GTS has started
-                startedGTS_node();
-                break;
-            } else{
-                if(smart){
-                    trace()<<"idBeacon GTS_START: "<<idBeacon;
-                    if(idBeacon < 5){ //período de configuração da rede, escuta os vizinhos nos primeiros 5 beacons
-                        if (primeiraRetrans > 0) {
-                            setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
-                           // inform the decision layer that GTS has started
-                           startedGTS_node();
-                           break;
-                        }else{
-                            setTimer(SLEEP_START, irDormir - simTime());
-                           // inform the decision layer that GTS has started
-                           startedGTS_node();
-                           break;
-                        }
-                    }else{//Nao é periodo de configuraçao da rede
-                           // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
-                           if(idBeacon == atualizarVizinhanca){ // verifica se ja está no periodo de escutar os vizinhos
-                               atualizarVizinhanca = idBeacon + 1;
-                               trace()<<"idBeacon GTS_START: "<<idBeacon;
-                               trace()<<"atualizarVizinhanca: "<<atualizarVizinhanca;
-                                   if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
-                                       // Se não for cooperante e existir retranmissores, dorme ao iniciar a retransmissao
-                                       setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
+            //SUELEN
+            // Aqui fazer o controle de quando ir dormir se for retransmissor
+            if (userelay){
+                if (cooperador) {
+                    //Se for cooperante só dorme depois da retransmissão
+                    // inform the decision layer that GTS has started
+                    startedGTS_node();
+                    break;
+                } else{
+                    if(smart){
+                        trace()<<"idBeacon GTS_START: "<<idBeacon;
+                        if(idBeacon < 5){ //período de configuração da rede, escuta os vizinhos nos primeiros 5 beacons
+                            if (primeiraRetrans > 0) {
+                                setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
+                               // inform the decision layer that GTS has started
+                               startedGTS_node();
+                               break;
+                            }else{
+                                setTimer(SLEEP_START, irDormir - simTime());
+                               // inform the decision layer that GTS has started
+                               startedGTS_node();
+                               break;
+                            }
+                        }else{//Nao é periodo de configuraçao da rede
+                               // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
+                               if(idBeacon == atualizarVizinhanca){ // verifica se ja está no periodo de escutar os vizinhos
+                                   atualizarVizinhanca = idBeacon + 1;
+                                   trace()<<"idBeacon GTS_START: "<<idBeacon;
+                                   trace()<<"atualizarVizinhanca: "<<atualizarVizinhanca;
+                                       if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
+                                           // Se não for cooperante e existir retranmissores, dorme ao iniciar a retransmissao
+                                           setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
 
-                                       // inform the decision layer that GTS has started
-                                       startedGTS_node();
-                                       break;
-                                   } else {     // Se não existir retransmissões
-                                                // set a timer to go to sleep after this GTS slot ends
-                                       setTimer(SLEEP_START, irDormir - simTime());
-                                       // inform the decision layer that GTS has started
-                                       startedGTS_node();
-                                       break;
+                                           // inform the decision layer that GTS has started
+                                           startedGTS_node();
+                                           break;
+                                       } else {     // Se não existir retransmissões
+                                                    // set a timer to go to sleep after this GTS slot ends
+                                           setTimer(SLEEP_START, irDormir - simTime());
+                                           // inform the decision layer that GTS has started
+                                           startedGTS_node();
+                                           break;
+                                       }
+                                  }else{// dorme apos transmitir (não fica escutando os vizinhos)
+                                      setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
+                                      // inform the decision layer that GTS has started
+                                      startedGTS_node();
+                                      break;
                                    }
-                              }else{// dorme apos transmitir (não fica escutando os vizinhos)
-                                  setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
-                                  // inform the decision layer that GTS has started
-                                  startedGTS_node();
-                                  break;
-                               }
-                               //Esse bloco comentado foi antes de mudar para os nodos do smart dormirem as vezes
-                              //if(/*tempoDeBeacon >= selecao -2 &&*/ smart){ // -2 pq ele preenche a lista de vizinhos ao receber o beacon, assim no 2º beacon fica escutando no 3 envia qm escutou e no 4 o coor seleciona os coop
-                                //if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
-                                    // Se não for cooperante e existir retranmissores, dorme ao iniciar a retransmissao
-                                   // setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
+                                   //Esse bloco comentado foi antes de mudar para os nodos do smart dormirem as vezes
+                                  //if(/*tempoDeBeacon >= selecao -2 &&*/ smart){ // -2 pq ele preenche a lista de vizinhos ao receber o beacon, assim no 2º beacon fica escutando no 3 envia qm escutou e no 4 o coor seleciona os coop
+                                    //if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
+                                        // Se não for cooperante e existir retranmissores, dorme ao iniciar a retransmissao
+                                       // setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
 
-                                    // inform the decision layer that GTS has started
-                                    //startedGTS_node();
-                                    //break;
-                                //} else {                     // Se não existir retransmissões
-                                                             // set a timer to go to sleep after this GTS slot ends
-                                    //setTimer(SLEEP_START, irDormir - simTime());
-                                    // inform the decision layer that GTS has started
-                                    //startedGTS_node();
-                                    //break;
-                                //}
-                              }
-                    }else{
-                        // set a timer to go to sleep after this GTS slot ends
-                        setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
+                                        // inform the decision layer that GTS has started
+                                        //startedGTS_node();
+                                        //break;
+                                    //} else {                     // Se não existir retransmissões
+                                                                 // set a timer to go to sleep after this GTS slot ends
+                                        //setTimer(SLEEP_START, irDormir - simTime());
+                                        // inform the decision layer that GTS has started
+                                        //startedGTS_node();
+                                        //break;
+                                    //}
+                                  }
+                        }else{
+                            // set a timer to go to sleep after this GTS slot ends
+                            setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
+                            // inform the decision layer that GTS has started
+                            startedGTS_node();
+                            break;
+                            }
+                    }
+                    /*// Era isso antes
+                    if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
+                        // Se não for cooperante e existir retranmissores, dorme ao iniciar a retransmissao
+                        setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
+
                         // inform the decision layer that GTS has started
                         startedGTS_node();
                         break;
-                        }
-                }
-                /*// Era isso antes
-                if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
-                    // Se não for cooperante e existir retranmissores, dorme ao iniciar a retransmissao
-                    setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
+                    } else {                     // Se não existir retransmissões
+                                                 // set a timer to go to sleep after this GTS slot ends
+                        setTimer(SLEEP_START, irDormir - simTime());
+                        // inform the decision layer that GTS has started
+                        startedGTS_node();
+                        break;
+                    }
+                }*/
+            }
 
-                    // inform the decision layer that GTS has started
-                    startedGTS_node();
-                    break;
-                } else {                     // Se não existir retransmissões
-                                             // set a timer to go to sleep after this GTS slot ends
-                    setTimer(SLEEP_START, irDormir - simTime());
-                    // inform the decision layer that GTS has started
-                    startedGTS_node();
-                    break;
-                }
-            }*/
+            //limpa o buffer da aplicacao antes de dormir
+            //setTimer(CLEAR_BUFFER_APP, GTSlength);
+            // set a timer to go to sleep after this GTS slot ends
+            setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
+
+            // inform the decision layer that GTS has started
+            startedGTS_node();
         }
-
-        //limpa o buffer da aplicacao antes de dormir
-        //setTimer(CLEAR_BUFFER_APP, GTSlength);
-        // set a timer to go to sleep after this GTS slot ends
-        setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
-
-        // inform the decision layer that GTS has started
-        startedGTS_node();
         break;
     }
 
         // beacon timeout fired - indicates that beacon was missed by this node
     case BEACON_TIMEOUT: {
-        trace()<<"TimeoutBeacon Nodo: "<<SELF_MAC_ADDRESS;
-        lostBeacons++;
-        //Limpa o Buffer da App
-        if (!TXBuffer.empty()) {
-            limparBufferAplicacao();
-        } else {
-            mensagensPerdidas++;
-        }
-        //cMessage *msg = new cMessage("BEACON",BEACON);
-        //handleRadioControlMessage(msg);
+        if(pausado){
+            trace()<<"TimeoutBeacon Nodo: "<<SELF_MAC_ADDRESS;
+            lostBeacons++;
+            //Limpa o Buffer da App
+            if (!TXBuffer.empty()) {
+                limparBufferAplicacao();
+            } else {
+                mensagensPerdidas++;
+            }
+            //cMessage *msg = new cMessage("BEACON",BEACON);
+            //handleRadioControlMessage(msg);
 
-        if (lostBeacons >= maxLostBeacons) {
-            trace() << "Lost synchronisation with PAN " << associatedPAN;
-            setMacState(MAC_STATE_SETUP);
-            associatedPAN = -1;
-            desyncTimeStart = getClock();
-            disconnectedFromPAN_node();
-            std::vector<int>::iterator iter;
-             int i=0;
-             for (iter = nodosAssociados.begin();iter != nodosAssociados.end(); iter++) {
-                 if(nodosAssociados[i] == SELF_MAC_ADDRESS){
-                     nodosAssociados.erase(iter);
-                     break;
+            if (lostBeacons >= maxLostBeacons) {
+                trace() << "Lost synchronisation with PAN " << associatedPAN;
+                setMacState(MAC_STATE_SETUP);
+                associatedPAN = -1;
+                desyncTimeStart = getClock();
+                disconnectedFromPAN_node();
+                std::vector<int>::iterator iter;
+                 int i=0;
+                 for (iter = nodosAssociados.begin();iter != nodosAssociados.end(); iter++) {
+                     if(nodosAssociados[i] == SELF_MAC_ADDRESS){
+                         nodosAssociados.erase(iter);
+                         break;
+                     }
+                     i++;
                  }
-                 i++;
-             }
 
-            if (currentPacket)
-                clearCurrentPacket("No PAN");
-        } else if (associatedPAN != -1) {
-            trace() << "Missed beacon from PAN " << associatedPAN
-                    << ", will wake up to receive next beacon in "
-                    << beaconInterval * symbolLen - guardTime * 15 << " seconds";
-            beaconsPerdidos++;
-            cout << "Beacon Perdido NODO: " << SELF_MAC_ADDRESS << "\n";
-            setMacState(MAC_STATE_SLEEP);
-            toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
-            setTimer(FRAME_START, beaconInterval * symbolLen - guardTime * 15);
+                if (currentPacket)
+                    clearCurrentPacket("No PAN");
+            } else if (associatedPAN != -1) {
+                trace() << "Missed beacon from PAN " << associatedPAN
+                        << ", will wake up to receive next beacon in "
+                        << beaconInterval * symbolLen - guardTime * 15 << " seconds";
+                beaconsPerdidos++;
+                cout << "Beacon Perdido NODO: " << SELF_MAC_ADDRESS << "\n";
+                setMacState(MAC_STATE_SLEEP);
+                toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
+                setTimer(FRAME_START, beaconInterval * symbolLen - guardTime * 15);
+            }
         }
         break;
     }
@@ -637,40 +672,42 @@ void Basic802154::timerFiredCallback(int index) {
     }
         //SUELEN
     case GTS_RETRANS: {
-        if (macState == MAC_STATE_SLEEP) {
-            toRadioLayer(createRadioCommand(SET_STATE, RX));
+        if(!pausado){
+            if (macState == MAC_STATE_SLEEP) {
+                toRadioLayer(createRadioCommand(SET_STATE, RX));
+            }
+            setMacState(MAC_STATE_GTS);
+
+            // we delay transmission attempt by the time required by radio to wake up
+            // note that GTS_START timer was scheduled exactly phyDelaySleep2Tx seconds
+            // earlier than the actual start time of GTS slot
+
+            GTSend = GTSendRetrans;
+            GTSstart = GTSstartRetrans;
+            GTSlength = GTSlengthRetrans;
+
+            Basic802154Packet *packetRetrans = new Basic802154Packet(
+                    "Retransmissao", MAC_LAYER_PACKET);
+            packetRetrans->setPANid(SELF_MAC_ADDRESS);
+            packetRetrans->setMac802154PacketType(MAC_802154_DATA_PACKET);
+            packetRetrans->setSrcID(SELF_MAC_ADDRESS);
+            packetRetrans->setSource(SELF_MAC_ADDRESS);
+            //packetRetrans->setSeqNum(seqNum++);
+            packetRetrans->setDstID(0);
+            packetRetrans->setByteLength(COMMAND_PKT_SIZE);
+            packetRetrans->setRetransmissao(true);
+            retransmitir(packetRetrans);
+
+
+            transmitPacket(packetRetrans);
+            qntidadeVezesCooperou = qntidadeVezesCooperou + 1;
+
+            //limpa o buffer da aplicacao antes de dormir
+            //setTimer(CLEAR_BUFFER_APP, GTSlength);
+            // set a timer to go to sleep after this GTS slot ends
+
+            setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
         }
-        setMacState(MAC_STATE_GTS);
-
-        // we delay transmission attempt by the time required by radio to wake up
-        // note that GTS_START timer was scheduled exactly phyDelaySleep2Tx seconds
-        // earlier than the actual start time of GTS slot
-
-        GTSend = GTSendRetrans;
-        GTSstart = GTSstartRetrans;
-        GTSlength = GTSlengthRetrans;
-
-        Basic802154Packet *packetRetrans = new Basic802154Packet(
-                "Retransmissao", MAC_LAYER_PACKET);
-        packetRetrans->setPANid(SELF_MAC_ADDRESS);
-        packetRetrans->setMac802154PacketType(MAC_802154_DATA_PACKET);
-        packetRetrans->setSrcID(SELF_MAC_ADDRESS);
-        packetRetrans->setSource(SELF_MAC_ADDRESS);
-        //packetRetrans->setSeqNum(seqNum++);
-        packetRetrans->setDstID(0);
-        packetRetrans->setByteLength(COMMAND_PKT_SIZE);
-        packetRetrans->setRetransmissao(true);
-        retransmitir(packetRetrans);
-
-
-        transmitPacket(packetRetrans);
-        qntidadeVezesCooperou = qntidadeVezesCooperou + 1;
-
-        //limpa o buffer da aplicacao antes de dormir
-        //setTimer(CLEAR_BUFFER_APP, GTSlength);
-        // set a timer to go to sleep after this GTS slot ends
-
-        setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
         break;
     }
 
@@ -1183,6 +1220,7 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
         }
 
         out.close();
+        listaDeNodosSoltos.clear();// Limpa a lista de nodos que o coordenador não escuta
 
         lprec *lp;
 
@@ -1205,6 +1243,11 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
             int j = 0;
             primeiro = true;
 
+            cout<<"neigmap.size(): "<< neigmap.size()<<"\n";
+            cout<<"i: "<< i<<"\n";
+            for(int u=0; u < i;u++){
+                cout<<"resultado_lp["<<u<<"]: "<< resultado_lp[u]<<"\n";
+            }
             cout << "---------- inicializando as variáveis \n";
 
             cout << nodosColaboradores.empty();
@@ -1214,8 +1257,10 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
                     iterNeighborhood != neigmap.end(); iterNeighborhood++) {
                 cout << "----------começando o for " << j << "\n";
                 Neighborhood *nodo = iterNeighborhood->second;
+                cout << "----------Nodo " << nodo->nodeId << "\n";
                 if (resultado_lp[j] == 1) {
                     nodosColaboradores.push_back(nodo->nodeId);
+                    cout << "----------Colaborador" << nodo->nodeId << "\n";
                 }
                 j++;
 
@@ -1681,6 +1726,13 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
     if (!rcvPacket) {
         return;
     }
+    if(pausado){
+        //Colocar o nodo para dormir e deletar o pacote
+        //toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
+        cout << "Sou o nodo: " << SELF_MAC_ADDRESS << "\n";
+        //delete pkt;
+        return;
+    }else{
 //cout << rssi<<"\n";
 //Modificação Ríad
     //cout<<"Sou o  NODO " << SELF_MAC_ADDRESS<< "Estou Na escuta\n";
@@ -1706,360 +1758,314 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
     switch (rcvPacket->getMac802154PacketType()) {
 
-    /* received a BEACON frame */
-    case MAC_802154_BEACON_PACKET: {
-        trace()<<"Recebi beacon "<< SELF_MAC_ADDRESS;
-        nodosEscutados.clear();
-        //Modificação Ríad
-        if (userelay) {
-            tempoDeBeacon = rcvPacket->getTempoBeacon();
-            idBeacon = rcvPacket->getIdBeacon();//Verificará se ja é o id de ficar escutando os vizinhos
-            souNodoCooperante(rcvPacket);
-        }
-        recvBeacons++;
-
-        if (isPANCoordinator)
-            break;			//PAN coordinators ignore beacons from other PANs
-        if (associatedPAN != -1 && associatedPAN != rcvPacket->getPANid())
-            break;			//Ignore, if associated to another PAN
-
-        //cancel beacon timeout message (if present)
-        cancelTimer(BEACON_TIMEOUT);
-
-        //LimparBuffer
-        cout << "Sou o nodo: " << SELF_MAC_ADDRESS << "\n";
-
-        //cout<<"tamanho Buffer: "<<TXBuffer.size()<<"\n";
-        limparBufferAplicacao();
-//        // Gerar Mensagem da aplicação
-//        RadioControlMessage *msg1 = new RadioControlMessage("BEACON_CHEGADA",BEACON_CHEGADA1);
-//        msg1->setRadioControlMessageKind(BEACON_CHEGADA1);
-//        handleRadioControlMessage(msg1);
-
-        //this node is connected to this PAN (or will try to connect), update frame parameters
-        double offset = TX_TIME(rcvPacket->getByteLength());
-        //trace()<<"offset: "<< offset;
-        currentFrameStart = getClock() - offset;	//frame start is in the past
-        lostBeacons = 0;
-        frameOrder = rcvPacket->getFrameOrder();
-        beaconOrder = rcvPacket->getBeaconOrder();
-        beaconInterval = baseSuperframeDuration * (1 << beaconOrder);
-        macBSN = rcvPacket->getBSN();
-        CAPlength = rcvPacket->getCAPlength();
-        CAPend = CAPlength * baseSlotDuration * (1 << frameOrder) * symbolLen;
-        GTSstart = 0;
-        GTSend = 0;
-        GTSlength = 0;
-        //SUELEN
-        GTSstartRetrans = 0;
-        GTSendRetrans = 0;
-        GTSlengthRetrans = 0;
-
-        //Suelen
-        if (userelay) {
-            primeiraRetrans = 0;
-            irDormir = 0;
-            inicioGTSRetrans = rcvPacket->getSlotInicioRetrans();
-
-
-            //SUELEN
-            cout << "Beacon Recebido no Nodo:" << SELF_MAC_ADDRESS << "\n";
-            int teste = rcvPacket->getVizinhosOuNodosCooperantesArraySize();
-            cout << "Este Beacon informa que tem " << teste
-                    << " Nodos Cooperantes\n";
-            if ((int) rcvPacket->getGTSlistArraySize() > 0
-                    && rcvPacket->getVizinhosOuNodosCooperantesArraySize()
-                            > 0) {
-                //trace()<<"primeiraRetrans: "<<((rcvPacket->getGTSlist(inicioGTSRetrans).start - 1)* baseSlotDuration * (1 << frameOrder)* symbolLen) + getClock() - phyDelaySleep2Tx - offset;
-                // seta o tempo de inicio das retransmissões
-                primeiraRetrans =
-                        ((rcvPacket->getGTSlist(inicioGTSRetrans).start - 1)
-                                * baseSlotDuration * (1 << frameOrder)
-                                * symbolLen) + getClock() - phyDelaySleep2Tx - offset;
-            }
-        }
-
-        //cout<<"Devia ser Associado A: "<< rcvPacket->getPANid()<<"\n";
-        //cout<<"Associado A: "<< associatedPAN<<"\n";
-        for (int i = 0; i < (int) rcvPacket->getGTSlistArraySize(); i++) {
-            if (rcvPacket->getGTSlist(i).owner == SELF_MAC_ADDRESS
-                    && associatedPAN == rcvPacket->getPANid()) {
-
-                //Suelen obs:antes era só o conteudo do else
-                if (rcvPacket->getGTSlist(i).retransmissor) {
-                    cout << "Tamanho Lista: "
-                            << (int) rcvPacket->getGTSlistArraySize()
-                            << "Lista GTS[" << i << "]: "
-                            << rcvPacket->getGTSlist(i).owner
-                            << " Cooperante\n";
-                    GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
-                            * baseSlotDuration * (1 << frameOrder) * symbolLen;
-                    GTSendRetrans = GTSstartRetrans
-                            + rcvPacket->getGTSlist(i).length * baseSlotDuration
-                                    * (1 << frameOrder) * symbolLen;
-                    GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
-
-                    //trace()<<"tempo Atual: " << simTime();
-                    //trace()<<"getClok(): " << getClock();
-                    //trace()<<"GTSstartRetrans: " << GTSstartRetrans;
-                    //trace()<<"GTSendRetrans: " << GTSendRetrans;
-                    //trace()<<"GTSlengthRetrans: " << GTSlengthRetrans;
-
-
-                    //trace() << "GTS slot from " << getClock() + GTSstartRetrans
-                      //      << " to " << getClock() + GTSendRetrans
-                        //    << " length " << GTSlengthRetrans;
-                    cout << "Nodo " << rcvPacket->getGTSlist(i).owner
-                            << " Usa o GTS slot from "
-                            << getClock() + GTSstartRetrans << " to "
-                            << getClock() + GTSendRetrans << " length "
-                            << GTSlengthRetrans << "\n";
-
-                    // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
-                    setTimer(GTS_RETRANS,
-                            GTSstartRetrans - phyDelaySleep2Tx - offset);
-
-                } else {
-                    cout << "Tamanho Lista: "
-                            << (int) rcvPacket->getGTSlistArraySize()
-                            << "Lista GTS[" << i << "]: "
-                            << rcvPacket->getGTSlist(i).owner << "\n";
-                    GTSstart = (rcvPacket->getGTSlist(i).start - 1)
-                            * baseSlotDuration * (1 << frameOrder) * symbolLen;
-                    GTSend = GTSstart
-                            + rcvPacket->getGTSlist(i).length * baseSlotDuration
-                                    * (1 << frameOrder) * symbolLen;
-                    GTSlength = GTSend - GTSstart;
-
-                    //trace()<<"tempo Atual: " << simTime();
-                    //trace()<<"getClok(): " << getClock();
-                    //trace()<<"GTSstart: " << GTSstart;
-                    //trace()<<"GTSend: " << GTSend;
-                    //trace()<<"GTSlength: " << GTSlength;
-
-                    limparBufferAplicacao();
-                    // Gerar Mensagem da aplicação
-                    RadioControlMessage *msg1 = new RadioControlMessage(
-                            "BEACON_CHEGADA", BEACON_CHEGADA1);
-                    msg1->setRadioControlMessageKind(BEACON_CHEGADA1);
-                    handleRadioControlMessage(msg1);
-
-                    //trace() << "GTS slot from " << getClock() + GTSstart
-                      //      << " to " << getClock() + GTSend << " length "
-                        //    << GTSlength;
-                    cout << "Nodo " << rcvPacket->getGTSlist(i).owner
-                            << " Usa o GTS slot from " << getClock() + GTSstart
-                            << " to " << getClock() + GTSend << " length "
-                            << GTSlength << "\n";
-
-                }
-
-            }
-        }
-        //Suelen
-        if (userelay) {
-            if (associatedPAN == rcvPacket->getPANid()) {
-                if ((int) rcvPacket->getGTSlistArraySize() > 0) {
-                    irDormir = (((rcvPacket->getGTSlist(0).start - 1)
-                            * baseSlotDuration * (1 << frameOrder) * symbolLen)
-                            + (rcvPacket->getGTSlist(0).length
-                                    * baseSlotDuration * (1 << frameOrder)
-                                    * symbolLen) + getClock());
-                }
-            }
-
-        }
-
-        if (associatedPAN != rcvPacket->getPANid()) {
-            setTimer(BACK_TO_SETUP, CAPend - offset);
-        }
-        setMacState(MAC_STATE_CAP);
-        if (associatedPAN == rcvPacket->getPANid()) {
-            if (GTSstart != CAPend) {
-                //SUELEN
-                //COMENTEI PQ NESTE COMANDO SÓ ACORDA EM SEU MOMENTO D TRANSMISSAO
-                // set timer to sleep after CAP, unless GTS slots starts right after
-                //setTimer(SLEEP_START, CAPend - offset);
-            }
-            if (GTSstart > 0) {
-                // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
-                //cout<<"tempo atual: "<< getClock()<<"\n";
-                //cout<<"No Tempo: "<< GTSstart - phyDelaySleep2Tx - offset <<"\n";
-                //setTimer(GTS_START, GTSstart - phyDelaySleep2Tx - offset);
-                setTimer(GTS_START, GTSstart - phyDelaySleep2Tx - offset);
-            }
-        } else {
-            setTimer(BACK_TO_SETUP, CAPend - offset);
-        }
-
-        receiveBeacon_node(rcvPacket);
-        attemptTransmission("CAP started");
-        setTimer(FRAME_START,
-                baseSuperframeDuration * (1 << beaconOrder) * symbolLen
-                        - guardTime - offset);
-        if (associatedPAN == rcvPacket->getPANid() && GTSstart > 0) {
-            if((int) rcvPacket->getGTSlistArraySize()>0){
-                trace()<<"idBeacon FromRadio: "<<idBeacon;
-                setTimer(SLEEP_START, 0);
-                //Verificação para acordar ao iniciar as transmissoes se for a técnica smart e estiver um beacon antes de realizar a selecao
-                //if(/*tempoDeBeacon >= selecao -2 &&*/ smart){ // -2 pq ele preenche a lista de vizinhos ao receber o beacon, assim no 2º beacon fica escutando no 3 envia qm escutou e no 4 o coor seleciona os coop
-                    //setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
-                //}else{// acorda apenas antes de transmitir
-                    //setTimer(WAKE_UP_START, GTSstart - phyDelaySleep2Tx - offset);
-                //}
-
-                //Essa isso antes de alterar para as outras técnicas serem diferentes da smart
-                //setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
-
-
-                //Se for cooperante irá escutar todos os vizinhos
-                if(cooperador){// Se o nodo for cooperante acorda no inicio para escutar os vizinhos
-                    setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
-                }else{
-                    //Alteração para que na smart os nodos nao escutem a vizinhança o tempo todo
-                    if(smart && idBeacon < 5){ //período de configuração da rede, escuta os vizinhos nos primeiros 5 beacons
-                       setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
-                    }else{
-                        // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
-                       if(idBeacon == atualizarVizinhanca && smart){ // verifica se ja está no periodo de escutar os vizinhos
-                           //atualizarVizinhanca = idBeacon + 5;
-                           setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
-
-                       }else{// acorda apenas antes de transmitir (não fica escutando os vizinhos)
-                           setTimer(WAKE_UP_START, GTSstart - phyDelaySleep2Tx - offset);
-                       }
-                    }
-                }
-            }
-        }
-
-        break;
-    }
-
-        // received request to associate
-    case MAC_802154_ASSOCIATE_PACKET: {
-
-        // only PAN coordinators can accept association requests
-        // if multihop communication is to be allowed - then this has to be changed
-        // in particular, any FFD can become a coordinator and accept requests
-        if (!isPANCoordinator)
-            break;
-
-        // if PAN id does not match - do nothing
-        if (rcvPacket->getPANid() != SELF_MAC_ADDRESS)
-            break;
-
-        if (associationRequest_hub(rcvPacket)) {
-            trace() << "Accepting association request from "
-                    << rcvPacket->getSrcID();
-            cout << "Nodo " << rcvPacket->getSrcID() << " Associado \n";
-            // update associatedDevices and reply with an ACK
-            associatedDevices[rcvPacket->getSrcID()] = true;
-            Basic802154Packet *ackPacket = new Basic802154Packet(
-                    "PAN associate response", MAC_LAYER_PACKET);
-            ackPacket->setPANid(SELF_MAC_ADDRESS);
-            ackPacket->setMac802154PacketType(MAC_802154_ACK_PACKET);
-            ackPacket->setDstID(rcvPacket->getSrcID());
-            ackPacket->setByteLength(ACK_PKT_SIZE);
-
-            //Insere na lista de associados
-            nodosAssociados.push_back(rcvPacket->getSrcID());
-
-            //Conta como filho!!!
-            nchildren++;
-
-            toRadioLayer(ackPacket);
-            toRadioLayer(createRadioCommand(SET_STATE, TX));
-            setTimer(ATTEMPT_TX, TX_TIME(ACK_PKT_SIZE));
-        } else {
-            //trace() << "Denied association request from "<< rcvPacket->getSrcID()<< ". Maximum number of children was reached = " << nchildren;
-            // Need to send a packet to deny the reuqest.
-            // But current implementation always accepts them
-        }
-        break;
-    }
-
-        // received GTS request
-    case MAC_802154_GTS_REQUEST_PACKET: {
-
-        // only PAN coordinators can accept GTS requests
-        if (!isPANCoordinator)
-            break;
-
-        // if PAN id does not match - do nothing
-        if (rcvPacket->getPANid() != SELF_MAC_ADDRESS)
-            break;
-
-        trace() << "Received GTS request from " << rcvPacket->getSrcID();
-
-        // reply with an ACK
-        Basic802154Packet *ackPacket = new Basic802154Packet("PAN GTS response",
-                MAC_LAYER_PACKET);
-        ackPacket->setPANid(SELF_MAC_ADDRESS);
-        ackPacket->setMac802154PacketType(MAC_802154_ACK_PACKET);
-        ackPacket->setDstID(rcvPacket->getSrcID());
-        ackPacket->setByteLength(ACK_PKT_SIZE);
-        // gtsRequest_hub function handles the decision on the amount of GTS slots to allocate
-        ackPacket->setGTSlength(gtsRequest_hub(rcvPacket));
-
-        toRadioLayer(ackPacket);
-        toRadioLayer(createRadioCommand(SET_STATE, TX));
-        setTimer(ATTEMPT_TX, TX_TIME(ACK_PKT_SIZE));
-
-        break;
-    }
-
-        // ack frames are handled by a separate function
-    case MAC_802154_ACK_PACKET: {
-        if (rcvPacket->getDstID() != SELF_MAC_ADDRESS)
-            break;
-        handleAckPacket(rcvPacket);
-        break;
-    }
-
-        // data frame
-    case MAC_802154_DATA_PACKET: {
-        cout << "Eu sou o: " << SELF_MAC_ADDRESS << "\n";
-        if (rssi > limiteRSSI) { // Só irá receber a mensagem se o RSSI for bom
-
-            if (isNotDuplicatePacket(rcvPacket)) {
-                dataReceived_hub(rcvPacket);
-                toNetworkLayer(decapsulatePacket(rcvPacket));
-            } else {
-                //trace() << "Packet [" << rcvPacket->getName() << "] from node "<< rcvPacket->getSrcID() << " is a duplicate";
-                //cout<<"Duplicado\n";
-            }
-            // Suelen -- Variavel utilizada para determinar o numero de coop
+        /* received a BEACON frame */
+        case MAC_802154_BEACON_PACKET: {
+            trace()<<"Recebi beacon "<< SELF_MAC_ADDRESS;
+            nodosEscutados.clear();
+            //Modificação Ríad
             if (userelay) {
-                if (isPANCoordinator) {
+                tempoDeBeacon = rcvPacket->getTempoBeacon();
+                idBeacon = rcvPacket->getIdBeacon();//Verificará se ja é o id de ficar escutando os vizinhos
+                souNodoCooperante(rcvPacket);
+            }
+            recvBeacons++;
 
-                    if (rcvPacket->getRetransmissao() == false) {
-                        msgRecebidas++;
-                        numdadosrecebidosnogtstransmissao++;
+            if (isPANCoordinator)
+                break;			//PAN coordinators ignore beacons from other PANs
+            if (associatedPAN != -1 && associatedPAN != rcvPacket->getPANid())
+                break;			//Ignore, if associated to another PAN
 
+            //cancel beacon timeout message (if present)
+            cancelTimer(BEACON_TIMEOUT);
+
+            //LimparBuffer
+            cout << "Sou o nodo: " << SELF_MAC_ADDRESS << "\n";
+
+            //cout<<"tamanho Buffer: "<<TXBuffer.size()<<"\n";
+            limparBufferAplicacao();
+    //        // Gerar Mensagem da aplicação
+    //        RadioControlMessage *msg1 = new RadioControlMessage("BEACON_CHEGADA",BEACON_CHEGADA1);
+    //        msg1->setRadioControlMessageKind(BEACON_CHEGADA1);
+    //        handleRadioControlMessage(msg1);
+
+            //this node is connected to this PAN (or will try to connect), update frame parameters
+            double offset = TX_TIME(rcvPacket->getByteLength());
+            //trace()<<"offset: "<< offset;
+            currentFrameStart = getClock() - offset;	//frame start is in the past
+            lostBeacons = 0;
+            frameOrder = rcvPacket->getFrameOrder();
+            beaconOrder = rcvPacket->getBeaconOrder();
+            beaconInterval = baseSuperframeDuration * (1 << beaconOrder);
+            macBSN = rcvPacket->getBSN();
+            CAPlength = rcvPacket->getCAPlength();
+            CAPend = CAPlength * baseSlotDuration * (1 << frameOrder) * symbolLen;
+            GTSstart = 0;
+            GTSend = 0;
+            GTSlength = 0;
+            //SUELEN
+            GTSstartRetrans = 0;
+            GTSendRetrans = 0;
+            GTSlengthRetrans = 0;
+
+            //Suelen
+            if (userelay) {
+                primeiraRetrans = 0;
+                irDormir = 0;
+                inicioGTSRetrans = rcvPacket->getSlotInicioRetrans();
+
+
+                //SUELEN
+                cout << "Beacon Recebido no Nodo:" << SELF_MAC_ADDRESS << "\n";
+                int teste = rcvPacket->getVizinhosOuNodosCooperantesArraySize();
+                cout << "Este Beacon informa que tem " << teste
+                        << " Nodos Cooperantes\n";
+                if ((int) rcvPacket->getGTSlistArraySize() > 0
+                        && rcvPacket->getVizinhosOuNodosCooperantesArraySize()
+                                > 0) {
+                    //trace()<<"primeiraRetrans: "<<((rcvPacket->getGTSlist(inicioGTSRetrans).start - 1)* baseSlotDuration * (1 << frameOrder)* symbolLen) + getClock() - phyDelaySleep2Tx - offset;
+                    // seta o tempo de inicio das retransmissões
+                    primeiraRetrans =
+                            ((rcvPacket->getGTSlist(inicioGTSRetrans).start - 1)
+                                    * baseSlotDuration * (1 << frameOrder)
+                                    * symbolLen) + getClock() - phyDelaySleep2Tx - offset;
+                }
+            }
+
+            //cout<<"Devia ser Associado A: "<< rcvPacket->getPANid()<<"\n";
+            //cout<<"Associado A: "<< associatedPAN<<"\n";
+            for (int i = 0; i < (int) rcvPacket->getGTSlistArraySize(); i++) {
+                if (rcvPacket->getGTSlist(i).owner == SELF_MAC_ADDRESS
+                        && associatedPAN == rcvPacket->getPANid()) {
+
+                    //Suelen obs:antes era só o conteudo do else
+                    if (rcvPacket->getGTSlist(i).retransmissor) {
+                        cout << "Tamanho Lista: "
+                                << (int) rcvPacket->getGTSlistArraySize()
+                                << "Lista GTS[" << i << "]: "
+                                << rcvPacket->getGTSlist(i).owner
+                                << " Cooperante\n";
+                        GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
+                                * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                        GTSendRetrans = GTSstartRetrans
+                                + rcvPacket->getGTSlist(i).length * baseSlotDuration
+                                        * (1 << frameOrder) * symbolLen;
+                        GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
+
+                        //trace()<<"tempo Atual: " << simTime();
+                        //trace()<<"getClok(): " << getClock();
+                        //trace()<<"GTSstartRetrans: " << GTSstartRetrans;
+                        //trace()<<"GTSendRetrans: " << GTSendRetrans;
+                        //trace()<<"GTSlengthRetrans: " << GTSlengthRetrans;
+
+
+                        //trace() << "GTS slot from " << getClock() + GTSstartRetrans
+                          //      << " to " << getClock() + GTSendRetrans
+                            //    << " length " << GTSlengthRetrans;
+                        cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                                << " Usa o GTS slot from "
+                                << getClock() + GTSstartRetrans << " to "
+                                << getClock() + GTSendRetrans << " length "
+                                << GTSlengthRetrans << "\n";
+
+                        // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
+                        setTimer(GTS_RETRANS,
+                                GTSstartRetrans - phyDelaySleep2Tx - offset);
+
+                    } else {
+                        cout << "Tamanho Lista: "
+                                << (int) rcvPacket->getGTSlistArraySize()
+                                << "Lista GTS[" << i << "]: "
+                                << rcvPacket->getGTSlist(i).owner << "\n";
+                        GTSstart = (rcvPacket->getGTSlist(i).start - 1)
+                                * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                        GTSend = GTSstart
+                                + rcvPacket->getGTSlist(i).length * baseSlotDuration
+                                        * (1 << frameOrder) * symbolLen;
+                        GTSlength = GTSend - GTSstart;
+
+                        //trace()<<"tempo Atual: " << simTime();
+                        //trace()<<"getClok(): " << getClock();
+                        //trace()<<"GTSstart: " << GTSstart;
+                        //trace()<<"GTSend: " << GTSend;
+                        //trace()<<"GTSlength: " << GTSlength;
+
+                        limparBufferAplicacao();
+                        // Gerar Mensagem da aplicação
+                        RadioControlMessage *msg1 = new RadioControlMessage(
+                                "BEACON_CHEGADA", BEACON_CHEGADA1);
+                        msg1->setRadioControlMessageKind(BEACON_CHEGADA1);
+                        handleRadioControlMessage(msg1);
+
+                        //trace() << "GTS slot from " << getClock() + GTSstart
+                          //      << " to " << getClock() + GTSend << " length "
+                            //    << GTSlength;
+                        cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                                << " Usa o GTS slot from " << getClock() + GTSstart
+                                << " to " << getClock() + GTSend << " length "
+                                << GTSlength << "\n";
+
+                    }
+
+                }
+            }
+            //Suelen
+            if (userelay) {
+                if (associatedPAN == rcvPacket->getPANid()) {
+                    if ((int) rcvPacket->getGTSlistArraySize() > 0) {
+                        irDormir = (((rcvPacket->getGTSlist(0).start - 1)
+                                * baseSlotDuration * (1 << frameOrder) * symbolLen)
+                                + (rcvPacket->getGTSlist(0).length
+                                        * baseSlotDuration * (1 << frameOrder)
+                                        * symbolLen) + getClock());
+                    }
+                }
+
+            }
+
+            if (associatedPAN != rcvPacket->getPANid()) {
+                setTimer(BACK_TO_SETUP, CAPend - offset);
+            }
+            setMacState(MAC_STATE_CAP);
+            if (associatedPAN == rcvPacket->getPANid()) {
+                if (GTSstart != CAPend) {
+                    //SUELEN
+                    //COMENTEI PQ NESTE COMANDO SÓ ACORDA EM SEU MOMENTO D TRANSMISSAO
+                    // set timer to sleep after CAP, unless GTS slots starts right after
+                    //setTimer(SLEEP_START, CAPend - offset);
+                }
+                if (GTSstart > 0) {
+                    // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
+                    //cout<<"tempo atual: "<< getClock()<<"\n";
+                    //cout<<"No Tempo: "<< GTSstart - phyDelaySleep2Tx - offset <<"\n";
+                    //setTimer(GTS_START, GTSstart - phyDelaySleep2Tx - offset);
+                    setTimer(GTS_START, GTSstart - phyDelaySleep2Tx - offset);
+                }
+            } else {
+                setTimer(BACK_TO_SETUP, CAPend - offset);
+            }
+
+            receiveBeacon_node(rcvPacket);
+            attemptTransmission("CAP started");
+            setTimer(FRAME_START,
+                    baseSuperframeDuration * (1 << beaconOrder) * symbolLen
+                            - guardTime - offset);
+            if (associatedPAN == rcvPacket->getPANid() && GTSstart > 0) {
+                if((int) rcvPacket->getGTSlistArraySize()>0){
+                    trace()<<"idBeacon FromRadio: "<<idBeacon;
+                    setTimer(SLEEP_START, 0);
+                    //Verificação para acordar ao iniciar as transmissoes se for a técnica smart e estiver um beacon antes de realizar a selecao
+                    //if(/*tempoDeBeacon >= selecao -2 &&*/ smart){ // -2 pq ele preenche a lista de vizinhos ao receber o beacon, assim no 2º beacon fica escutando no 3 envia qm escutou e no 4 o coor seleciona os coop
+                        //setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+                    //}else{// acorda apenas antes de transmitir
+                        //setTimer(WAKE_UP_START, GTSstart - phyDelaySleep2Tx - offset);
+                    //}
+
+                    //Essa isso antes de alterar para as outras técnicas serem diferentes da smart
+                    //setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+
+
+                    //Se for cooperante irá escutar todos os vizinhos
+                    if(cooperador){// Se o nodo for cooperante acorda no inicio para escutar os vizinhos
+                        setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+                    }else{
+                        //Alteração para que na smart os nodos nao escutem a vizinhança o tempo todo
+                        if(smart && idBeacon < 5){ //período de configuração da rede, escuta os vizinhos nos primeiros 5 beacons
+                           setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+                        }else{
+                            // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
+                           if(idBeacon == atualizarVizinhanca && smart){ // verifica se ja está no periodo de escutar os vizinhos
+                               //atualizarVizinhanca = idBeacon + 5;
+                               setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+
+                           }else{// acorda apenas antes de transmitir (não fica escutando os vizinhos)
+                               setTimer(WAKE_UP_START, GTSstart - phyDelaySleep2Tx - offset);
+                           }
+                        }
                     }
                 }
             }
 
-            // If the frame was sent to broadcast address, nothing else needs to be done
-            if (rcvPacket->getDstID() == BROADCAST_MAC_ADDRESS)
+            break;
+        }
+
+            // received request to associate
+        case MAC_802154_ASSOCIATE_PACKET: {
+
+            // only PAN coordinators can accept association requests
+            // if multihop communication is to be allowed - then this has to be changed
+            // in particular, any FFD can become a coordinator and accept requests
+            if (!isPANCoordinator)
                 break;
 
-            //        if(rcvPacket->getDadosVizinhoArraySize()>0){
-            //            cout<<"recebi por cooperacao:\n";
-            //            for(int i=0;i<rcvPacket->getDadosVizinhoArraySize();i++){
-            //                cout<<"dadosvizinhos["<<i<<"]: "<< rcvPacket->getDadosVizinho(i)<<"\n";
-            //            }
-            //        }
+            // if PAN id does not match - do nothing
+            if (rcvPacket->getPANid() != SELF_MAC_ADDRESS)
+                break;
 
-            // otherwise, generate and send an ACK
-            Basic802154Packet *ackPacket = new Basic802154Packet("Ack packet",
+            if (associationRequest_hub(rcvPacket)) {
+                trace() << "Accepting association request from "
+                        << rcvPacket->getSrcID();
+                cout << "Nodo " << rcvPacket->getSrcID() << " Associado \n";
+                // update associatedDevices and reply with an ACK
+                associatedDevices[rcvPacket->getSrcID()] = true;
+                Basic802154Packet *ackPacket = new Basic802154Packet(
+                        "PAN associate response", MAC_LAYER_PACKET);
+                ackPacket->setPANid(SELF_MAC_ADDRESS);
+                ackPacket->setMac802154PacketType(MAC_802154_ACK_PACKET);
+                ackPacket->setDstID(rcvPacket->getSrcID());
+                ackPacket->setByteLength(ACK_PKT_SIZE);
+
+                int repetido = 0;
+                //Insere na lista de associados se ainda nao estiver---Quando implementar a desassociação isso não será necessario
+                for (int k = 0; k < (int)  nodosAssociados.size(); k++) {
+                   if ( nodosAssociados[k] == rcvPacket->getSrcID()) {
+                       repetido = 1;
+                       break;
+                   }
+
+                }
+                if(repetido == 0){
+                    nodosAssociados.push_back(rcvPacket->getSrcID());
+                    nchildren++;
+                }
+
+                //nodosAssociados.push_back(rcvPacket->getSrcID());
+
+                //Conta como filho!!!
+                //nchildren++;
+
+                toRadioLayer(ackPacket);
+                toRadioLayer(createRadioCommand(SET_STATE, TX));
+                setTimer(ATTEMPT_TX, TX_TIME(ACK_PKT_SIZE));
+            } else {
+                //trace() << "Denied association request from "<< rcvPacket->getSrcID()<< ". Maximum number of children was reached = " << nchildren;
+                // Need to send a packet to deny the reuqest.
+                // But current implementation always accepts them
+            }
+            break;
+        }
+
+            // received GTS request
+        case MAC_802154_GTS_REQUEST_PACKET: {
+
+            // only PAN coordinators can accept GTS requests
+            if (!isPANCoordinator)
+                break;
+
+            // if PAN id does not match - do nothing
+            if (rcvPacket->getPANid() != SELF_MAC_ADDRESS)
+                break;
+
+            trace() << "Received GTS request from " << rcvPacket->getSrcID();
+
+            // reply with an ACK
+            Basic802154Packet *ackPacket = new Basic802154Packet("PAN GTS response",
                     MAC_LAYER_PACKET);
             ackPacket->setPANid(SELF_MAC_ADDRESS);
             ackPacket->setMac802154PacketType(MAC_802154_ACK_PACKET);
             ackPacket->setDstID(rcvPacket->getSrcID());
-            ackPacket->setSeqNum(rcvPacket->getSeqNum());
             ackPacket->setByteLength(ACK_PKT_SIZE);
+            // gtsRequest_hub function handles the decision on the amount of GTS slots to allocate
+            ackPacket->setGTSlength(gtsRequest_hub(rcvPacket));
 
             toRadioLayer(ackPacket);
             toRadioLayer(createRadioCommand(SET_STATE, TX));
@@ -2067,12 +2073,72 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
             break;
         }
-    }
 
-    default: {
-        //trace() << "WARNING: unknown packet type received ["<< rcvPacket->getName() << "]";
+            // ack frames are handled by a separate function
+        case MAC_802154_ACK_PACKET: {
+            if (rcvPacket->getDstID() != SELF_MAC_ADDRESS)
+                break;
+            handleAckPacket(rcvPacket);
+            break;
+        }
+
+            // data frame
+        case MAC_802154_DATA_PACKET: {
+            cout << "Eu sou o: " << SELF_MAC_ADDRESS << "\n";
+            if (rssi > limiteRSSI) { // Só irá receber a mensagem se o RSSI for bom
+
+                if (isNotDuplicatePacket(rcvPacket)) {
+                    dataReceived_hub(rcvPacket);
+                    toNetworkLayer(decapsulatePacket(rcvPacket));
+                } else {
+                    //trace() << "Packet [" << rcvPacket->getName() << "] from node "<< rcvPacket->getSrcID() << " is a duplicate";
+                    //cout<<"Duplicado\n";
+                }
+                // Suelen -- Variavel utilizada para determinar o numero de coop
+                if (userelay) {
+                    if (isPANCoordinator) {
+
+                        if (rcvPacket->getRetransmissao() == false) {
+                            msgRecebidas++;
+                            numdadosrecebidosnogtstransmissao++;
+
+                        }
+                    }
+                }
+
+                // If the frame was sent to broadcast address, nothing else needs to be done
+                if (rcvPacket->getDstID() == BROADCAST_MAC_ADDRESS)
+                    break;
+
+                //        if(rcvPacket->getDadosVizinhoArraySize()>0){
+                //            cout<<"recebi por cooperacao:\n";
+                //            for(int i=0;i<rcvPacket->getDadosVizinhoArraySize();i++){
+                //                cout<<"dadosvizinhos["<<i<<"]: "<< rcvPacket->getDadosVizinho(i)<<"\n";
+                //            }
+                //        }
+
+                // otherwise, generate and send an ACK
+                Basic802154Packet *ackPacket = new Basic802154Packet("Ack packet",
+                        MAC_LAYER_PACKET);
+                ackPacket->setPANid(SELF_MAC_ADDRESS);
+                ackPacket->setMac802154PacketType(MAC_802154_ACK_PACKET);
+                ackPacket->setDstID(rcvPacket->getSrcID());
+                ackPacket->setSeqNum(rcvPacket->getSeqNum());
+                ackPacket->setByteLength(ACK_PKT_SIZE);
+
+                toRadioLayer(ackPacket);
+                toRadioLayer(createRadioCommand(SET_STATE, TX));
+                setTimer(ATTEMPT_TX, TX_TIME(ACK_PKT_SIZE));
+
+                break;
+            }
+        }
+
+        default: {
+            //trace() << "WARNING: unknown packet type received ["<< rcvPacket->getName() << "]";
+        }
     }
-    }
+  }
 }
 
 void Basic802154::handleAckPacket(Basic802154Packet * rcvPacket) {
@@ -2126,6 +2192,7 @@ void Basic802154::handleAckPacket(Basic802154Packet * rcvPacket) {
         break;
     }
     }
+
 }
 
 /* Finishes the transmission attempt(s) for current packet

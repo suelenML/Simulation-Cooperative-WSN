@@ -31,6 +31,7 @@ module Node {
 	// Node will become active startupOffset + random(startupRandomization) 
 	// seconds after the start of simulation
 	double pausarNoTempo = default(0);
+	double retornarNoTempo = default(0);
 	bool pausar = default(false);
 
 	string ApplicationName;										//the name of the implemented Application Module

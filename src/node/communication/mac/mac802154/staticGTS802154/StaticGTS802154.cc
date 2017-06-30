@@ -60,7 +60,7 @@ int StaticGTS802154::gtsRequest_hub(Basic802154Packet *gtsPkt) {
 	for (i = GTSlist.begin(); i != GTSlist.end(); i++) {
 		total++;
 		//cout<< "GTS Length Na Lista: "<<i->length << " GTS Length Do Pacote: " <<gtsPkt->getGTSlength()<< "\n";
-		if (i->owner == gtsPkt->getSrcID()) {
+		if (i->owner == gtsPkt->getSrcID() && !i->retransmissor) {
 			if (i->length == gtsPkt->getGTSlength()) {
 				return i->length;
 			} else {

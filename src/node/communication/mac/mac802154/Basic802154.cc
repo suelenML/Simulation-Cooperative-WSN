@@ -415,6 +415,8 @@ void Basic802154::timerFiredCallback(int index) {
 
     }
     case PAUSE_NODE:{
+        //cancel evento para receber beacon se existir
+        cancelTimer(FRAME_START);
         cout<<"Sou o Nodo: "<< SELF_MAC_ADDRESS <<"\n";
         trace()<<"Sou o nodo["<<SELF_MAC_ADDRESS <<"] Vou Pausar";
         setMacState(MAC_STATE_SETUP);
@@ -442,7 +444,7 @@ void Basic802154::timerFiredCallback(int index) {
         trace()<<"Sou o nodo["<<SELF_MAC_ADDRESS <<"] Estou Reiniciando";
         toRadioLayer(createRadioCommand(SET_STATE, RX));
         pausado = false;
-        //resMgrModule->destroyNode();
+
         break;
 
         }
@@ -564,7 +566,7 @@ void Basic802154::timerFiredCallback(int index) {
 
         // beacon timeout fired - indicates that beacon was missed by this node
     case BEACON_TIMEOUT: {
-        if(pausado){
+        if(!pausado){
             trace()<<"TimeoutBeacon Nodo: "<<SELF_MAC_ADDRESS;
             lostBeacons++;
             //Limpa o Buffer da App
@@ -1729,7 +1731,8 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
     if(pausado){
         //Colocar o nodo para dormir e deletar o pacote
         //toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
-        cout << "Sou o nodo: " << SELF_MAC_ADDRESS << "\n";
+        cout << "Sou o nodo: " << SELF_MAC_ADDRESS << " Estou pausado e Meu radio Está ligado\n";
+        trace() << "Sou o nodo: " << SELF_MAC_ADDRESS << " Estou pausado e Meu radio Está ligado";
         //delete pkt;
         return;
     }else{
@@ -2601,7 +2604,8 @@ void Basic802154::selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket)
            coop = rand() % (numhosts-1) + 1;
            repetido=0;
 
-            /*associado = 1;
+           //tava comentado esse bloco
+            associado = 1;
             for (int i = 0;i < (int) nodosAssociados.size() ; i++) {
                if(nodosAssociados[i] == coop){
                    associado = 0;
@@ -2612,7 +2616,7 @@ void Basic802154::selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket)
                 trace()<<"nao associado: "<<coop;
 
             }
-         if(associado == 0){*/
+         if(associado == 0){// tava comentado aq
                for (int k = 0; k < (int) nodosColaboradores.size(); k++) {
                    if (nodosColaboradores[k] == coop) {
                        repetido = 1;
@@ -2626,7 +2630,7 @@ void Basic802154::selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket)
                      trace()<<"Selecionado: " << coop;
                      j++;
                }
-          // }
+           }// comentar aqui se comentar os blocos de cima
 
 
      }

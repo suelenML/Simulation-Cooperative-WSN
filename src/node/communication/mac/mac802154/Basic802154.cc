@@ -353,6 +353,8 @@ void Basic802154::timerFiredCallback(int index) {
                     primeiraSelecao = 1;
                     if (selecao == 3)
                         selecao = 5;
+
+                  neigmap.clear();//limpa a lista de vizinhos do coord ao enviar o beacon
                 } else {
                     if (primeiraSelecao == 1) {
                         //Para manter os colaboradores até a próxima seleção
@@ -385,7 +387,7 @@ void Basic802154::timerFiredCallback(int index) {
             trace() << "Transmitting [PAN beacon packet] now, BSN = " << macBSN;
             cout << "Transmitting [PAN beacon packet] now, BSN = " << macBSN
                     << "\n";
-            neigmap.clear();//limpa a lista de vizinhos do coord ao enviar o beacon
+            //neigmap.clear();//limpa a lista de vizinhos do coord ao enviar o beacon
             //trace()<<"beaconPacket->getByteLength(): "<<beaconPacket->getByteLength();
             cout<<"beaconPacket->getByteLength(): "<<beaconPacket->getByteLength()<<"\n";
             cout<<"calculo TX_TIME"<<(phyLayerOverhead + beaconPacket->getByteLength())*1/(1000*phyDataRate/8.0)<<"\n";
@@ -487,7 +489,7 @@ void Basic802154::timerFiredCallback(int index) {
                         }else{//Nao é periodo de configuraçao da rede
                                // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
                                if(idBeacon == atualizarVizinhanca){ // verifica se ja está no periodo de escutar os vizinhos
-                                   atualizarVizinhanca = idBeacon + 1;
+                                   atualizarVizinhanca = idBeacon + 3;
                                    trace()<<"idBeacon GTS_START: "<<idBeacon;
                                    trace()<<"atualizarVizinhanca: "<<atualizarVizinhanca;
                                        if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões

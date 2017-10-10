@@ -283,8 +283,8 @@ class Basic802154: public VirtualMac {
 	    int numeroDeCooperacoes=0;
 	    int tempoDeBeacon=0;
 	    int selecao=0;
-	    short idBeacon;
-	    short atualizarVizinhanca;// sinaliza o momento em que os nodos
+	    short idBeacon; // guarda o id do beacon corrente
+	    short atualizarVizinhanca;// sinaliza o momento em que os nodos irao atualizar a vizinhanca
 
 	    //void contabilizarMensagens();
 	    void listarNodosEscutados(Basic802154Packet *rcvPacket, double rssi);
@@ -346,6 +346,8 @@ class Basic802154: public VirtualMac {
 	    double pausarNoTempo;// para silenciar o nodo
 	    double retornarNoTempo;
 	    bool pausado; // para silenciar nodo
+	    int tempConfig;
+        int tempAtualizVizinhanca;
 
 
 	    /*Variáveis taxa de sucesso*/

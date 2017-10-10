@@ -63,6 +63,8 @@ simple Basic802154 like node.communication.mac.iMac {
 	bool oportunista = default(false);
 	bool completamenteAleatoria = default(false);
 	int selecao = default(10);
+	int tempConfig = default(5);
+	int tempAtualizVizinhanca = default(3);
 	
 	// Para determinar o numero de cooperantes
 	double limiaralpha = default(0.2);

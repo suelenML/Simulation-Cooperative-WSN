@@ -37,6 +37,8 @@ void Basic802154::startup() {
     numCoopMax = 40; // definido 40 como numero maximo de cooperantes na rede
     pausar = getParentModule()->getParentModule()->par("pausar");
     pausado = false;
+    tempAtualizVizinhanca = par("tempAtualizVizinhanca");
+    tempConfig = par("tempConfig");
 
     //Suelen
     beaconsPerdidos = 0;
@@ -474,7 +476,7 @@ void Basic802154::timerFiredCallback(int index) {
                 } else{
                     if(smart){
                         trace()<<"idBeacon GTS_START: "<<idBeacon;
-                        if(idBeacon < 5){ //período de configuração da rede, escuta os vizinhos nos primeiros 5 beacons
+                        if(idBeacon < tempConfig){ //período de configuração da rede, escuta os vizinhos nos primeiros 5 beacons
                             if (primeiraRetrans > 0) {
                                 setTimer(SLEEP_START, primeiraRetrans - simTime() -phyDelaySleep2Tx);
                                // inform the decision layer that GTS has started
@@ -489,7 +491,7 @@ void Basic802154::timerFiredCallback(int index) {
                         }else{//Nao é periodo de configuraçao da rede
                                // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
                                if(idBeacon == atualizarVizinhanca){ // verifica se ja está no periodo de escutar os vizinhos
-                                   atualizarVizinhanca = idBeacon + 3;
+                                   atualizarVizinhanca = idBeacon + tempAtualizVizinhanca;
                                    trace()<<"idBeacon GTS_START: "<<idBeacon;
                                    trace()<<"atualizarVizinhanca: "<<atualizarVizinhanca;
                                        if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões

@@ -33,6 +33,7 @@ void ThroughputTest::startup()
 	// Suelen
 	numpacketsReceived=0;
 
+
 //	if (packet_spacing > 0 && recipientAddress.compare(SELF_NETWORK_ADDRESS) != 0)
 //		setTimer(SEND_PACKET, packet_spacing + startupDelay);
 //	else
@@ -40,6 +41,20 @@ void ThroughputTest::startup()
 
 	declareOutput("Packets received per node");
 	declareOutput("Total Packets received -- Coordenador");
+	declareOutput("Packets received per node - Completo");
+
+
+
+	/*
+     Teste para verificar se mesmo não recebendo
+     pacotes do nodo ele considera o nodo na tabela
+     e coloca zero para o número de pacotes recebidos
+     */
+    for (int i = 1; i < numNodes; i++) {
+        packetsReceived[i]= 0;
+        //collectOutput("Packets received per node", i);
+
+    }
 }
 
 void ThroughputTest::fromNetworkLayer(ApplicationPacket * rcvPacket,
@@ -55,6 +70,7 @@ void ThroughputTest::fromNetworkLayer(ApplicationPacket * rcvPacket,
 			collectOutput("Packets received per node", sourceId);
 			packetsReceived[sourceId]++;
 			bytesReceived[sourceId] += rcvPacket->getByteLength();
+
 
 		//} else {
 			//trace() << "Packet #" << sequenceNumber << " from node " << source <<
@@ -116,6 +132,17 @@ void ThroughputTest::finishSpecific() {
 	declareOutput("Packets loss rate");
 	declareOutput("Packets send");
 
+	/*Suelen*/
+	if(self == 0){ // Aqui apresenta os pacotes que o coordenador recebeu e insere zero para os que ele não recebeu
+	    int cont = 1;
+        for(int i = 1; i < numNodes; i++){
+            collectOutput("Packets received per node - Completo", cont, "Recebidos", packetsReceived[i]);
+            trace()<<"nodo Coord rebebeu do nodo: "<<i<<"  "<< packetsReceived[i];
+            cont++;
+
+        }
+	}
+
 
 	cTopology *topo;	// temp variable to access packets received by other nodes
 	topo = new cTopology("topo");
@@ -139,6 +166,7 @@ void ThroughputTest::finishSpecific() {
 		}
 
 	}
+
 
 	delete(topo);
 

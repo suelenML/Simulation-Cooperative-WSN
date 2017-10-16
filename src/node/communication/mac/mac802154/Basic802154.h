@@ -304,6 +304,7 @@ class Basic802154: public VirtualMac {
 	    double taxaDeSucesso(int id, int recebidas); //Suelen
 	    void selecaoCoopAleatoria(Basic802154Packet *beaconPacket);//Suelen
 	    void contabilizarMsgRetransmissores(); //Suelen
+	    void contabilizarRetransmissoes(); //Suelen
 	    void tratarDivisao(Neighborhood *nodo);//Suelen
 	    void selecaoOportunista(Basic802154Packet *beaconPacket);//Suelen
 	    void selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket);//Suelen
@@ -348,9 +349,17 @@ class Basic802154: public VirtualMac {
 	    bool pausado; // para silenciar nodo
 	    int tempConfig;
         int tempAtualizVizinhanca;
+        std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeSucessoBeacon; // armazena as mensagens de cooperação que o coordenador não havia escutado diretamente a cada beacon
 
+        /*Variáveis taxa de sucesso Metodo Smart*/
+        int qntdMsgRecebCoop; // quantidade de mensagens que o coordenador recebeu por meio de cooperações
+        int qntdMsgEscutCood; // quantidade de mensagens que o coordenador recebeu diretamente
+        double txSucessSmart; // armzana o resultado da tx de sucesso das msg's recebidas no coordenador (diretas e com cooperação)
+        double txSucessSmartAnterior; // armzana o resultado da tx de sucesso das msg's recebidas no coordenador (diretas e com cooperação) no BI anterior
+        std::vector<int> msgRecuperadasBeacon;  // armazena a quantidade de msg que chegaram por cooperação de cada nodo origem no intervalo de um beacon
+        int nchildrenActual;
 
-	    /*Variáveis taxa de sucesso*/
+	    /*Variáveis taxa de sucesso Metodo Odilson*/
 	    double alphaSucess;
 	    std::vector<TAXA_DE_SUCESSO> historicoTaxaDeSucesso;
 	    std::vector<int> nodosAssociados;

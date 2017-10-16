@@ -181,17 +181,40 @@ void Basic802154::startup() {
 
             //Limpa a lista de msg de coop repetidas
             retransmissoesRepetidas.clear();
+
             //Limpa a lista de mensagens retransmitidas
             historicoDeSucesso.clear();
+
+            //Limpa a lista de mensagens retransmitidas por beacon
+            historicoDeSucessoBeacon.clear();
+
             //Limpa a lsat de associados
             nodosAssociados.clear();
+
             //limpa a lista de possiveis coop
             possiveisCooperantes.clear();
+
+            // inicializa a quantidade de mensagens que o coordenador recebeu diretamente
+            qntdMsgEscutCood = 0;
+
+            //  inicializa a quantidade de mensagens que o coordenador recebeu por cooperações
+            qntdMsgRecebCoop = 0;
+
+            // inicializa a txSucesso atual da Smart
+            txSucessSmart = 0;
+
+            // inicializa a txSucesso anterior da Smart
+            txSucessSmartAnterior = 0;
+
+            // faz um controle para saber se já é o Beacon de realizar selecao de cooperantes
+            tempoDeBeacon = 0;
+
 
             // Inicializa o vetor de mensagens recuperadas por retransmissao de cada nodo
             // e também o de pacotes recebidos por transmissao
             for (int i = 0; i < numhosts; i++) {
                   msgRecuperadas.push_back(0);
+                  msgRecuperadasBeacon.push_back(0);
                   pacotesEscutadosT.push_back(0);
 
             }
@@ -206,6 +229,7 @@ void Basic802154::startup() {
         //Numero de nodes a serem associados ao PAN
         maxChild = par("maxChild");
         nchildren = 0; //guarda o número de filhos
+        nchildrenActual = 0; // guarda o número de nodos que atualmente está enviando msg para o coordenador
 
         //initialise frameOrder and beaconOrder
         frameOrder = par("frameOrder");
@@ -328,11 +352,29 @@ void Basic802154::timerFiredCallback(int index) {
             beaconPacket->setCAPlength(numSuperframeSlots);
 
             if (userelay) {
+                if(nodosEscutados.size() > 0 && historicoDeSucessoBeacon.size() >0){
+                    qntdMsgEscutCood = nodosEscutados.size();
+                    //contabilizarRetransmissoes();
+                    txSucessSmart = (qntdMsgEscutCood*100)/nchildren;
+                    trace()<< "txSuceso Smart: "<< txSucessSmart;
+                }
+                if(idBeacon > tempConfig){
+                    if(txSucessSmart >= txSucessSmartAnterior){
+                        selecao = selecao + 1;
+                        tempAtualizVizinhanca = selecao - 1;
+
+                    }else{
+                        selecao = (int)(selecao/2);
+                        tempAtualizVizinhanca = selecao - 1;
+                    }
+                }
+
                 //modificação Ríad
                 //no começo de um novo beacon as mensagens são contabilizadas, a lista de nodos escutada é limpada e novos nodos cooperadores podem ser selecionados
                 //contabilizarMensagens();
                 //verificaRetransmissoesRepetidas();
                 nodosEscutados.clear();
+                historicoDeSucessoBeacon.clear();
 
                 if (tempoDeBeacon == selecao) {
 
@@ -440,6 +482,7 @@ void Basic802154::timerFiredCallback(int index) {
         setMacState(MAC_STATE_SLEEP);
         pausado = true;
         //resMgrModule->destroyNode();
+        // pensar em mandar uma msg para o coord avisando da pausa
         break;
 
     }
@@ -448,7 +491,7 @@ void Basic802154::timerFiredCallback(int index) {
         trace()<<"Sou o nodo["<<SELF_MAC_ADDRESS <<"] Estou Reiniciando";
         toRadioLayer(createRadioCommand(SET_STATE, RX));
         pausado = false;
-
+        // pensar em mandar uma msg para o coord avisando que retornou da pausa
         break;
 
         }
@@ -1521,6 +1564,7 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket, double rs
                             escutados.idMens = rcvPacket->getDadosVizinho(i).idMens;
                             escutados.idNodo = rcvPacket->getDadosVizinho(i).idNodo;
                             v->push_back(escutados);
+                            historicoDeSucessoBeacon[rcvPacket->getSrcID()] = v;
                             nodosEscutados.push_back(escutados); // Se a msg que veio da cooperação não havia sido escutada agoa foi, por isso add aqui
                             utilidadeCoop++;
                             utilidadeRetransmissao++;
@@ -1560,6 +1604,7 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket, double rs
                             utilidadeCoop++;
                             utilidadeRetransmissao++;
                             historicoDeSucesso[rcvPacket->getSrcID()] = vetor;
+                            historicoDeSucessoBeacon[rcvPacket->getSrcID()] = vetor;
                             trace()<<"inseri em sucesso o nodo: "<<escutados.idNodo << " e a msg: "<< escutados.idMens<< " Quem escutou foi: "<<rcvPacket->getSrcID();
                         }
                     }
@@ -1619,6 +1664,39 @@ void Basic802154::contabilizarMsgRetransmissores() {
     }
 
 }
+/*
+//Suelen contabiliza as mensagens recuperadas por nodo em um beacon - Está correto, mas não estou usando no momento
+void Basic802154::contabilizarRetransmissoes() {
+    std::map<int, vector<MENSAGENS_ESCUTADAS>*>::iterator iter;
+    vector<MENSAGENS_ESCUTADAS>::iterator i;
+    qntdMsgRecebCoop = 0;
+
+
+    for (iter = historicoDeSucessoBeacon.begin();iter != historicoDeSucessoBeacon.end(); iter++) {
+        vector<MENSAGENS_ESCUTADAS> *nodo = iter->second;
+        cout << "Cooperante: " << iter->first << "\n";
+        trace() << "Cooperante: " << iter->first;
+        for (i = (iter->second)->begin(); i != (iter->second)->end(); i++) {
+            cout << "Nodo: " << i->idNodo << "\n";
+            cout << "Mens: " << i->idMens << "\n";
+            trace() << "Hist-Nodo: " << i->idNodo;
+            trace() << "Mens: " << i->idMens;
+
+                for(int j = 0; j < numhosts;j++){
+                    if(i->idNodo == j){
+                        msgRecuperadasBeacon[j] = msgRecuperadasBeacon[j] + 1;
+                        trace()<<"recuperadas: "<<msgRecuperadasBeacon[j];
+                        qntdMsgRecebCoop = qntdMsgRecebCoop + msgRecuperadasBeacon[j];
+                        break;
+                    }
+
+                }
+
+
+        }
+    }
+
+}*/
 
 
 
@@ -2033,6 +2111,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                 if(repetido == 0){
                     nodosAssociados.push_back(rcvPacket->getSrcID());
                     nchildren++;
+                    nchildrenActual = nchildren;
                 }
 
                 //nodosAssociados.push_back(rcvPacket->getSrcID());

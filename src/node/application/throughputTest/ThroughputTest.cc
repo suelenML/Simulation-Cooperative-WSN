@@ -52,6 +52,7 @@ void ThroughputTest::startup()
      */
     for (int i = 1; i < numNodes; i++) {
         packetsReceived[i]= 0;
+        packetsSent[i] = 0;
         //collectOutput("Packets received per node", i);
 
     }

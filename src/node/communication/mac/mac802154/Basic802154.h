@@ -214,6 +214,8 @@ class Basic802154: public VirtualMac {
 	void transmitPacket(Basic802154Packet *pkt, int retries = 0, bool GTSonly = false, double delay = 0);
 	int getCurrentMacState() { return macState; }
 	int getAssociatedPAN() { return associatedPAN; }
+	Basic802154Packet *pausarNodo(int); //Suelen
+	Basic802154Packet *restartNodo(int); // Suelen
 
 	/*--- Virtual interface functions can be overwritten by a decision module ---*/
 	virtual void startup();
@@ -324,6 +326,7 @@ class Basic802154: public VirtualMac {
 	    vector<int> vizinhosAntigos;
 
 	    /*----------------SUELEN------------------*/
+	    bool redeDinamica;
 	    double limiteRSSI;
 	    bool userelay;
 	    bool smart;
@@ -350,6 +353,7 @@ class Basic802154: public VirtualMac {
 	    int tempConfig;
         int tempAtualizVizinhanca;
         std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeSucessoBeacon; // armazena as mensagens de cooperação que o coordenador não havia escutado diretamente a cada beacon
+        int limitBISelecao; // limita o intervalo de seleção, para não crescer muito
 
         /*Variáveis taxa de sucesso Metodo Smart*/
         int qntdMsgRecebCoop; // quantidade de mensagens que o coordenador recebeu por meio de cooperações
@@ -358,6 +362,7 @@ class Basic802154: public VirtualMac {
         double txSucessSmartAnterior; // armzana o resultado da tx de sucesso das msg's recebidas no coordenador (diretas e com cooperação) no BI anterior
         std::vector<int> msgRecuperadasBeacon;  // armazena a quantidade de msg que chegaram por cooperação de cada nodo origem no intervalo de um beacon
         int nchildrenActual;
+        bool pausaEnviada; // variavel de controle para saber se o nodo solicitou a a pausa e não recebeu resposta (ACK)
 
 	    /*Variáveis taxa de sucesso Metodo Odilson*/
 	    double alphaSucess;

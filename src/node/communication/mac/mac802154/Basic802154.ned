@@ -65,6 +65,7 @@ simple Basic802154 like node.communication.mac.iMac {
 	int selecao = default(10);
 	int tempConfig = default(5);
 	int tempAtualizVizinhanca = default(3);
+	bool redeDinamica = default(false);
 	
 	// Para determinar o numero de cooperantes
 	double limiaralpha = default(0.2);

@@ -61,6 +61,8 @@ EXECUTE_ON_STARTUP(
     e->insert(MAC_802154_DATA_PACKET, "MAC_802154_DATA_PACKET");
     e->insert(MAC_802154_ACK_PACKET, "MAC_802154_ACK_PACKET");
     e->insert(MAC_802154_GTS_REQUEST_PACKET, "MAC_802154_GTS_REQUEST_PACKET");
+    e->insert(MAC_802154_PAUSE_PACKET, "MAC_802154_PAUSE_PACKET");
+    e->insert(MAC_802154_RESTART_PACKET, "MAC_802154_RESTART_PACKET");
 );
 
 Basic802154GTSspec::Basic802154GTSspec()
@@ -506,6 +508,7 @@ Basic802154Packet::Basic802154Packet(const char *name, int kind) : ::MacPacket(n
     this->srcID_var = 0;
     this->dstID_var = 0;
     this->seqNum_var = 0;
+    this->pauseNodo_var = 0;
     this->beaconOrder_var = 0;
     this->frameOrder_var = 0;
     this->BSN_var = 0;
@@ -522,6 +525,7 @@ Basic802154Packet::Basic802154Packet(const char *name, int kind) : ::MacPacket(n
     this->slotInicioRetrans_var = 0;
     this->retransmissao_var = false;
     this->tempoBeacon_var = 0;
+    this->tempAtualizVizinhanca_var = 0;
     this->primeiraSelecao_var = 0;
     this->idBeacon_var = 0;
 }
@@ -559,6 +563,7 @@ void Basic802154Packet::copy(const Basic802154Packet& other)
     this->srcID_var = other.srcID_var;
     this->dstID_var = other.dstID_var;
     this->seqNum_var = other.seqNum_var;
+    this->pauseNodo_var = other.pauseNodo_var;
     this->beaconOrder_var = other.beaconOrder_var;
     this->frameOrder_var = other.frameOrder_var;
     this->BSN_var = other.BSN_var;
@@ -584,6 +589,7 @@ void Basic802154Packet::copy(const Basic802154Packet& other)
     this->slotInicioRetrans_var = other.slotInicioRetrans_var;
     this->retransmissao_var = other.retransmissao_var;
     this->tempoBeacon_var = other.tempoBeacon_var;
+    this->tempAtualizVizinhanca_var = other.tempAtualizVizinhanca_var;
     this->primeiraSelecao_var = other.primeiraSelecao_var;
     this->idBeacon_var = other.idBeacon_var;
 }
@@ -596,6 +602,7 @@ void Basic802154Packet::parsimPack(cCommBuffer *b)
     doPacking(b,this->srcID_var);
     doPacking(b,this->dstID_var);
     doPacking(b,this->seqNum_var);
+    doPacking(b,this->pauseNodo_var);
     doPacking(b,this->beaconOrder_var);
     doPacking(b,this->frameOrder_var);
     doPacking(b,this->BSN_var);
@@ -612,6 +619,7 @@ void Basic802154Packet::parsimPack(cCommBuffer *b)
     doPacking(b,this->slotInicioRetrans_var);
     doPacking(b,this->retransmissao_var);
     doPacking(b,this->tempoBeacon_var);
+    doPacking(b,this->tempAtualizVizinhanca_var);
     doPacking(b,this->primeiraSelecao_var);
     doPacking(b,this->idBeacon_var);
 }
@@ -624,6 +632,7 @@ void Basic802154Packet::parsimUnpack(cCommBuffer *b)
     doUnpacking(b,this->srcID_var);
     doUnpacking(b,this->dstID_var);
     doUnpacking(b,this->seqNum_var);
+    doUnpacking(b,this->pauseNodo_var);
     doUnpacking(b,this->beaconOrder_var);
     doUnpacking(b,this->frameOrder_var);
     doUnpacking(b,this->BSN_var);
@@ -658,6 +667,7 @@ void Basic802154Packet::parsimUnpack(cCommBuffer *b)
     doUnpacking(b,this->slotInicioRetrans_var);
     doUnpacking(b,this->retransmissao_var);
     doUnpacking(b,this->tempoBeacon_var);
+    doUnpacking(b,this->tempAtualizVizinhanca_var);
     doUnpacking(b,this->primeiraSelecao_var);
     doUnpacking(b,this->idBeacon_var);
 }
@@ -710,6 +720,16 @@ int Basic802154Packet::getSeqNum() const
 void Basic802154Packet::setSeqNum(int seqNum)
 {
     this->seqNum_var = seqNum;
+}
+
+bool Basic802154Packet::getPauseNodo() const
+{
+    return pauseNodo_var;
+}
+
+void Basic802154Packet::setPauseNodo(bool pauseNodo)
+{
+    this->pauseNodo_var = pauseNodo;
 }
 
 int Basic802154Packet::getBeaconOrder() const
@@ -898,6 +918,16 @@ void Basic802154Packet::setTempoBeacon(short tempoBeacon)
     this->tempoBeacon_var = tempoBeacon;
 }
 
+bool Basic802154Packet::getTempAtualizVizinhanca() const
+{
+    return tempAtualizVizinhanca_var;
+}
+
+void Basic802154Packet::setTempAtualizVizinhanca(bool tempAtualizVizinhanca)
+{
+    this->tempAtualizVizinhanca_var = tempAtualizVizinhanca;
+}
+
 short Basic802154Packet::getPrimeiraSelecao() const
 {
     return primeiraSelecao_var;
@@ -965,7 +995,7 @@ const char *Basic802154PacketDescriptor::getProperty(const char *propertyname) c
 int Basic802154PacketDescriptor::getFieldCount(void *object) const
 {
     cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 20+basedesc->getFieldCount(object) : 20;
+    return basedesc ? 22+basedesc->getFieldCount(object) : 22;
 }
 
 unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int field) const
@@ -987,6 +1017,7 @@ unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int fi
         FD_ISEDITABLE,
         FD_ISEDITABLE,
         FD_ISEDITABLE,
+        FD_ISEDITABLE,
         FD_ISARRAY | FD_ISCOMPOUND,
         FD_ISARRAY | FD_ISEDITABLE,
         FD_ISEDITABLE,
@@ -997,8 +1028,9 @@ unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int fi
         FD_ISEDITABLE,
         FD_ISEDITABLE,
         FD_ISEDITABLE,
+        FD_ISEDITABLE,
     };
-    return (field>=0 && field<20) ? fieldTypeFlags[field] : 0;
+    return (field>=0 && field<22) ? fieldTypeFlags[field] : 0;
 }
 
 const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) const
@@ -1015,6 +1047,7 @@ const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) c
         "srcID",
         "dstID",
         "seqNum",
+        "pauseNodo",
         "beaconOrder",
         "frameOrder",
         "BSN",
@@ -1028,10 +1061,11 @@ const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) c
         "slotInicioRetrans",
         "retransmissao",
         "tempoBeacon",
+        "tempAtualizVizinhanca",
         "primeiraSelecao",
         "idBeacon",
     };
-    return (field>=0 && field<20) ? fieldNames[field] : NULL;
+    return (field>=0 && field<22) ? fieldNames[field] : NULL;
 }
 
 int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) const
@@ -1043,21 +1077,23 @@ int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) 
     if (fieldName[0]=='s' && strcmp(fieldName, "srcID")==0) return base+2;
     if (fieldName[0]=='d' && strcmp(fieldName, "dstID")==0) return base+3;
     if (fieldName[0]=='s' && strcmp(fieldName, "seqNum")==0) return base+4;
-    if (fieldName[0]=='b' && strcmp(fieldName, "beaconOrder")==0) return base+5;
-    if (fieldName[0]=='f' && strcmp(fieldName, "frameOrder")==0) return base+6;
-    if (fieldName[0]=='B' && strcmp(fieldName, "BSN")==0) return base+7;
-    if (fieldName[0]=='C' && strcmp(fieldName, "CAPlength")==0) return base+8;
-    if (fieldName[0]=='G' && strcmp(fieldName, "GTSlength")==0) return base+9;
-    if (fieldName[0]=='G' && strcmp(fieldName, "GTSlist")==0) return base+10;
-    if (fieldName[0]=='v' && strcmp(fieldName, "vizinhosOuNodosCooperantes")==0) return base+11;
-    if (fieldName[0]=='s' && strcmp(fieldName, "somaSinais")==0) return base+12;
-    if (fieldName[0]=='e' && strcmp(fieldName, "energy")==0) return base+13;
-    if (fieldName[0]=='d' && strcmp(fieldName, "dadosVizinho")==0) return base+14;
-    if (fieldName[0]=='s' && strcmp(fieldName, "slotInicioRetrans")==0) return base+15;
-    if (fieldName[0]=='r' && strcmp(fieldName, "retransmissao")==0) return base+16;
-    if (fieldName[0]=='t' && strcmp(fieldName, "tempoBeacon")==0) return base+17;
-    if (fieldName[0]=='p' && strcmp(fieldName, "primeiraSelecao")==0) return base+18;
-    if (fieldName[0]=='i' && strcmp(fieldName, "idBeacon")==0) return base+19;
+    if (fieldName[0]=='p' && strcmp(fieldName, "pauseNodo")==0) return base+5;
+    if (fieldName[0]=='b' && strcmp(fieldName, "beaconOrder")==0) return base+6;
+    if (fieldName[0]=='f' && strcmp(fieldName, "frameOrder")==0) return base+7;
+    if (fieldName[0]=='B' && strcmp(fieldName, "BSN")==0) return base+8;
+    if (fieldName[0]=='C' && strcmp(fieldName, "CAPlength")==0) return base+9;
+    if (fieldName[0]=='G' && strcmp(fieldName, "GTSlength")==0) return base+10;
+    if (fieldName[0]=='G' && strcmp(fieldName, "GTSlist")==0) return base+11;
+    if (fieldName[0]=='v' && strcmp(fieldName, "vizinhosOuNodosCooperantes")==0) return base+12;
+    if (fieldName[0]=='s' && strcmp(fieldName, "somaSinais")==0) return base+13;
+    if (fieldName[0]=='e' && strcmp(fieldName, "energy")==0) return base+14;
+    if (fieldName[0]=='d' && strcmp(fieldName, "dadosVizinho")==0) return base+15;
+    if (fieldName[0]=='s' && strcmp(fieldName, "slotInicioRetrans")==0) return base+16;
+    if (fieldName[0]=='r' && strcmp(fieldName, "retransmissao")==0) return base+17;
+    if (fieldName[0]=='t' && strcmp(fieldName, "tempoBeacon")==0) return base+18;
+    if (fieldName[0]=='t' && strcmp(fieldName, "tempAtualizVizinhanca")==0) return base+19;
+    if (fieldName[0]=='p' && strcmp(fieldName, "primeiraSelecao")==0) return base+20;
+    if (fieldName[0]=='i' && strcmp(fieldName, "idBeacon")==0) return base+21;
     return basedesc ? basedesc->findField(object, fieldName) : -1;
 }
 
@@ -1075,6 +1111,7 @@ const char *Basic802154PacketDescriptor::getFieldTypeString(void *object, int fi
         "int",
         "int",
         "int",
+        "bool",
         "int",
         "int",
         "int",
@@ -1088,10 +1125,11 @@ const char *Basic802154PacketDescriptor::getFieldTypeString(void *object, int fi
         "short",
         "bool",
         "short",
+        "bool",
         "short",
         "short",
     };
-    return (field>=0 && field<20) ? fieldTypeStrings[field] : NULL;
+    return (field>=0 && field<22) ? fieldTypeStrings[field] : NULL;
 }
 
 const char *Basic802154PacketDescriptor::getFieldProperty(void *object, int field, const char *propertyname) const
@@ -1120,9 +1158,9 @@ int Basic802154PacketDescriptor::getArraySize(void *object, int field) const
     }
     Basic802154Packet *pp = (Basic802154Packet *)object; (void)pp;
     switch (field) {
-        case 10: return pp->getGTSlistArraySize();
-        case 11: return pp->getVizinhosOuNodosCooperantesArraySize();
-        case 14: return pp->getDadosVizinhoArraySize();
+        case 11: return pp->getGTSlistArraySize();
+        case 12: return pp->getVizinhosOuNodosCooperantesArraySize();
+        case 15: return pp->getDadosVizinhoArraySize();
         default: return 0;
     }
 }
@@ -1142,21 +1180,23 @@ std::string Basic802154PacketDescriptor::getFieldAsString(void *object, int fiel
         case 2: return long2string(pp->getSrcID());
         case 3: return long2string(pp->getDstID());
         case 4: return long2string(pp->getSeqNum());
-        case 5: return long2string(pp->getBeaconOrder());
-        case 6: return long2string(pp->getFrameOrder());
-        case 7: return long2string(pp->getBSN());
-        case 8: return long2string(pp->getCAPlength());
-        case 9: return long2string(pp->getGTSlength());
-        case 10: {std::stringstream out; out << pp->getGTSlist(i); return out.str();}
-        case 11: return long2string(pp->getVizinhosOuNodosCooperantes(i));
-        case 12: return double2string(pp->getSomaSinais());
-        case 13: return double2string(pp->getEnergy());
-        case 14: {std::stringstream out; out << pp->getDadosVizinho(i); return out.str();}
-        case 15: return long2string(pp->getSlotInicioRetrans());
-        case 16: return bool2string(pp->getRetransmissao());
-        case 17: return long2string(pp->getTempoBeacon());
-        case 18: return long2string(pp->getPrimeiraSelecao());
-        case 19: return long2string(pp->getIdBeacon());
+        case 5: return bool2string(pp->getPauseNodo());
+        case 6: return long2string(pp->getBeaconOrder());
+        case 7: return long2string(pp->getFrameOrder());
+        case 8: return long2string(pp->getBSN());
+        case 9: return long2string(pp->getCAPlength());
+        case 10: return long2string(pp->getGTSlength());
+        case 11: {std::stringstream out; out << pp->getGTSlist(i); return out.str();}
+        case 12: return long2string(pp->getVizinhosOuNodosCooperantes(i));
+        case 13: return double2string(pp->getSomaSinais());
+        case 14: return double2string(pp->getEnergy());
+        case 15: {std::stringstream out; out << pp->getDadosVizinho(i); return out.str();}
+        case 16: return long2string(pp->getSlotInicioRetrans());
+        case 17: return bool2string(pp->getRetransmissao());
+        case 18: return long2string(pp->getTempoBeacon());
+        case 19: return bool2string(pp->getTempAtualizVizinhanca());
+        case 20: return long2string(pp->getPrimeiraSelecao());
+        case 21: return long2string(pp->getIdBeacon());
         default: return "";
     }
 }
@@ -1176,19 +1216,21 @@ bool Basic802154PacketDescriptor::setFieldAsString(void *object, int field, int 
         case 2: pp->setSrcID(string2long(value)); return true;
         case 3: pp->setDstID(string2long(value)); return true;
         case 4: pp->setSeqNum(string2long(value)); return true;
-        case 5: pp->setBeaconOrder(string2long(value)); return true;
-        case 6: pp->setFrameOrder(string2long(value)); return true;
-        case 7: pp->setBSN(string2long(value)); return true;
-        case 8: pp->setCAPlength(string2long(value)); return true;
-        case 9: pp->setGTSlength(string2long(value)); return true;
-        case 11: pp->setVizinhosOuNodosCooperantes(i,string2long(value)); return true;
-        case 12: pp->setSomaSinais(string2double(value)); return true;
-        case 13: pp->setEnergy(string2double(value)); return true;
-        case 15: pp->setSlotInicioRetrans(string2long(value)); return true;
-        case 16: pp->setRetransmissao(string2bool(value)); return true;
-        case 17: pp->setTempoBeacon(string2long(value)); return true;
-        case 18: pp->setPrimeiraSelecao(string2long(value)); return true;
-        case 19: pp->setIdBeacon(string2long(value)); return true;
+        case 5: pp->setPauseNodo(string2bool(value)); return true;
+        case 6: pp->setBeaconOrder(string2long(value)); return true;
+        case 7: pp->setFrameOrder(string2long(value)); return true;
+        case 8: pp->setBSN(string2long(value)); return true;
+        case 9: pp->setCAPlength(string2long(value)); return true;
+        case 10: pp->setGTSlength(string2long(value)); return true;
+        case 12: pp->setVizinhosOuNodosCooperantes(i,string2long(value)); return true;
+        case 13: pp->setSomaSinais(string2double(value)); return true;
+        case 14: pp->setEnergy(string2double(value)); return true;
+        case 16: pp->setSlotInicioRetrans(string2long(value)); return true;
+        case 17: pp->setRetransmissao(string2bool(value)); return true;
+        case 18: pp->setTempoBeacon(string2long(value)); return true;
+        case 19: pp->setTempAtualizVizinhanca(string2bool(value)); return true;
+        case 20: pp->setPrimeiraSelecao(string2long(value)); return true;
+        case 21: pp->setIdBeacon(string2long(value)); return true;
         default: return false;
     }
 }
@@ -1202,8 +1244,8 @@ const char *Basic802154PacketDescriptor::getFieldStructName(void *object, int fi
         field -= basedesc->getFieldCount(object);
     }
     switch (field) {
-        case 10: return opp_typename(typeid(Basic802154GTSspec));
-        case 14: return opp_typename(typeid(MENSAGENS_ESCUTADAS));
+        case 11: return opp_typename(typeid(Basic802154GTSspec));
+        case 15: return opp_typename(typeid(MENSAGENS_ESCUTADAS));
         default: return NULL;
     };
 }
@@ -1218,8 +1260,8 @@ void *Basic802154PacketDescriptor::getFieldStructPointer(void *object, int field
     }
     Basic802154Packet *pp = (Basic802154Packet *)object; (void)pp;
     switch (field) {
-        case 10: return (void *)(&pp->getGTSlist(i)); break;
-        case 14: return (void *)(&pp->getDadosVizinho(i)); break;
+        case 11: return (void *)(&pp->getGTSlist(i)); break;
+        case 15: return (void *)(&pp->getDadosVizinho(i)); break;
         default: return NULL;
     }
 }

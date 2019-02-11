@@ -25,12 +25,13 @@ void Basic802154::startup() {
         stateDescr[1003] = "MAC_STATE_GTS";
     }
 
-    //Suelen
+
     //Informa se deve usar retransmissão ou não
     userelay = par("userelay");
     selecao = par("selecao");
     //Informa qual das seleçoes usará
     smart = par("smart");
+    smartPeriodic = par("smartPeriodic");
     aleatoria = par("aleatoria");
     oportunista = par("oportunista");
     completamenteAleatoria = par("completamenteAleatoria");
@@ -38,9 +39,10 @@ void Basic802154::startup() {
     numCoopMax = 40; // definido 40 como numero maximo de cooperantes na rede
     pausar = getParentModule()->getParentModule()->par("pausar");
     pausado = false;
-    tempAtualizVizinhanca = par("tempAtualizVizinhanca");
+    eventoPauseATivado = false;
+    //tempAtualizVizinhanca = par("tempAtualizVizinhanca");
     tempConfig = par("tempConfig");
-    limitBISelecao = 7; // limito o intervalo de seleção em 7 para não ficar muito tempo sem seleção.
+    limitBISelecao = 10; // limito o intervalo de seleção em 10 para não ficar muito tempo sem seleção.
 
     //Suelen
     beaconsPerdidos = 0;
@@ -60,7 +62,8 @@ void Basic802154::startup() {
     mensagensRecuperadas = 0;
     qntidadeVezesCooperou = 0;
     idBeacon = 0;
-    atualizarVizinhanca = 5; //periodicidade para realizar a escuta dos vizinhos;
+    //atualizarVizinhanca = 7;//5; //periodicidade para realizar a escuta dos vizinhos; // usar 5 para o adaptativo
+    atualizarVizinhanca = true;
     pausaEnviada = false;
 
 
@@ -73,8 +76,8 @@ void Basic802154::startup() {
 
 
 
-    //Suelen
-    //Variaveis utilizadas para determinar o numero de cooperantes
+
+    //Variaveis utilizadas para determinar o número de cooperantes
     numdadosrecebidosnogtstransmissao = 0;
     SamLoss = 0.0;
     numhosts = getParentModule()->getParentModule()->getParentModule()->par(
@@ -158,7 +161,7 @@ void Basic802154::startup() {
     packetBreak.clear();
     declareOutput("pkt TX state breakdown");
 
-    if(pausar){
+    if(pausar){// simula desassociação, nodos que pausam (desassociam) por um período de tempo
         pausarNoTempo = getParentModule()->getParentModule()->par("pausarNoTempo");
         retornarNoTempo = getParentModule()->getParentModule()->par("retornarNoTempo");
 
@@ -204,13 +207,25 @@ void Basic802154::startup() {
             qntdMsgRecebCoop = 0;
 
             // inicializa a txSucesso atual da Smart
-            txSucessSmart = 0;
+            txSucessSmart = 0.0;
 
             // inicializa a txSucesso anterior da Smart
-            txSucessSmartAnterior = 0;
+            txSucessSmartAnterior = 0.0;
 
             // faz um controle para saber se já é o Beacon de realizar selecao de cooperantes
             tempoDeBeacon = 0;
+
+            // ao iniciar o coord sinaliza que os nodos devem escutar os vizinhos no periodo de config
+            tempAtualizVizinhanca = true;
+
+            // sinaliza se está em processo de selecao
+            processoSelecao = false;
+
+            // sinaliza que um cooperante saiu da area do coordenador
+            coopPause = false;
+
+            // numero de vezes que o coordenador realizou seleção de cooperantes
+            numSelRealizadas = 0;
 
 
             // Inicializa o vetor de mensagens recuperadas por retransmissao de cada nodo
@@ -229,10 +244,11 @@ void Basic802154::startup() {
         associatedPAN = SELF_MAC_ADDRESS;
         macBSN = genk_intrand(0, 255) + 1;
 
-        //Numero de nodes a serem associados ao PAN
+        //Número de nodos a serem associados ao PAN
         maxChild = par("maxChild");
         nchildren = 0; //guarda o número de filhos
-        nchildrenActual = 0; // guarda o número de nodos que atualmente está enviando msg para o coordenador
+        nchildrenActual = 0; // guarda o número de nodos que atualmente associado ao coordenador
+        nchildrenAntigos = 0; // guardo o número de nodos que estavam associados até o envio do beacon;
 
         //initialise frameOrder and beaconOrder
         frameOrder = par("frameOrder");
@@ -355,48 +371,146 @@ void Basic802154::timerFiredCallback(int index) {
             beaconPacket->setCAPlength(numSuperframeSlots);
 
             if (userelay) {
-                if(smart && redeDinamica){// verifica se a rede é dinamica para atualizacao da selecao de forma mais constantes
-                    if(nodosEscutados.size() > 0 && historicoDeSucessoBeacon.size() >0){
+                if(smart){// verifica se a rede é dinamica para atualizacao da selecao de forma mais constantes
+                    if(nodosEscutados.size() > 0){ //&& historicoDeSucessoBeacon.size() >0){
                         qntdMsgEscutCood = nodosEscutados.size();
                         //contabilizarRetransmissoes();
-                        txSucessSmart = (qntdMsgEscutCood*100)/nchildrenActual;
+                        txSucessSmart = ((qntdMsgEscutCood*100)/nchildrenAntigos);
                         trace()<< "txSuceso Smart: "<< txSucessSmart;
                         cout << "NchildrenActual: "<< nchildrenActual << "\n";
+                        cout << "NchildrenAntigos: "<< nchildrenAntigos << "\n";
                         cout << "txSuceso Smart: "<< txSucessSmart << "\n";
                     }
-                    if(idBeacon > tempConfig){
-                        if(txSucessSmart > txSucessSmartAnterior){ //Se a taxa de sucesso atual é melhor então pode aumentar o intervalo de seleção
-                            if(selecao < limitBISelecao){ // para que o intervalo de seleção não ultrapasse o limitBISelecao BI
-                                selecao = selecao + 1;
-                                tempAtualizVizinhanca = selecao - 1;
-                            }else{ // Se ultrapassar limitBISelecao BI então reduz
-                                    selecao = selecao -1;
-                                    tempAtualizVizinhanca = selecao - 1;
-                            }
+                    if(coopPause){
+                        selecao = 2;
+                        tempAtualizVizinhanca = true;
+                        tempoDeBeacon = 0;
+                        processoSelecao = true;
+                        coopPause = false;
+                    }else{
+                            if(idBeacon >= tempConfig){
+                                if(txSucessSmart > txSucessSmartAnterior){ //Se a taxa de sucesso atual é melhor então pode aumentar o intervalo de seleção
+                                   if(!processoSelecao){
+                                    if(selecao < limitBISelecao){ // para que o intervalo de seleção não ultrapasse o limitBISelecao BI
+                                        selecao++;
+                                        tempAtualizVizinhanca = false;
+                                        //tempAtualizVizinhanca = selecao - 1;
+                                        //trocar tempAtualizVizinhanca para bool, verificar se selecaao é igual a 2
+                                        // se for tempAtualizVizinhanca = true, se nao false.
 
-                        }else{// Se a Tx não for melhor, entao o tempo de seleção deve ser reduzido
-                            if(txSucessSmart < txSucessSmartAnterior){
-                                if(selecao >= 4){// 4 é o valor inicial, e para poder reduzir a metade, caso contrario seria selecionado sempre
-                                selecao = (int)(selecao/2);
-                                 tempAtualizVizinhanca = selecao - 1;
-                                }
+                                    }else{ // Se ultrapassar limitBISelecao BI então reduz
+                                            selecao--;
+                                            tempAtualizVizinhanca = false;
+                                            //tempAtualizVizinhanca = selecao - 1;
+                                    }
+                                  }else{// caso contrário enviaria para os nodos escutarem os vizinhos novamente
+                                      tempAtualizVizinhanca = false;
+                                  }
 
-                            }else{// Se a Tx for igual a anterior reduz o tempo de seleção para tentar melhorar
-                                if(txSucessSmart < 100){// se for menor que 100% de sucesso reduz o intervalo
-                                    if(selecao == 2){// 2 pq é o intervalo mínimo para realizar a selecao
-                                        tempoDeBeacon = selecao;
-                                    }else{
-                                        if(selecao > 2){// se for menor que 2 não precisa reduzir mais
-                                            selecao = selecao - 1;
-                                            tempAtualizVizinhanca = selecao - 1;
+                                }else{// Se a Tx não for melhor, entao o tempo de seleção deve ser reduzido
+                                    if(txSucessSmart < txSucessSmartAnterior){
+                                        if(!processoSelecao){// precisa respeitar 2 beacons até uma noca seleçao, por isso se for par pode faze caso contrário não
+                                            if(selecao >= 4){// 4 é o valor inicial, e para poder reduzir a metade, caso contrario seria selecionado sempre
+                                                  selecao = (int)(selecao/2);
+                                                  if(selecao == 2){
+                                                      tempAtualizVizinhanca = true;
+                                                      tempoDeBeacon = 0;
+                                                      processoSelecao = true;
+                                                  }else{
+                                                      tempAtualizVizinhanca = false;
+                                                  }
+                                                  //tempAtualizVizinhanca = selecao - 1;
+                                            }else{ // se não é maior que 4, mas é maior que 2 decrementa
+                                                if(selecao > 2){
+                                                    selecao--;
+                                                }
+                                                if(selecao == 2){
+                                                    tempAtualizVizinhanca = true;
+                                                    tempoDeBeacon = 0;
+                                                    processoSelecao = true;
+                                                }else{
+                                                    if(selecao != 2){
+                                                    tempAtualizVizinhanca = false;
+                                                    }
+                                                }
+                                            }
+
                                         }
+                                        else{// caso contrário enviaria para os nodos escutarem os nizinhos novamente
+                                              tempAtualizVizinhanca = false;
+                                        }
+
+                                      }else{// Se a Tx for igual a anterior reduz o tempo de seleção para tentar melhorar
+                                          if(txSucessSmart < 100){// se for menor que 100% de sucesso reduz o intervalo
+                                            if(!processoSelecao){
+                                              if(selecao >= 4){// 4 é o valor inicial, e para poder reduzir a metade, caso contrario seria selecionado sempre
+                                                      selecao = (int)(selecao/2);
+                                                      if(selecao == 2){// 2 pq é o intervalo mínimo para realizar a selecao
+                                                          tempAtualizVizinhanca = true;
+                                                          tempoDeBeacon = 0;
+                                                          processoSelecao = true;
+                                                      }else{
+                                                          tempAtualizVizinhanca = false;
+                                                      }
+                                                      //tempAtualizVizinhanca = selecao - 1;
+                                                }else{ // se não é maior que 4, mas é maior que 2 decrementa
+                                                    if(selecao > 2){
+                                                        selecao--;
+                                                    }
+                                                    if(selecao == 2){
+                                                        tempAtualizVizinhanca = true;
+                                                        tempoDeBeacon = 0;
+                                                        processoSelecao = true;
+                                                    }else{
+                                                        if(selecao != 2){
+                                                        tempAtualizVizinhanca = false;
+                                                        }
+                                                    }
+                                                }
+                                             }else{// caso contrário enviaria para os nodos escutarem os nizinhos novamente
+                                                tempAtualizVizinhanca = false;
+                                            }
+
+                                        }else{
+                                                if(txSucessSmart == 100){
+                                                    if(!processoSelecao){
+                                                        if(selecao < limitBISelecao){ // para que o intervalo de seleção não ultrapasse o limitBISelecao BI
+                                                            selecao++;
+                                                            tempAtualizVizinhanca = false;
+                                                            //tempAtualizVizinhanca = selecao - 1;
+                                                            //trocar tempAtualizVizinhanca para bool, verificar se selecaao é igual a 2
+                                                            // se for tempAtualizVizinhanca = true, se nao false.
+
+                                                        }else{ // Se ultrapassar limitBISelecao BI então reduz
+                                                                selecao--;
+                                                                tempAtualizVizinhanca = false;
+                                                                //tempAtualizVizinhanca = selecao - 1;
+                                                        }
+                                                       //tempAtualizVizinhanca = false; não faz sentido, pq se for false ele entrou no if e continuara false
+                                                    }else{// caso contrário enviaria para os nodos escutarem os nizinhos novamente
+                                                        tempAtualizVizinhanca = false;
+                                                    }
+                                                }
+                                            }
+                                        }
+
                                     }
                                 }
-
-                            }
                         }
                         txSucessSmartAnterior = txSucessSmart;
                     }
+
+                if(smartPeriodic){
+                    if(idBeacon >= tempConfig){
+                        //selecao = 7;// aumenta o intervalo de selecoes
+
+                        if(tempoDeBeacon == selecao - 2){
+                            tempAtualizVizinhanca = true;
+                        }else{
+                            tempAtualizVizinhanca = false;
+                        }
+                    }
+
                 }
 
                 //modificação Ríad
@@ -406,25 +520,36 @@ void Basic802154::timerFiredCallback(int index) {
                 nodosEscutados.clear();
                 historicoDeSucessoBeacon.clear();
 
+
                 if (tempoDeBeacon == selecao) {
 
-                    if(smart){
-                       selecionaNodosSmart(beaconPacket); // Função Correta
+                    if(smart || smartPeriodic){
+                      selecionaNodosSmart(beaconPacket); // Função Correta
+                      numSelRealizadas++;
+                      cout<< "Seleções realizadas até o momento: " << numSelRealizadas << "\n";
+
                     }
                     if(aleatoria){
                        selecaoCoopAleatoria(beaconPacket);// Seleção Aleatória dentre os que escutam o coordenador
+                       numSelRealizadas++;
                     }
                     if(oportunista){
                         selecaoOportunista(beaconPacket); // Seleção Odilson
+                        numSelRealizadas++;
                     }
                     if(completamenteAleatoria){
                         selecaoCompletamenteAleatoria(beaconPacket); // Seleção Aleatoria
+                        numSelRealizadas++;
                     }
                     enviarNodosCooperantes(beaconPacket);
                     tempoDeBeacon = 0;
                     idBeacon ++;
+                    beaconPacket->setTempoBeacon(tempoDeBeacon);
                     beaconPacket->setIdBeacon(idBeacon);
                     primeiraSelecao = 1;
+                    tempAtualizVizinhanca = false;
+                    beaconPacket->setTempAtualizVizinhanca(tempAtualizVizinhanca);
+                    processoSelecao = false;
 
                     /*if (!redeDinamica && selecao == 4){
                         selecao = 7;
@@ -438,16 +563,21 @@ void Basic802154::timerFiredCallback(int index) {
                         enviarNodosCooperantes(beaconPacket);
                     }
                     idBeacon ++;
+                    tempoDeBeacon++; // Para sinalizar quando terá uma seleção
+                    beaconPacket->setTempAtualizVizinhanca(tempAtualizVizinhanca);
                     beaconPacket->setIdBeacon(idBeacon);
                     beaconPacket->setTempoBeacon(tempoDeBeacon);
                     beaconPacket->setPrimeiraSelecao(primeiraSelecao);
-                    tempoDeBeacon++; // Para sinalizar quando terá uma seleção
-                    // ver para manter os cooperantes aqui
+
+
+
                 }
                 //Suelen
                 numdadosrecebidosnogtstransmissao = 0;
 
             }
+            nchildrenAntigos = nchildrenActual;
+            cout<< "nchildrenAntigos Depois " << nchildrenAntigos << "\n";
             // GTS fields and CAP length are set in the decision layer
             prepareBeacon_hub(beaconPacket);
 
@@ -476,7 +606,7 @@ void Basic802154::timerFiredCallback(int index) {
 
             currentFrameStart = getClock() + phyDelayRx2Tx;
             setTimer(FRAME_START, beaconInterval * symbolLen);
-        } else {	// if not a PAN coordinator, then wait for beacon
+          } else {	// if not a PAN coordinator, then wait for beacon
             if(!pausado){
             //cout<<"Setar RX: "<< SELF_MAC_ADDRESS<<"\n";
             toRadioLayer(createRadioCommand(SET_STATE, RX));
@@ -496,39 +626,19 @@ void Basic802154::timerFiredCallback(int index) {
 
     }
     case PAUSE_NODE:{
-        //cancel evento para receber beacon se existir
-        cancelTimer(FRAME_START);
-        cout<<"Sou o Nodo: "<< SELF_MAC_ADDRESS <<"\n";
-        // pensar em mandar uma msg para o coord avisando da pausa
-        //transmitPacket(pausarNodo(0)); // passo o id do nodo coordenador
-        setMacState(MAC_STATE_CAP);
-        transmitPacket(pausarNodo(0));
-        //toRadioLayer(pausarNodo(0));// passo o id do nodo coordenador
-        trace() << "Node: "<< SELF_MAC_ADDRESS <<"Transmitting [PAN pause node]";
-        cout << "Node: "<< SELF_MAC_ADDRESS <<"Transmitting [PAN pause node] \n";
+//        //cancel evento para receber beacon se existir
+//        cancelTimer(FRAME_START);
+//        cout<<"Sou o Nodo: "<< SELF_MAC_ADDRESS <<"\n";
+//        // pensar em mandar uma msg para o coord avisando da pausa
+//        setMacState(MAC_STATE_CAP);
+//        transmitPacket(pausarNodo(0));
+//        trace() << "Node: "<< SELF_MAC_ADDRESS <<"Transmitting [PAN pause node]";
+//        cout << "Node: "<< SELF_MAC_ADDRESS <<"Transmitting [PAN pause node] \n";
+//
+//        toRadioLayer(createRadioCommand(SET_STATE, TX));// coloca o radio em modo TX
+//        pausaEnviada = true;
+          eventoPauseATivado = true;
 
-        toRadioLayer(createRadioCommand(SET_STATE, TX));// coloca o radio em modo TX
-        pausaEnviada = true;
-
-        /// essa parte de baixo vai ser utilizada qndo o nodo receber o ACK
-        /*trace()<<"Sou o nodo["<<SELF_MAC_ADDRESS <<"] Vou Pausar";
-        setMacState(MAC_STATE_SETUP);
-        associatedPAN = -1;
-        desyncTimeStart = getClock();
-        disconnectedFromPAN_node();
-        int t=0;
-        std::vector<int>::iterator iter;
-         for (iter = nodosAssociados.begin();iter != nodosAssociados.end(); iter++) {
-             if(nodosAssociados[t] == SELF_MAC_ADDRESS){
-                 nodosAssociados.erase(iter);
-                 break;
-             }
-             t++;
-         }
-        toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
-        setMacState(MAC_STATE_SLEEP);
-        pausado = true;
-        //resMgrModule->destroyNode();*/
         break;
 
     }
@@ -547,6 +657,7 @@ void Basic802154::timerFiredCallback(int index) {
         trace()<<"Sou o nodo["<<SELF_MAC_ADDRESS <<"] Estou Reiniciando";
         toRadioLayer(createRadioCommand(SET_STATE, RX));
         pausado = false;
+        eventoPauseATivado = false;
         break;
 
         }
@@ -572,7 +683,7 @@ void Basic802154::timerFiredCallback(int index) {
                     startedGTS_node();
                     break;
                 } else{
-                    if(smart){
+                    if(smart || smartPeriodic){
                         trace()<<"idBeacon GTS_START: "<<idBeacon;
                         if(idBeacon < tempConfig){ //período de configuração da rede, escuta os vizinhos nos primeiros 5 beacons
                             if (primeiraRetrans > 0) {
@@ -588,8 +699,9 @@ void Basic802154::timerFiredCallback(int index) {
                             }
                         }else{//Nao é periodo de configuraçao da rede
                                // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
-                               if(idBeacon == atualizarVizinhanca){ // verifica se ja está no periodo de escutar os vizinhos
-                                   atualizarVizinhanca = idBeacon + tempAtualizVizinhanca;
+                               //if(idBeacon == atualizarVizinhanca){ // verifica se ja está no periodo de escutar os vizinhos
+                               if(atualizarVizinhanca){
+                                   //atualizarVizinhanca = idBeacon + tempAtualizVizinhanca;
                                    trace()<<"idBeacon GTS_START: "<<idBeacon;
                                    trace()<<"atualizarVizinhanca: "<<atualizarVizinhanca;
                                        if (primeiraRetrans > 0) {    // Sinaliza o fim das transmissões
@@ -600,7 +712,7 @@ void Basic802154::timerFiredCallback(int index) {
                                            startedGTS_node();
                                            break;
                                        } else {     // Se não existir retransmissões
-                                                    // set a timer to go to sleep after this GTS slot ends
+                                                    // set a timer to go to sleep after GTS slot ends
                                            setTimer(SLEEP_START, irDormir - simTime());
                                            // inform the decision layer that GTS has started
                                            startedGTS_node();
@@ -869,6 +981,24 @@ void Basic802154::fromNetworkLayer(cPacket * pkt, int dstMacAddress) {
     if (userelay) {
         preencherDados(macPacket);
     }
+    /*
+     * Aqui verificar e já deve pausar (variavel bool sinalizada no evento de pause),
+     * se já for, preencher uma variável e enviar junto da mensagem.
+     *
+     */
+    if(redeDinamica){
+        if(eventoPauseATivado){
+            //cout<< "Nodo" << SELF_MAC_ADDRESS << "Vai pausar \n";
+            macPacket->setPauseNodo(true);
+            pausaEnviada = true;
+        }else{
+            macPacket->setPauseNodo(false);
+        }
+
+    }
+
+
+
     encapsulatePacket(macPacket, pkt);
     macPacket->setSrcID(SELF_MAC_ADDRESS); //if connected to PAN, would have a short MAC address assigned,
                                            //but we are not using short addresses in this model
@@ -936,6 +1066,7 @@ void Basic802154::finishSpecific() {
         //declareOutput("Msg's enviadas");
         //collectOutput("Msg's enviadas", "", msgEnviadas);
 
+
     } else {
         if(userelay){
             int num = 1;
@@ -986,6 +1117,9 @@ void Basic802154::finishSpecific() {
 
         declareOutput("Msg's Recuperadas");
         collectOutput("Msg's Recuperadas", "", mensagensRecuperadas);
+
+        declareOutput("Numero de Selecoes Realizadas");
+        collectOutput("Numero de Selecoes Realizadas", "", numSelRealizadas);
 
     }
 }
@@ -1977,7 +2111,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
     //cout<<"Sou o  NODO " << SELF_MAC_ADDRESS<< "Estou Na escuta\n";
     //cout<<"Pacote Recbido: "<< rcvPacket->getSrcID()<<" Energgia" <<  rcvPacket->getEnergy()<<" RSSI: "<< rcvPacket->getSomaSinais()<<"\n";
     if (userelay) {
-        if (rcvPacket->getMac802154PacketType() == MAC_802154_DATA_PACKET) { // Coloquei esse if pq quero guardar as inf apenas dos pacotes de dados
+        if (rcvPacket->getMac802154PacketType() == MAC_802154_DATA_PACKET /*|| (rcvPacket->getMac802154PacketType() == MAC_802154_PAUSE_PACKET)*/) { // Coloquei esse if pq quero guardar as inf apenas dos pacotes de dados
             AtualizarVizinhaca(rcvPacket, rssi); // insere o nodo que enviou o pacote como vizinho
 
             if (isPANCoordinator) {
@@ -1999,21 +2133,24 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
         /* received a BEACON frame */
         case MAC_802154_BEACON_PACKET: {
+
+            if (isPANCoordinator)
+                break;          //PAN coordinators ignore beacons from other PANs
+            if (associatedPAN != -1 && associatedPAN != rcvPacket->getPANid())
+                break;          //Ignore, if associated to another PAN
+
+
             trace()<<"Recebi beacon "<< SELF_MAC_ADDRESS;
             nodosEscutados.clear();
 
             //Modificação Ríad
             if (userelay) {
                 tempoDeBeacon = rcvPacket->getTempoBeacon();
+                atualizarVizinhanca = rcvPacket->getTempAtualizVizinhanca();
                 idBeacon = rcvPacket->getIdBeacon();//Verificará se ja é o id de ficar escutando os vizinhos
                 souNodoCooperante(rcvPacket);
             }
             recvBeacons++;
-
-            if (isPANCoordinator)
-                break;			//PAN coordinators ignore beacons from other PANs
-            if (associatedPAN != -1 && associatedPAN != rcvPacket->getPANid())
-                break;			//Ignore, if associated to another PAN
 
             //cancel beacon timeout message (if present)
             cancelTimer(BEACON_TIMEOUT);
@@ -2231,27 +2368,46 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                                     }
                                 }*/
 
+//                                //Alteração para que na smart os nodos nao escutem a vizinhança o tempo todo
+//                                  if(!cooperador && (smart || smartPeriodic) && idBeacon < 5){ //período de configuração da rede, escuta os vizinhos nos primeiros 5 beacons
+//                                     setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+//                                  }
+//                                  //Se for cooperante irá escutar todos os vizinhos
+//                                  if((smart || smartPeriodic) && cooperador){// Se o nodo for cooperante acorda no inicio para escutar os vizinhos
+//                                      setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+//                                  }else{
+//                                      // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
+//                                     if(idBeacon == atualizarVizinhanca && (smart || smartPeriodic)){ // verifica se ja está no periodo de escutar os vizinhos
+//                                         //atualizarVizinhanca = idBeacon + 5;
+//                                         setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+//
+//                                     }else{// acorda apenas antes de transmitir (não fica escutando os vizinhos)
+//                                         setTimer(WAKE_UP_START, GTSstart - phyDelaySleep2Tx - offset);
+//                                     }
+//                                  }
+
                                 //Alteração para que na smart os nodos nao escutem a vizinhança o tempo todo
-                                  if(!cooperador && smart && idBeacon < 5){ //período de configuração da rede, escuta os vizinhos nos primeiros 5 beacons
+                                  if((smart || smartPeriodic) && idBeacon < 5){ //período de configuração da rede, escuta os vizinhos nos primeiros 5 beacons
                                      setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
-                                  }
-                                  //Se for cooperante irá escutar todos os vizinhos
-                                  if(smart && cooperador){// Se o nodo for cooperante acorda no inicio para escutar os vizinhos
-                                      setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
                                   }else{
-                                      // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
-                                     if(idBeacon == atualizarVizinhanca && smart){ // verifica se ja está no periodo de escutar os vizinhos
-                                         //atualizarVizinhanca = idBeacon + 5;
-                                         setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+                                      //Se for cooperante irá escutar todos os vizinhos
+                                      //if((smart || smartPeriodic) && cooperador){// Se o nodo for cooperante acorda no inicio para escutar os vizinhos
+                                      if(cooperador){//Se for cooperante irá escutar todos os vizinhos
+                                          setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
+                                      }else{
+                                          if((smart || smartPeriodic) && !cooperador){
+                                              // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
+                                              if(atualizarVizinhanca){ // verifica se ja está no periodo de escutar os vizinhos
+                                                  setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
 
-                                     }else{// acorda apenas antes de transmitir (não fica escutando os vizinhos)
-                                         setTimer(WAKE_UP_START, GTSstart - phyDelaySleep2Tx - offset);
-                                     }
-                                  }
-
-
-
-
+                                              }else{// acorda apenas antes de transmitir (não fica escutando os vizinhos)
+                                                  setTimer(WAKE_UP_START, GTSstart - phyDelaySleep2Tx - offset);
+                                              }
+                                          }else{ // se não for smart: acorda apenas antes de transmitir (não fica escutando os vizinhos)
+                                              setTimer(WAKE_UP_START, GTSstart - phyDelaySleep2Tx - offset);
+                                          }
+                                      }
+                               }
                             }
                         }
             //}
@@ -2391,6 +2547,41 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                        t++;
                    }
                    associatedDevices[rcvPacket->getSrcID()] = false;
+
+                   // --------- Considero que na msg vem junto a sinalização de pause -------
+                   if (isNotDuplicatePacket(rcvPacket)) {
+                       dataReceived_hub(rcvPacket);
+                       toNetworkLayer(decapsulatePacket(rcvPacket));
+                   }
+                   // Suelen -- Variavel utilizada para determinar o numero de coop
+                   if (userelay) {
+                          if (rcvPacket->getRetransmissao() == false) {
+                               msgRecebidas++;
+                               numdadosrecebidosnogtstransmissao++;
+
+                           }
+
+                           // se o nodo que solicitou pausa era cooperante é necessário uma nova selecao
+                           if(redeDinamica && smart){
+                               if(!processoSelecao){
+                                  for(int i = 0; i < nodosColaboradores.size(); i++){
+                                      cout << "nodosColaboradores" << nodosColaboradores[i] << "\n";
+                                      if(nodosColaboradores[i] == rcvPacket->getSrcID()){
+                                          coopPause = true;
+                                          break;
+                                      }
+                                  }
+                               }
+                           }
+                    }
+
+
+
+
+
+
+
+
                    // reply with an ACK
                    Basic802154Packet *ackPacket = new Basic802154Packet("PAN confirmation pause",
                            MAC_LAYER_PACKET);
@@ -2405,22 +2596,12 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
             }
             break;
         }
-        // se der certo apagar isso e no Basic802154Paack tbm
-        /*case MAC_802154_RESTART_PACKET: {//Suelen -- coordenador recebe a mensagem do nodo sinalizando que ira retornar
-            cout << "Eu sou o: " << SELF_MAC_ADDRESS << "\n";
-            cout <<"Recebi o pacote do nodo: " << rcvPacket->getSrcID() << "Sinalizando que ele irá retornar \n";
-            if (isPANCoordinator) {
-                nchildrenActual++;
 
-
-            }
-            break;
-        }*/
 
             // data frame
         case MAC_802154_DATA_PACKET: {
             cout << "Eu sou o: " << SELF_MAC_ADDRESS << "\n";
-            if (rssi > limiteRSSI) { // Só irá receber a mensagem se o RSSI for bom
+            if ((rssi > limiteRSSI) || (rcvPacket->getPauseNodo())) { // Só irá receber a mensagem se o RSSI for bom
 
                 if (isNotDuplicatePacket(rcvPacket)) {
                     dataReceived_hub(rcvPacket);
@@ -2439,7 +2620,53 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
                         }
                     }
+               }
+               if (isPANCoordinator) {
+                    if (rcvPacket->getPauseNodo()){
+                          nchildrenActual--;
+                          nchildren --;
+                          int t=0;
+                          std::vector<int>::iterator iter;
+                           for (iter = nodosAssociados.begin();iter != nodosAssociados.end(); iter++) {
+                               if(nodosAssociados[t] == rcvPacket->getSrcID()){
+                                   nodosAssociados.erase(iter);
+                                   break;
+                               }
+                               t++;
+                           }
+                           associatedDevices[rcvPacket->getSrcID()] = false;
+
+                                   // se o nodo que solicitou pausa era cooperante é necessário uma nova selecao
+                                   if(redeDinamica && smart){
+                                       if(!processoSelecao){
+                                          for(int i = 0; i < nodosColaboradores.size(); i++){
+                                              cout << "nodosColaboradores" << nodosColaboradores[i] << "\n";
+                                              if(nodosColaboradores[i] == rcvPacket->getSrcID()){
+                                                  coopPause = true;
+                                                  break;
+                                              }
+                                          }
+                                       }
+                                  }
+
+
+                           // reply with an ACK
+                           Basic802154Packet *ackPacket = new Basic802154Packet("PAN confirmation pause",
+                                   MAC_LAYER_PACKET);
+                           ackPacket->setPANid(SELF_MAC_ADDRESS);
+                           ackPacket->setMac802154PacketType(MAC_802154_ACK_PACKET);
+                           ackPacket->setDstID(rcvPacket->getSrcID());
+                           ackPacket->setSeqNum(rcvPacket->getSeqNum());
+                           ackPacket->setByteLength(ACK_PKT_SIZE);
+
+                           toRadioLayer(ackPacket);
+                           toRadioLayer(createRadioCommand(SET_STATE, TX));
+                           setTimer(ATTEMPT_TX, TX_TIME(ACK_PKT_SIZE));
+
+                       break;
+                    }
                 }
+
 
                 // If the frame was sent to broadcast address, nothing else needs to be done
                 if (rcvPacket->getDstID() == BROADCAST_MAC_ADDRESS)
@@ -2529,12 +2756,30 @@ void Basic802154::handleAckPacket(Basic802154Packet * rcvPacket) {
         //received an ack while waiting for a response to data packet
     case MAC_802154_DATA_PACKET: {
         if (currentPacket->getSeqNum() == rcvPacket->getSeqNum()) {
+            string aux = rcvPacket->getName();
+            cout<< "currentPacket->getName(): " <<currentPacket->getName() <<"\n";
+            cout<< "rcvPacket->getName(): " <<rcvPacket->getName() <<"\n";
+            //if(rcvPacket->getName() == "PAN confirmation pause"){
+              if (aux.compare("PAN confirmation pause") == 0){
+                trace()<<"Sou o nodo["<<SELF_MAC_ADDRESS <<"] Coordenador já sabe que Vou Pausar";
+                setMacState(MAC_STATE_SETUP);
+                associatedPAN = -1;
+                desyncTimeStart = getClock();
+                disconnectedFromPAN_node();
+                toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
+                setMacState(MAC_STATE_SLEEP);
+                pausado = true;
+                pausaEnviada = false;
+                neigmap.clear();// limpa seus vizinhos, para tentar evitar que seja selecionado como cooperante
+            }
+
             trace() << "Data packet successfully transmitted to "
                     << rcvPacket->getSrcID() << ", local clock " << getClock();
             cout << "Data packet successfully transmitted to "
                     << rcvPacket->getSrcID() << ", local clock " << getClock()
                     << "\n";
             clearCurrentPacket("Success", true);
+            aux = "";
         } else {
             collectPacketHistory("NoAck");
             attemptTransmission("Wrong SeqNum in Ack");
@@ -2754,12 +2999,7 @@ void Basic802154::transmitCurrentPacket() {
         //cout << "Nodo [" << currentPacket->getSrcID()<< "] Transmitindo no GTS\n";
         cout << "Transmitting [" << currentPacket->getName()
                 << "] now, remaining attempts " << currentPacketRetries << "\n";
-        /*if(userelay){//Suelen
-         //Modificação Ríad
-         retransmitir(currentPacket);
-         //cout<< "transmitPacket([" << currentPacket->getName() << "]): Nodo: "<<currentPacket->getSrcID() << "\n";
 
-         }*/
 
         setTimer(currentPacketResponse > 0 ? ACK_TIMEOUT : ATTEMPT_TX, txTime);
         toRadioLayer(currentPacket->dup());

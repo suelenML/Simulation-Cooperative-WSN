@@ -22,6 +22,9 @@ enum Mac802154Packet_type {
 	MAC_802154_DATA_PACKET = 1003;
 	MAC_802154_ACK_PACKET = 1004;
 	MAC_802154_GTS_REQUEST_PACKET = 1005;
+	MAC_802154_PAUSE_PACKET = 1006;
+	MAC_802154_RESTART_PACKET = 1007;
+
 }
 
 struct Basic802154GTSspec {
@@ -42,6 +45,7 @@ packet Basic802154Packet extends MacPacket {
 	int srcID;
 	int dstID;
 	int seqNum;
+	bool pauseNodo; // Variavel para sinalizar pause
 
 	// those fields belong to beacon packet (MAC_802154_BEACON_PACKET)
 	int beaconOrder;
@@ -60,6 +64,7 @@ packet Basic802154Packet extends MacPacket {
 	bool retransmissao = false; 
 	//short numMsgEnviadas;
 	short tempoBeacon;
+	bool tempAtualizVizinhanca;
 	short primeiraSelecao;
 	short idBeacon;
 	

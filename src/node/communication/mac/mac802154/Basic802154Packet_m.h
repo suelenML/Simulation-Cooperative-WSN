@@ -30,6 +30,9 @@
  *     MAC_802154_DATA_PACKET = 1003;
  *     MAC_802154_ACK_PACKET = 1004;
  *     MAC_802154_GTS_REQUEST_PACKET = 1005;
+ *     MAC_802154_PAUSE_PACKET = 1006;
+ *     MAC_802154_RESTART_PACKET = 1007;
+ * 
  * }
  * </pre>
  */
@@ -44,7 +47,7 @@ enum Mac802154Packet_type {
 };
 
 /**
- * Struct generated from src/node/communication/mac/mac802154/Basic802154Packet.msg:27 by nedtool.
+ * Struct generated from src/node/communication/mac/mac802154/Basic802154Packet.msg:30 by nedtool.
  */
 struct Basic802154GTSspec
 {
@@ -59,7 +62,7 @@ void doPacking(cCommBuffer *b, Basic802154GTSspec& a);
 void doUnpacking(cCommBuffer *b, Basic802154GTSspec& a);
 
 /**
- * Struct generated from src/node/communication/mac/mac802154/Basic802154Packet.msg:33 by nedtool.
+ * Struct generated from src/node/communication/mac/mac802154/Basic802154Packet.msg:36 by nedtool.
  */
 struct MENSAGENS_ESCUTADAS
 {
@@ -72,7 +75,7 @@ void doPacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
 void doUnpacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
 
 /**
- * Class generated from <tt>src/node/communication/mac/mac802154/Basic802154Packet.msg:39</tt> by nedtool.
+ * Class generated from <tt>src/node/communication/mac/mac802154/Basic802154Packet.msg:42</tt> by nedtool.
  * <pre>
  * packet Basic802154Packet extends MacPacket
  * {
@@ -81,6 +84,7 @@ void doUnpacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
  *     int srcID;
  *     int dstID;
  *     int seqNum;
+ *     bool pauseNodo; // Variavel para sinalizar pause
  * 
  *     // those fields belong to beacon packet (MAC_802154_BEACON_PACKET)
  *     int beaconOrder;
@@ -99,6 +103,7 @@ void doUnpacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
  *     bool retransmissao = false;
  *     //short numMsgEnviadas;
  *     short tempoBeacon;
+ *     bool tempAtualizVizinhanca;
  *     short primeiraSelecao;
  *     short idBeacon;
  * 
@@ -113,6 +118,7 @@ class Basic802154Packet : public ::MacPacket
     int srcID_var;
     int dstID_var;
     int seqNum_var;
+    bool pauseNodo_var;
     int beaconOrder_var;
     int frameOrder_var;
     int BSN_var;
@@ -129,6 +135,7 @@ class Basic802154Packet : public ::MacPacket
     short slotInicioRetrans_var;
     bool retransmissao_var;
     short tempoBeacon_var;
+    bool tempAtualizVizinhanca_var;
     short primeiraSelecao_var;
     short idBeacon_var;
 
@@ -159,6 +166,8 @@ class Basic802154Packet : public ::MacPacket
     virtual void setDstID(int dstID);
     virtual int getSeqNum() const;
     virtual void setSeqNum(int seqNum);
+    virtual bool getPauseNodo() const;
+    virtual void setPauseNodo(bool pauseNodo);
     virtual int getBeaconOrder() const;
     virtual void setBeaconOrder(int beaconOrder);
     virtual int getFrameOrder() const;
@@ -193,6 +202,8 @@ class Basic802154Packet : public ::MacPacket
     virtual void setRetransmissao(bool retransmissao);
     virtual short getTempoBeacon() const;
     virtual void setTempoBeacon(short tempoBeacon);
+    virtual bool getTempAtualizVizinhanca() const;
+    virtual void setTempAtualizVizinhanca(bool tempAtualizVizinhanca);
     virtual short getPrimeiraSelecao() const;
     virtual void setPrimeiraSelecao(short primeiraSelecao);
     virtual short getIdBeacon() const;

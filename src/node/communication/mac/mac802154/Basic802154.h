@@ -286,7 +286,9 @@ class Basic802154: public VirtualMac {
 	    int tempoDeBeacon=0;
 	    int selecao=0;
 	    short idBeacon; // guarda o id do beacon corrente
-	    short atualizarVizinhanca;// sinaliza o momento em que os nodos irao atualizar a vizinhanca
+	    //short atualizarVizinhanca;// sinaliza o momento em que os nodos irao atualizar a vizinhanca
+	    bool atualizarVizinhanca;
+
 
 	    //void contabilizarMensagens();
 	    void listarNodosEscutados(Basic802154Packet *rcvPacket, double rssi);
@@ -330,6 +332,7 @@ class Basic802154: public VirtualMac {
 	    double limiteRSSI;
 	    bool userelay;
 	    bool smart;
+	    bool smartPeriodic;
 	    bool aleatoria;
 	    bool oportunista;
 	    bool completamenteAleatoria;
@@ -350,18 +353,24 @@ class Basic802154: public VirtualMac {
 	    double pausarNoTempo;// para silenciar o nodo
 	    double retornarNoTempo;
 	    bool pausado; // para silenciar nodo
-	    int tempConfig;
-        int tempAtualizVizinhanca;
+	    bool eventoPauseATivado;
+	    int tempConfig; //numero de BI para configuracao da Rede
+	    bool tempAtualizVizinhanca;
+	    bool processoSelecao; // sinaliza que neste momento já esta em processo de selecao
+	    bool coopPause; // sinaliza que um coop saiu da area do coordenador
+	    int numSelRealizadas; // numero de seleções que foram realizadas
+        //int tempAtualizVizinhanca;
         std::map<int, vector<MENSAGENS_ESCUTADAS>*> historicoDeSucessoBeacon; // armazena as mensagens de cooperação que o coordenador não havia escutado diretamente a cada beacon
         int limitBISelecao; // limita o intervalo de seleção, para não crescer muito
 
         /*Variáveis taxa de sucesso Metodo Smart*/
         int qntdMsgRecebCoop; // quantidade de mensagens que o coordenador recebeu por meio de cooperações
-        int qntdMsgEscutCood; // quantidade de mensagens que o coordenador recebeu diretamente
-        double txSucessSmart; // armzana o resultado da tx de sucesso das msg's recebidas no coordenador (diretas e com cooperação)
-        double txSucessSmartAnterior; // armzana o resultado da tx de sucesso das msg's recebidas no coordenador (diretas e com cooperação) no BI anterior
+        float qntdMsgEscutCood; // quantidade de mensagens que o coordenador recebeu diretamente
+        float txSucessSmart; // armzana o resultado da tx de sucesso das msg's recebidas no coordenador (diretas e com cooperação)
+        float txSucessSmartAnterior; // armzana o resultado da tx de sucesso das msg's recebidas no coordenador (diretas e com cooperação) no BI anterior
         std::vector<int> msgRecuperadasBeacon;  // armazena a quantidade de msg que chegaram por cooperação de cada nodo origem no intervalo de um beacon
         int nchildrenActual;
+        int nchildrenAntigos;//nº de nodos associados antes o envio de um novo beacon;
         bool pausaEnviada; // variavel de controle para saber se o nodo solicitou a a pausa e não recebeu resposta (ACK)
 
 	    /*Variáveis taxa de sucesso Metodo Odilson*/

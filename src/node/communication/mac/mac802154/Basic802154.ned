@@ -59,6 +59,7 @@ simple Basic802154 like node.communication.mac.iMac {
 	//Suelen 
 	bool userelay = default(false);
 	bool smart = default(false);
+	bool smartPeriodic = default(false);
 	bool aleatoria = default(false);
 	bool oportunista = default(false);
 	bool completamenteAleatoria = default(false);

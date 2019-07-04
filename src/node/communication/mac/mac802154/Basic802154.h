@@ -13,6 +13,8 @@
 #ifndef BASIC_802154_H_
 #define BASIC_802154_H_
 
+using namespace std;
+
 /*
 adding includes riad
 */
@@ -313,6 +315,11 @@ class Basic802154: public VirtualMac {
 	    void selecaoOportunista(Basic802154Packet *beaconPacket);//Suelen
 	    void selecaoCompletamenteAleatoria(Basic802154Packet *beaconPacket);//Suelen
 	    void ordenaPossiveisCoop();//Suelen
+	    void vizinhanca(); //Suelen
+	    void limparMatrizAdjacencia();//Suelen
+	    void heuristicGreedy(); // Suelen
+
+
 
 	    int retransmissoesEfetivas=0; // que o coordenador escutou apenas por retransmissão
 	    int retransmissoesNaoEfetivas=0; // que o coordenador escutou na transmissão direta e que foi por retransmissão também
@@ -381,6 +388,15 @@ class Basic802154: public VirtualMac {
 
 	    /*Metodo Oportunista*/
 	    std::vector<Neighborhood> possiveisCooperantes;
+
+
+	    /*Variaveis auxiliares para a heuristica*/
+	    std::vector<int> finiteSet; // conjunto de todos os nodos associados na rede
+	    std::vector<int> solutionSet; // conjunto resultante do algoritmo (cooperantes escolhidos)
+	    std::vector<int> auxiliarSet; // auxilia na resolução do algoritmo guloso
+	    int **matrizAdj; // matriz de adjacencia
+	    std::map<int, vector<int>> vizinhosAdj; //matriz de adjacencia
+
 
 };
 

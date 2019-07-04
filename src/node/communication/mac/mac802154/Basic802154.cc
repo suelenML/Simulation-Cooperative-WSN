@@ -237,6 +237,17 @@ void Basic802154::startup() {
 
             }
 
+            /*Variáveis para a heuristica*/
+            solutionSet.clear();
+            finiteSet.clear();
+            auxiliarSet.clear();
+            matrizAdj = new int*[numhosts];
+            for (int x = 0 ; x < numhosts ; x++) {
+                matrizAdj[x] = new int[numhosts];
+            }
+
+
+
         }
 
 
@@ -524,7 +535,8 @@ void Basic802154::timerFiredCallback(int index) {
                 if (tempoDeBeacon == selecao) {
 
                     if(smart || smartPeriodic){
-                      selecionaNodosSmart(beaconPacket); // Função Correta
+                      //selecionaNodosSmart(beaconPacket); // Função Correta
+                      vizinhanca();// Heuristica Gulosa
                       numSelRealizadas++;
                       cout<< "Seleções realizadas até o momento: " << numSelRealizadas << "\n";
 
@@ -1308,7 +1320,7 @@ void Basic802154::tratarDivisao(Neighborhood *nodo){
 
 
 }
-// método Ríad
+// método correto
 //método que monta e resolve o probelma de otimização e escreve um arquivo .mod
 void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
     if (neigmap.size() > 0) {
@@ -1528,6 +1540,205 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
        //}
     }
 }
+
+//Monta a matri de adjacencia a partir do neighmap Para a Heuristica Gulosa
+void Basic802154::vizinhanca(){
+    std::map<int, Neighborhood*>::iterator iterNeighborhood;
+    int aux;
+    //int matrizAdj[numhosts][numhosts];
+    //int matrizAdj[numhosts][numhosts];
+    int idNodo = 0;
+    int aux2 = 0;
+    int posi = 0;
+    finiteSet.clear();
+
+    limparMatrizAdjacencia();
+
+    for (iterNeighborhood = neigmap.begin();
+            iterNeighborhood != neigmap.end(); iterNeighborhood++) {
+        cout << "----------começando o for vizinhos  NEIGMAP NODO: "<< iterNeighborhood->first << "\n";
+        Neighborhood *nodo = iterNeighborhood->second;
+        cout << " Nodo: " << nodo->nodeId << "\n";
+
+        //atribuição que escuta o coordenador e se escuta;
+        matrizAdj[nodo->nodeId][0] = 1;
+        matrizAdj[nodo->nodeId][nodo->nodeId] = 1;
+        matrizAdj[0][nodo->nodeId] = 1; // se esta no neigmap o coord escuta;
+
+        //Matriz de adjacencia sendo preenchida em map
+        vizinhosAdj[nodo->nodeId] = nodo->vizinhos;
+
+        // ordena o vetor de vizinhos de cada nodo
+        for (int i = 0; i < nodo->vizinhos.size(); i++){
+                for (int j = 0; j < nodo->vizinhos.size(); j++){
+                    if (nodo->vizinhos[i] < nodo->vizinhos[j]){
+                        /*aqui acontece a troca, do maior cara
+                        vaia para a direita e o menor para a esquerda*/
+                        aux = nodo->vizinhos[i];
+                        nodo->vizinhos[i] = nodo->vizinhos[j];
+                        nodo->vizinhos[j] = aux;
+                    }
+                }
+            }
+        //vai preenchendo a matriz de adjacencia
+        for(int k = 0; k < nodo->vizinhos.size(); k++){
+            aux2 = 0;
+                for(int v = 1; v < numhosts; v++){
+                    posi = v;
+                    if(nodo->vizinhos[k] == v){
+                       aux2 = 1;
+                       printf("entrei\n");
+                       matrizAdj[nodo->nodeId][posi] = 1;
+                       printf(" matrizAdj[%d][%d]=%d\t", nodo->nodeId,posi, matrizAdj[nodo->nodeId][posi]);
+                       break;
+                    }
+                }
+
+            }
+
+        //Print de verificação
+        //for(int i = 0; i < nodo->vizinhos.size(); i++){
+        //    cout << "vizinhos[" << i << "]:" << nodo->vizinhos[i]<< "\n" ;
+        //}
+
+    }
+    // Print Matriz adjacencia 0 e 1's
+    //for (int i = 0; i < numhosts; i++){
+        //for (int j = 0; j < numhosts; j++){
+           //printf(" matrizAdj[%d][%d]=%d\t", i,j, matrizAdj[i][j]);
+        //}
+        //printf("\n");
+    //}
+
+    // verifica os nodos que estão associados e monta o conjunto do Universo (finiteSet)
+    for(int i = 0; i < numhosts; i++){
+          printf(" associatedDevices[%d]: %d\n", i, associatedDevices[i]);
+
+          if(associatedDevices[i] == true){
+              finiteSet.push_back(i);
+          }
+
+
+    }
+    //Print do conjunto de nodos que precisam ser cobertos, ou seja, todos os nodos associados na rede
+    for(int i = 0; i < finiteSet.size(); i++){
+       printf(" finiteSet[%d]: %d\n", i, finiteSet[i]);
+    }
+
+    //Chamada da função de heuristica gulosa.
+    heuristicGreedy();
+
+}
+
+void Basic802154:: heuristicGreedy(){
+    std::map<int, vector<int>>::iterator iterSubConjuntosF;
+    std::vector<int> auxiliarVizinhos; // nodos cobertos
+    std::vector<int> contador; // nodos cobertos
+    solutionSet.clear();
+    auxiliarSet.clear();
+    contador.clear();
+    auxiliarVizinhos.clear();
+    int max = 0;
+    int posicao = 0;
+
+    //Faz uma cópia do conjunto original para um auxiliar
+    for(int i = 0; i < finiteSet.size(); i++){
+        auxiliarSet.push_back(finiteSet[i]);
+
+    }
+    //Limpa o cont
+    //for(int i = 0; i < numhosts; i++){
+        //contador.push_back(0);
+
+    //}
+
+    // enquanto estiver nodos não cobertos continue
+    while(!auxiliarSet.empty()){
+            auxiliarVizinhos.clear();
+            contador.clear();
+            for(int i = 0; i < numhosts; i++){
+                    contador.push_back(0);
+
+             }
+
+            // verifica qual nodos possui o maior numero de vizinhos ainda não coberto
+            for (iterSubConjuntosF = vizinhosAdj.begin();
+                    iterSubConjuntosF != vizinhosAdj.end(); iterSubConjuntosF++) {
+                    cout << "----------começando o for vizinhosAdj nodo "<< iterSubConjuntosF->first <<"\n";
+                    std::vector<int> sub = iterSubConjuntosF->second;
+
+                    for(int i=0; i < sub.size(); i++){
+                        for (int k=0; k < auxiliarSet.size(); k++){
+                            if (sub[i] == auxiliarSet[k]){ // verifica se o elemento auxiliarSet[k] e vizinho do nodo em analise (linha)
+                                  //cont[iterSubConjuntosF->first]++; // conta o numero de nodos cobertos
+                                  contador[iterSubConjuntosF->first]++;
+                                  break;
+                            }
+                        }
+
+                    }
+            }
+            // verifica a posição (id) do nodo com mais vizinhos ainda não cobertos em auxiliarSet, finaliza e deu.
+            max = 0;
+            posicao = -1;
+            for(int m = 0; m < numhosts; m++){
+                if(contador[m]>max){
+                   max=contador[m];
+                   posicao = m;
+               }
+            }
+
+            // se não há elementos que cubram todos os nodos obrigo a sair do while
+            if(max == 0){
+                auxiliarSet.clear();
+            }
+
+            if(!auxiliarSet.empty()){
+                    // Copia em um auxiliar os nodos cobertos pelo coop selecionado
+                    for (iterSubConjuntosF = vizinhosAdj.begin();
+                                iterSubConjuntosF != vizinhosAdj.end(); iterSubConjuntosF++) {
+                                cout << "----------começando o for vizinhos do Nodo: "<< iterSubConjuntosF->first << "\n";
+                                std::vector<int> sub = iterSubConjuntosF->second;
+
+                                if(iterSubConjuntosF->first == posicao){
+                                    auxiliarVizinhos = sub;
+                                    solutionSet.push_back(iterSubConjuntosF->first); // adiciono o id do cooperante na solucao
+                                    break;
+                                 }
+                     }
+
+                    // apaga os elementos que foram cobertos pelo cooperante selecionado
+                    for(int i = 0; i < auxiliarSet.size(); i++){
+                        for(int k = 0; k < auxiliarVizinhos.size(); k++){
+                            if(auxiliarSet[i] == auxiliarVizinhos[k]){
+                                auxiliarSet.erase(auxiliarSet.begin() + i);
+                            }
+                         }
+
+                    }
+            }
+    }
+
+    nodosColaboradores.clear();
+    for(int i = 0; i< solutionSet.size();i++){
+        nodosColaboradores.push_back(solutionSet[i]);
+        cout << "----------Colaborador" << nodosColaboradores[i] << "\n";
+    }
+
+}
+
+// Apaga os elementos da matriz
+void Basic802154::limparMatrizAdjacencia(){
+
+    for (int i = 0; i < numhosts; i++){
+          for (int j = 0; j < numhosts; j++){
+              matrizAdj[i][j]=0;
+          }
+      }
+
+}
+
+
 // método Ríad
 //esse método é executado por qualquer nodo quando ele recebe uma mensagem.
 //A função é gravar criar uma lista com os nodos vizinhos

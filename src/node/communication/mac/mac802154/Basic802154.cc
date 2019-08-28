@@ -227,6 +227,15 @@ void Basic802154::startup() {
             // numero de vezes que o coordenador realizou seleção de cooperantes
             numSelRealizadas = 0;
 
+            //tempo que inicia a selecao de cooperantes
+            tempExecInicio = 0;
+
+            // tempo que termina a selecao de cooperantes
+            tempExecFim = 0;
+
+            // tempo de duracao da selecao
+            tempSelecao = 0;
+
 
             // Inicializa o vetor de mensagens recuperadas por retransmissao de cada nodo
             // e também o de pacotes recebidos por transmissao
@@ -533,10 +542,20 @@ void Basic802154::timerFiredCallback(int index) {
 
 
                 if (tempoDeBeacon == selecao) {
-
-                    if(smart || smartPeriodic){
+                      if(smart || smartPeriodic){
+                        tempExecInicio = clock();
                       //selecionaNodosSmart(beaconPacket); // Função Correta
-                      vizinhanca();// Heuristica Gulosa
+                      //vizinhanca();// Heuristica Gulosa
+                        algGenetic(); // Algoritmo Genetico
+
+                        tempExecFim = clock();
+                        tempSelecao = (tempExecFim - tempExecInicio);
+                        tempSelecao = tempSelecao/ (double) CLOCKS_PER_SEC;
+                        cout<< "tempo de duracao foi de "<< tempSelecao << "segundos" << endl;
+
+                      //tempSelecao = ((float)tempExecFim - tempExecInicio)/CLOCKS_PER_SEC;
+                      //cout << "tempSelecao: "<< tempSelecao << endl;
+                      times.push_back(tempSelecao);
                       numSelRealizadas++;
                       cout<< "Seleções realizadas até o momento: " << numSelRealizadas << "\n";
 
@@ -1091,6 +1110,18 @@ void Basic802154::finishSpecific() {
 
             }
 
+            int num2 = 1;
+            declareOutput("Tempo Duracao da Selecao de Coop");
+            for(int i = 1; i < (int)times.size(); i++){
+                collectOutput("Tempo Duracao da Selecao de Coop", num2, "Tempo", times[i]);
+                //trace()<<"Coord recebeu pacote do nodo: "<<i<< "- qnt pacotes: "<<pacotesEscutadosT[i];
+                num2++;
+
+            }
+
+
+
+
             contabilizarMsgRetransmissores();//Suelen
 
             int cont = 1;
@@ -1132,6 +1163,7 @@ void Basic802154::finishSpecific() {
 
         declareOutput("Numero de Selecoes Realizadas");
         collectOutput("Numero de Selecoes Realizadas", "", numSelRealizadas);
+
 
     }
 }
@@ -1539,6 +1571,73 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
             }
        //}
     }
+}
+
+void Basic802154:: algGenetic(){
+    cout<< "tempExecInicio "<< tempExecInicio <<endl;
+    cout<< "tempo atual "<< simTime() <<endl;
+    std::map<int, Neighborhood*> neigmapAux;
+    static AlgoritmoGenetico *ag;
+    Neighborhood* neigh;
+    int numLinhas;
+    int numColunas;
+    int TAM_POPULACAO = 1000;
+    double TAXA_MIN_MUTACAO = 0.1;
+    int NUM_GERACOES = 1000;
+    double beta1 = 0.5;
+
+
+    std::map<int,Neighborhood*>::iterator iterNeighborhood;
+    for(int i = 1; i < numhosts; i++){
+        iterNeighborhood = neigmap.find(i);
+        if(iterNeighborhood != neigmap.end()){
+            neigmapAux[i] = iterNeighborhood->second;
+        }else{
+            neigh = new Neighborhood();
+            neigh->nodeId = i;
+            neigh->energy = 0;
+            neigh->somaRssi = 0;
+            neigh-> rssi = 0;
+            neigh->vizinhos.clear();
+            neigh->numeroDevizinhos = neigh->vizinhos.size();
+            neigmapAux[i] = neigh;
+        }
+    }
+
+    numColunas = neigmapAux.size();
+    numLinhas = neigmapAux.size();
+    ag = new AlgoritmoGenetico(numLinhas, numColunas, TAM_POPULACAO, TAXA_MIN_MUTACAO, NUM_GERACOES);
+
+    std::map<int,Neighborhood*>::iterator it;
+    Neighborhood *nodosEscutados = new Neighborhood();
+    double custo = 0;
+
+    for(int i = 0; i < numColunas; i++){
+        // cout << "debug it:" << it->second.nodeId << endl
+        it = neigmapAux.find(i+1);
+        if(it != neigmapAux.end()){
+            nodosEscutados = it->second;
+
+            if(nodosEscutados->energy > 0){
+                custo = (beta1/nodosEscutados->energy);
+                ag->addCusto(i, custo);
+                for(int j = 0; j < (int) nodosEscutados->vizinhos.size(); j++){
+                    ag->addDados(i, nodosEscutados->vizinhos[j]);
+                }
+            }else{
+                custo = 100.5;
+                ag->addCusto(i, custo);
+                ag->addDados(i, 0);
+            }
+        }
+    }
+
+    ag->executar();
+    nodosColaboradores.clear();
+    for(int k=0; k < (int) ag->nodoscooperantes.size();k++){
+        nodosColaboradores.push_back(ag->nodoscooperantes[k]);
+    }
+
 }
 
 //Monta a matri de adjacencia a partir do neighmap Para a Heuristica Gulosa

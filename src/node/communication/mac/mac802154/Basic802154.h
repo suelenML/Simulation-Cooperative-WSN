@@ -15,9 +15,7 @@
 
 using namespace std;
 
-/*
-adding includes riad
-*/
+#include "AlgoritmoGenetico.h"
 #include "Neighborhood.h"
 #include "Neighbor.h"
 extern "C" {
@@ -33,6 +31,7 @@ adding includes riad
 
 #include <map>
 #include <vector>
+#include <time.h>
 
 #include "VirtualMac.h"
 #include "Basic802154Packet_m.h"
@@ -318,6 +317,7 @@ class Basic802154: public VirtualMac {
 	    void vizinhanca(); //Suelen
 	    void limparMatrizAdjacencia();//Suelen
 	    void heuristicGreedy(); // Suelen
+	    void algGenetic(); //Suelen
 
 
 
@@ -396,6 +396,10 @@ class Basic802154: public VirtualMac {
 	    std::vector<int> auxiliarSet; // auxilia na resolução do algoritmo guloso
 	    int **matrizAdj; // matriz de adjacencia
 	    std::map<int, vector<int>> vizinhosAdj; //matriz de adjacencia
+	    clock_t tempExecInicio;
+	    clock_t tempExecFim;
+	    double tempSelecao;
+	    std::vector<double> times;
 
 
 };

@@ -50,14 +50,18 @@ void Cromossomo::gerarIndividuo(map <int, vector<int>> &listaLinha, map <int, ve
 		std::vector<int> conjuntoColuna;
 		//conjuntoColuna.reserve(200000);
 		qtdColunaCobreLinha.clear();
+		linhasDescobertas.clear();
 
         std::map<int,vector<int>>::iterator it;
         std::vector<int> aux;
         std::map<int,vector<int>>::iterator it2;
         std::vector<int> aux2;
 
-		for (int i = 0; i <= (int)listaLinha.size(); i++){
-			linhasDescobertas.push_back(i);
+		for (int i = 0; i < (int)listaColuna.size(); i++){//varro todos os elementos (listaColuna contém todos os elementos)
+		    it = listaLinha.find(i);// pesquiso por quais colunas cada elemento é coberto
+		    if(it != listaLinha.end()){
+		        linhasDescobertas.push_back(it->first);
+            }
 		}
 
 		qtdColunaCobreLinha = std::vector<int>(listaLinha.size());
@@ -66,7 +70,10 @@ void Cromossomo::gerarIndividuo(map <int, vector<int>> &listaLinha, map <int, ve
             aux.clear();
             conjuntoColuna.clear();
             aux2.clear();
-			int random_pos = getRandomInt(linhasDescobertas.size());
+			//int random_pos = getRandomInt(linhasDescobertas.size());
+			srand(time(NULL));
+            int random_pos = rand() % linhasDescobertas.size();
+
 			int linha = linhasDescobertas[random_pos];
 
 			it = listaLinha.find(linha);
@@ -149,7 +156,10 @@ void Cromossomo::eliminaRedundancia(map <int, vector<int>> &listaColuna, vector<
 			std::vector<int> T;
 			T = std::vector<int>(this->colunas);
 			while (!T.empty()){
-				int random_pos = getRandomInt(T.size());
+				//int random_pos = getRandomInt(T.size());
+				srand(time(NULL));
+                int random_pos = rand() % T.size();
+
 				int coluna = T[random_pos];
 				T.erase(T.begin() + random_pos);
 

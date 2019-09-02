@@ -543,19 +543,18 @@ void Basic802154::timerFiredCallback(int index) {
 
                 if (tempoDeBeacon == selecao) {
                       if(smart || smartPeriodic){
-                        tempExecInicio = clock();
+                        //tempExecInicio = clock();
                       //selecionaNodosSmart(beaconPacket); // Função Correta
                       //vizinhanca();// Heuristica Gulosa
                         algGenetic(); // Algoritmo Genetico
 
-                        tempExecFim = clock();
+                       /* tempExecFim = clock();
                         tempSelecao = (tempExecFim - tempExecInicio);
                         tempSelecao = tempSelecao/ (double) CLOCKS_PER_SEC;
-                        cout<< "tempo de duracao foi de "<< tempSelecao << "segundos" << endl;
+                        cout<< "tempo de duracao foi de "<< tempSelecao << "segundos" << endl;*/
 
-                      //tempSelecao = ((float)tempExecFim - tempExecInicio)/CLOCKS_PER_SEC;
-                      //cout << "tempSelecao: "<< tempSelecao << endl;
-                      times.push_back(tempSelecao);
+
+                      //times.push_back(tempSelecao);
                       numSelRealizadas++;
                       cout<< "Seleções realizadas até o momento: " << numSelRealizadas << "\n";
 
@@ -1110,7 +1109,7 @@ void Basic802154::finishSpecific() {
 
             }
 
-            int num2 = 1;
+            /*int num2 = 1;
             declareOutput("Tempo Duracao da Selecao de Coop");
             for(int i = 1; i < (int)times.size(); i++){
                 collectOutput("Tempo Duracao da Selecao de Coop", num2, "Tempo", times[i]);
@@ -1118,7 +1117,7 @@ void Basic802154::finishSpecific() {
                 num2++;
 
             }
-
+             */
 
 
 
@@ -1575,15 +1574,14 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
 
 void Basic802154:: algGenetic(){
     cout<< "tempExecInicio "<< tempExecInicio <<endl;
-    cout<< "tempo atual "<< simTime() <<endl;
     std::map<int, Neighborhood*> neigmapAux;
     static AlgoritmoGenetico *ag;
     Neighborhood* neigh;
     int numLinhas;
     int numColunas;
-    int TAM_POPULACAO = 1000;
+    int TAM_POPULACAO = 500;
     double TAXA_MIN_MUTACAO = 0.1;
-    int NUM_GERACOES = 1000;
+    int NUM_GERACOES = 500;
     double beta1 = 0.5;
 
 

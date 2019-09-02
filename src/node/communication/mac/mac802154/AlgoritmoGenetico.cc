@@ -4,6 +4,7 @@ AlgoritmoGenetico::AlgoritmoGenetico(int nLinha, int nColuna, int tam_populacao,
 		TAM_POPULACAO = tam_populacao;
 		TAXA_MIN_MUTACAO = taxa_min_mutacao;
 		NUM_GERACOES = num_geracoes;
+		nodoscooperantes.clear();
 		listaColuna.clear();
 		listaLinha.clear();
 		listaCusto.clear();
@@ -67,6 +68,7 @@ void AlgoritmoGenetico::addDados(int coluna, int linha)
 }
 
 void AlgoritmoGenetico::executar(){
+    int nodoCoop = 0;
 	populacao->gerarPopulacaoInicial(listaLinha, listaColuna, listaCusto);
 	int i = 0;
 	while (i < NUM_GERACOES){
@@ -89,11 +91,14 @@ void AlgoritmoGenetico::executar(){
 		}
 		cout << "i = " << i << endl;
 	}
+	nodoscooperantes.clear();
 	cout << "MELHOR SOLUCAO:" << endl;
 
 	cout << "Colunas:" << endl;
 	for(int i = 0; i < (int)populacao->maisApto()->getColunas().size();i++){
 		cout << "Coluna[" <<i<<"]: "<<populacao->maisApto()->getColunas()[i]<<"\n";
+		nodoCoop = populacao->maisApto()->getColunas()[i];
+		nodoscooperantes.push_back(nodoCoop + 1);
 	}
 
 	cout << "CUSTO: " << populacao->maisApto()->getCustoTotal() << endl;
@@ -107,7 +112,7 @@ Cromossomo *AlgoritmoGenetico::selecao(){
 			srand(time(NULL));
 			int random_pos = rand() % TAM_POPULACAO;
 			Cromossomo *ran = populacao->getPopulacao()[random_pos];
-			if (c == nullptr || ran->getCustoTotal() < c->getCustoTotal())	{
+			if (c == nullptr || ran->getCustoTotal() < c->getCustoTotal()){
 				c = ran;
 			}
 		}

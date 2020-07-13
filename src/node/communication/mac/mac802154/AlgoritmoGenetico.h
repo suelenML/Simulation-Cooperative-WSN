@@ -31,9 +31,11 @@ using namespace std;
 
 class AlgoritmoGenetico {
 public:
-    int TAM_POPULACAO = 500;
+    //int TAM_POPULACAO = 500;
+    int TAM_POPULACAO = 1000;
     double TAXA_MIN_MUTACAO = 0.1;
-    int NUM_GERACOES = 500;
+    //int NUM_GERACOES = 500;
+    int NUM_GERACOES = 1000;
     static const int QTD_TORNEIO = 2;
 
     std::map<int, vector<int>> listaLinha;

@@ -16,12 +16,18 @@
 #include "Neighborhood.h"
 
 Neighborhood::Neighborhood() {
-    rssi=0;
-    energy=0;
-    txSucesso=0;
-    txSucessoVizinhanca=0;
+    nodeId = 0;
+    vizinhos.clear();
+    energy = 0;
+    somaRssi = 0;
+    rssi = 0;
+    numeroDevizinhos = 0;
+    txSucesso = 0;
+    txSucessoVizinhanca = 0;
+
 
 }
+
 
 Neighborhood::~Neighborhood() {
     // TODO Auto-generated destructor stub

@@ -17,6 +17,8 @@
 Define_Module(Basic802154);
 
 void Basic802154::startup() {
+    inicioSim = 0;
+    inicioSim = simTime();
     printStateTransitions = par("printStateTransitions");
     if (printStateTransitions) {
         stateDescr[1000] = "MAC_STATE_SETUP";
@@ -236,6 +238,16 @@ void Basic802154::startup() {
             // tempo de duracao da selecao
             tempSelecao = 0;
 
+            // tempo que termina a selecao de cooperantes com a variavel do tipo simTime
+            inicioExec = 0;
+
+            // tempo que termina a selecao de cooperantes com a variavel do tipo simTime
+            fimExec = 0;
+
+            tempTotalSelec = 0;
+
+            //vetor que armazena o tempo de duração de cada selecao
+            times.clear();
 
             // Inicializa o vetor de mensagens recuperadas por retransmissao de cada nodo
             // e também o de pacotes recebidos por transmissao
@@ -282,6 +294,10 @@ void Basic802154::startup() {
         beaconInterval = baseSuperframeDuration * (1 << beaconOrder);
         frameInterval = baseSuperframeDuration * (1 << frameOrder);
         CAPlength = numSuperframeSlots;
+
+        cout<< "beaconInterval: "<< beaconInterval <<"\n";
+        cout<< "frameInterval: "<< frameInterval <<"\n";
+        cout<< "CAPlength: "<< CAPlength <<"\n";
 
         if (beaconInterval <= 0 || frameInterval <= 0) {
             opp_error(
@@ -543,18 +559,38 @@ void Basic802154::timerFiredCallback(int index) {
 
                 if (tempoDeBeacon == selecao) {
                       if(smart || smartPeriodic){
-                        //tempExecInicio = clock();
-                      //selecionaNodosSmart(beaconPacket); // Função Correta
-                      //vizinhanca();// Heuristica Gulosa
-                        algGenetic(); // Algoritmo Genetico
+                        tempExecInicio = clock();
+                        //recordScalar("SimTime Start", simTime());
+                        //inicioExec =  simTime(); //getClock();
+                        //cout<< "tempo de inicio "<< tempExecInicio << endl;
+                        //cout<< "tempo de inicioOmnet "<< inicioExec << endl;
+                        selecionaNodosSmart(beaconPacket); // Função Correta
+                        //vizinhanca();// Heuristica Gulosa
+                        //algGenetic(); // Algoritmo Genetico
 
-                       /* tempExecFim = clock();
+                        tempExecFim = clock();
+                        //recordScalar("SimTime End", simTime());
+                        //fimExec = simTime(); //getClock();
+                        //cout<< "tempo de finalizacao "<< tempExecInicio << endl;
+                        //cout<< "tempo de finalizacaoOmnet "<< fimExec << endl;
                         tempSelecao = (tempExecFim - tempExecInicio);
+                        //cout<< "variavel tempSelecao "<< tempSelecao << "segundos" << endl;
                         tempSelecao = tempSelecao/ (double) CLOCKS_PER_SEC;
-                        cout<< "tempo de duracao foi de "<< tempSelecao << "segundos" << endl;*/
+                        cout<< "tempo de duracao foi de "<< tempSelecao << "segundos" << endl;
+
+                        //Tempo Omnet
+                        //cout<< "tempo Fim  "<< SIMTIME_DBL(fimExec) << "segundos" << endl;
+                        //cout<< "tempo Inicio  "<< SIMTIME_DBL(tempExecFim) << "segundos" << endl;
+                        //tempSelecao = (SIMTIME_DBL(fimExec - inicioExec));
+                        //tempSelecao = (SIMTIME_DBL(tempExecFim - inicioExec) / SIMTIME_DBL(simTime()));
+                        //cout<< "tempo atual  "<< SIMTIME_DBL(simTime()) << "segundos" << endl;
+                        //cout<< "tempo de duracao pelo OMNeT foi de "<< tempSelecao << "segundos" << endl;
 
 
-                      //times.push_back(tempSelecao);
+
+
+                      times.push_back(tempSelecao);
+                      tempSelecao = 0;
                       numSelRealizadas++;
                       cout<< "Seleções realizadas até o momento: " << numSelRealizadas << "\n";
 
@@ -621,6 +657,8 @@ void Basic802154::timerFiredCallback(int index) {
                     * symbolLen;
             sentBeacons++;
 
+            cout << "CAPlength = " << CAPlength<< "\n";
+            cout << "CAPend = " << CAPend<< "\n";
             trace() << "Transmitting [PAN beacon packet] now, BSN = " << macBSN;
             cout << "Transmitting [PAN beacon packet] now, BSN = " << macBSN
                     << "\n";
@@ -635,6 +673,9 @@ void Basic802154::timerFiredCallback(int index) {
             beaconPacket = NULL;
 
             currentFrameStart = getClock() + phyDelayRx2Tx;
+            cout << "beaconInterval * symbolLen: "<< beaconInterval * symbolLen << "\n";
+            cout << "simtime "<< simTime() << "\n";
+            cout << "simtime + (beaconInterval * symbolLen: )"<< simTime() + (beaconInterval * symbolLen) << "\n";
             setTimer(FRAME_START, beaconInterval * symbolLen);
           } else {	// if not a PAN coordinator, then wait for beacon
             if(!pausado){
@@ -933,6 +974,10 @@ void Basic802154::timerFiredCallback(int index) {
             GTSstart = GTSstartRetrans;
             GTSlength = GTSlengthRetrans;
 
+            cout << "GTSend: "<< GTSend <<"\n";
+            cout << "GTSstart: "<< GTSend <<"\n";
+            cout << "GTSlength: "<< GTSend <<"\n";
+
             Basic802154Packet *packetRetrans = new Basic802154Packet(
                     "Retransmissao", MAC_LAYER_PACKET);
             packetRetrans->setPANid(SELF_MAC_ADDRESS);
@@ -1098,6 +1143,7 @@ void Basic802154::finishSpecific() {
 
 
     } else {
+        double fimSim = 0;
         if(userelay){
             int num = 1;
             declareOutput("Pacotes Escutados Transmissao");
@@ -1109,17 +1155,18 @@ void Basic802154::finishSpecific() {
 
             }
 
-            /*int num2 = 1;
+            int num2 = 1;
+            double media = 0;
             declareOutput("Tempo Duracao da Selecao de Coop");
-            for(int i = 1; i < (int)times.size(); i++){
+            for(int i = 0; i < (int)times.size(); i++){
                 collectOutput("Tempo Duracao da Selecao de Coop", num2, "Tempo", times[i]);
+                media = media + times[i];
                 //trace()<<"Coord recebeu pacote do nodo: "<<i<< "- qnt pacotes: "<<pacotesEscutadosT[i];
                 num2++;
 
             }
-             */
-
-
+            declareOutput("Media de Tempo Duracao da Selecao de Coop");
+            collectOutput("Media de Tempo Duracao da Selecao de Coop", "", media/times.size());
 
             contabilizarMsgRetransmissores();//Suelen
 
@@ -1162,6 +1209,11 @@ void Basic802154::finishSpecific() {
 
         declareOutput("Numero de Selecoes Realizadas");
         collectOutput("Numero de Selecoes Realizadas", "", numSelRealizadas);
+
+       fimSim = SIMTIME_DBL(simTime() - inicioSim);
+
+        declareOutput("Tempo simulacao");
+        collectOutput("Tempo simulacao", "", fimSim);
 
 
     }
@@ -1395,14 +1447,18 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
                       //      << nodo->somaRssi << " Vizinhos: "
                         //    << nodo->numeroDevizinhos << "Taxa de Sucesso: "
                           //  << nodo->txSucesso << " ID: " << nodo->nodeId;
-                    result = ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)+ (beta3 / nodo->numeroDevizinhos)+ (beta4 / nodo->txSucesso));
+                    //result = ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)+ (beta3 / nodo->numeroDevizinhos)+ (beta4 / nodo->txSucesso));
+                    result = (beta1 / nodo->energy);
                     //trace()<<"Result: "<<result << "*x"<< nodo->nodeId;
 
-                    out
+                    /*out
                             << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
                                     + (beta3 / nodo->numeroDevizinhos)
                                     + (beta4 / nodo->txSucesso)) << "*x"
-                            << nodo->nodeId;
+                            << nodo->nodeId;*/
+
+                    out << (beta1 / nodo->energy)<< "*x" << nodo->nodeId;
+
                     if(alteradoVizinho == 1){
                         nodo->numeroDevizinhos = 0;
                         alteradoVizinho = 0;
@@ -1417,14 +1473,17 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
                       //      << nodo->somaRssi << " Vizinhos: "
                         //    << nodo->numeroDevizinhos << "Taxa de Sucesso: "
                           //  << nodo->txSucesso << " ID: " << nodo->nodeId;
-                    result = ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)+ (beta3 / nodo->numeroDevizinhos)+ (beta4 / nodo->txSucesso));
+                    //result = ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)+ (beta3 / nodo->numeroDevizinhos)+ (beta4 / nodo->txSucesso));
+                    result = (beta1 / nodo->energy);
                     //trace()<<"Result: "<<result << "*x"<< nodo->nodeId;
 
-                    out << "+"
+                    /*out << "+"
                             << ((beta1 / nodo->energy) + (beta2 / nodo->somaRssi)
                                     + (beta3 / nodo->numeroDevizinhos)
                                     + (beta4 / nodo->txSucesso)) << "* x"
-                            << nodo->nodeId;
+                            << nodo->nodeId;*/
+
+                    out << "+" << (beta1 / nodo->energy) << "* x" << nodo->nodeId;
 
                     if(alteradoVizinho == 1){
                         nodo->numeroDevizinhos = 0;
@@ -1573,16 +1632,20 @@ void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
 }
 
 void Basic802154:: algGenetic(){
-    cout<< "tempExecInicio "<< tempExecInicio <<endl;
+    srand(time(NULL));
+    //cout<< "tempExecInicio "<< tempExecInicio <<endl;
     std::map<int, Neighborhood*> neigmapAux;
     static AlgoritmoGenetico *ag;
-    Neighborhood* neigh;
-    int numLinhas;
-    int numColunas;
-    int TAM_POPULACAO = 500;
+    //Neighborhood* neigh;
+    int numLinhas = 0;
+    int numColunas = 0;
+    //int TAM_POPULACAO = 500;
+    int TAM_POPULACAO = 1000;
     double TAXA_MIN_MUTACAO = 0.1;
-    int NUM_GERACOES = 500;
+    //int NUM_GERACOES = 500;
+    int NUM_GERACOES = 1000;
     double beta1 = 0.5;
+    neigmapAux.clear();
 
 
     std::map<int,Neighborhood*>::iterator iterNeighborhood;
@@ -1591,7 +1654,7 @@ void Basic802154:: algGenetic(){
         if(iterNeighborhood != neigmap.end()){
             neigmapAux[i] = iterNeighborhood->second;
         }else{
-            neigh = new Neighborhood();
+            Neighborhood* neigh = new Neighborhood();
             neigh->nodeId = i;
             neigh->energy = 0;
             neigh->somaRssi = 0;
@@ -1607,7 +1670,7 @@ void Basic802154:: algGenetic(){
     ag = new AlgoritmoGenetico(numLinhas, numColunas, TAM_POPULACAO, TAXA_MIN_MUTACAO, NUM_GERACOES);
 
     std::map<int,Neighborhood*>::iterator it;
-    Neighborhood *nodosEscutados = new Neighborhood();
+    Neighborhood *nodosEscutados; //= new Neighborhood();
     double custo = 0;
 
     for(int i = 0; i < numColunas; i++){

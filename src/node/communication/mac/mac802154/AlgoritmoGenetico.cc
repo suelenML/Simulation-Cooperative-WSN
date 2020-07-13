@@ -9,7 +9,7 @@ AlgoritmoGenetico::AlgoritmoGenetico(int nLinha, int nColuna, int tam_populacao,
 		listaLinha.clear();
 		listaCusto.clear();
 		// listaCusto.reserve(200000);
-		for(int i = 1; i <= nColuna; i++){
+		for(int i = 0; i < nColuna; i++){
 			listaCusto.push_back(0);
 		}
 
@@ -69,6 +69,7 @@ void AlgoritmoGenetico::addDados(int coluna, int linha)
 
 void AlgoritmoGenetico::executar(){
     int nodoCoop = 0;
+    double random_double = 0;
 	populacao->gerarPopulacaoInicial(listaLinha, listaColuna, listaCusto);
 	int i = 0;
 	while (i < NUM_GERACOES){
@@ -77,7 +78,10 @@ void AlgoritmoGenetico::executar(){
 		Cromossomo *maisApto = populacao->maisApto();
 		Cromossomo *menosApto = populacao->menosApto();
 
-		double random_double = getRandomDouble();
+		//random_double = getRandomDouble();
+		 //srand(time(NULL));
+		 random_double = (rand() /(double)(RAND_MAX));
+		cout << "random_double " << random_double << endl;
 		if (random_double < taxaMutacao(maisApto->getCustoTotal(), menosApto->getCustoTotal()))	{
 			mutacao(filho);
 		}
@@ -109,8 +113,9 @@ Cromossomo *AlgoritmoGenetico::selecao(){
 		Cromossomo *c = nullptr;
 		for (int i = 0; i < QTD_TORNEIO; i++){
 			//int random_pos = getRandomInt(TAM_POPULACAO);
-			srand(time(NULL));
+
 			int random_pos = rand() % TAM_POPULACAO;
+			cout<< "Posicao random do pai: "<< random_pos << endl;
 			Cromossomo *ran = populacao->getPopulacao()[random_pos];
 			if (c == nullptr || ran->getCustoTotal() < c->getCustoTotal()){
 				c = ran;
@@ -119,7 +124,9 @@ Cromossomo *AlgoritmoGenetico::selecao(){
 		return c;
 	}
 
-Cromossomo *AlgoritmoGenetico::crossover(){
+Cromossomo* AlgoritmoGenetico::crossover(){
+    std::vector<int> uniao;
+    uniao.clear();
 	Cromossomo *pai_x = selecao();
 	Cromossomo *pai_y = selecao();
 
@@ -128,6 +135,9 @@ Cromossomo *AlgoritmoGenetico::crossover(){
 	}
 	std::vector<int> paiX;
 	std::vector<int> paiY;
+	paiX.clear();
+	paiY.clear();
+
 	for(int j = 0;j< (int)pai_x->getColunas().size();j++){
         paiX.push_back(0);
 	}
@@ -143,7 +153,7 @@ Cromossomo *AlgoritmoGenetico::crossover(){
 	for(int i = 0; i < (int)pai_y->getColunas().size();i++){
 		paiY[i] = pai_y->getColunas()[i];
 	}
-	std::vector<int> uniao = Util::uniao(paiX, paiY);
+	uniao = Util::uniao(paiX, paiY);
 	Cromossomo *filho = new Cromossomo(uniao, listaColuna, listaLinha, listaCusto);
 	filho->eliminaRedundancia(listaColuna, listaCusto);
 
@@ -152,11 +162,14 @@ Cromossomo *AlgoritmoGenetico::crossover(){
 }
 
 void AlgoritmoGenetico::mutacao(Cromossomo *C){
-	double random_double = getRandomDouble();
-	int n = (int)(random_double * C->getColunas().size());
+    //srand(time(NULL));
+    double random_double  = (rand() /(double)(RAND_MAX));
+	//double random_double = getRandomDouble();
+	//int n = (int)(random_double * C->getColunas().size());
+	int n = ceil(random_double * C->getColunas().size());
 	for (int i = 0; i < n; i++){
 		//int random_col = getRandomInt(listaColuna.size());
-		srand(time(NULL));
+		//srand(time(NULL));
 		int random_col = rand() % listaColuna.size();
 		C->addColuna(random_col, listaCusto[random_col], listaColuna);
 	}

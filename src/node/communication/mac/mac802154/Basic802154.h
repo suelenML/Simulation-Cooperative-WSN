@@ -399,6 +399,10 @@ class Basic802154: public VirtualMac {
 	    clock_t tempExecInicio;
 	    clock_t tempExecFim;
 	    double tempSelecao;
+	    simtime_t inicioExec; // variavel de tempo (omnet) de inicio do algoritmo de selecao de coop
+	    simtime_t fimExec;  // variavel de tempo (omnet) de finalizacao do algoritmo de selecao de coop
+	    simtime_t tempTotalSelec;
+	    simtime_t inicioSim;
 	    std::vector<double> times;
 
 

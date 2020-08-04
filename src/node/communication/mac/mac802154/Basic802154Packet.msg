@@ -68,5 +68,10 @@ packet Basic802154Packet extends MacPacket {
 	short primeiraSelecao;
 	short idBeacon;
 	
+	//codificacao
+	unsigned short payload[];
+	unsigned short coeficiente[];
+	//int coeficiente[];
+	
 }
 

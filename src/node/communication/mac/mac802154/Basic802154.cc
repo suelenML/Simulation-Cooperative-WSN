@@ -12,6 +12,7 @@
 
 #include "Basic802154.h"
 //#include "ThroughputTest.h"
+#define MSG_SIZE 127
 
 // This module is virtual and can not be used directly
 Define_Module(Basic802154);
@@ -67,6 +68,9 @@ void Basic802154::startup() {
     //atualizarVizinhanca = 7;//5; //periodicidade para realizar a escuta dos vizinhos; // usar 5 para o adaptativo
     atualizarVizinhanca = true;
     pausaEnviada = false;
+
+    //Informa se utilizará codificação
+    useNetworkCoding = par("useNetworkCoding");
 
 
     //Vetores
@@ -172,7 +176,12 @@ void Basic802154::startup() {
         setTimer(RESTART_NODE, getClock() + retornarNoTempo);
         cout<<"getClock() + retornarNoTempo: "<<getClock() + retornarNoTempo<<"\n";
     }
-
+    if(useNetworkCoding){
+        codificador = new Codificador();
+        sucessoMsgCodRecebida = 0;
+        inicializaMatriz();
+        neigmapNodosEscutados.clear();
+    }
 
 
     // Coordinator initialisation
@@ -555,6 +564,12 @@ void Basic802154::timerFiredCallback(int index) {
                 //verificaRetransmissoesRepetidas();
                 nodosEscutados.clear();
                 historicoDeSucessoBeacon.clear();
+                if(useNetworkCoding){
+                    neigmapNodosEscutados.clear();
+                    inicializaMatriz();
+                    codificador->n_equations = 0;
+                    sucessoMsgCodRecebida = 0;
+                }
 
 
                 if (tempoDeBeacon == selecao) {
@@ -989,6 +1004,7 @@ void Basic802154::timerFiredCallback(int index) {
             packetRetrans->setByteLength(COMMAND_PKT_SIZE);
             packetRetrans->setRetransmissao(true);
             retransmitir(packetRetrans);
+            retransmissaoNetworkCoding(packetRetrans);
 
 
             transmitPacket(packetRetrans);
@@ -1014,7 +1030,30 @@ void Basic802154::timerFiredCallback(int index) {
 
     }
 }
-// método Ríad
+/*Este método chama a codificação, insere a mensagem codificada no pacote de retransmissão e seta os coeficientes utilizados na retransmissão*/
+
+void Basic802154:: retransmissaoNetworkCoding(Basic802154Packet *packetRetrans){
+    uint8_t byte = 0;
+   parseToVector();
+   codificador->encode_messages(SELF_MAC_ADDRESS);
+   for(int i=0;i<MSG_SIZE;i++){
+       byte = codificador->msg_array[i];
+       packetRetrans->setPayload(i,byte);
+   }
+   for(int i=1;i<numhosts;i++){
+       packetRetrans->setCoeficiente(i,codificador->coeficientes[i]);
+
+   }
+
+   if(useNetworkCoding){
+        neigmapNodosEscutados.clear();
+    }
+
+}
+
+
+
+// método Ríad: insere no pacote as informações utilizadas para realizar a seleção dos cooperantes
 void Basic802154::preencherDados(Basic802154Packet *macPacket) {
     trace() << "Vizinhos Enviados Ao Coord: "<<neigmap.size() ;
     trace() << "Eu sou o: " << SELF_MAC_ADDRESS;
@@ -1041,6 +1080,7 @@ void Basic802154::preencherDados(Basic802154Packet *macPacket) {
             macPacket->setVizinhosOuNodosCooperantes(i, nodo->nodeId);
             i++;
         }
+
         //limpar a vizinhança atual Aqui
        //neigmap.clear();
     }
@@ -1052,9 +1092,23 @@ void Basic802154::fromNetworkLayer(cPacket * pkt, int dstMacAddress) {
     Basic802154Packet *macPacket = new Basic802154Packet(
             "802.15.4 MAC data packet", MAC_LAYER_PACKET);
 
-    //modificação Ríad
+     //modificação Ríad
     if (userelay) {
         preencherDados(macPacket);
+    }
+    if(useNetworkCoding){
+        int idNode = SELF_MAC_ADDRESS;
+        int cont = 0;
+        macPacket->setPayloadArraySize(MSG_SIZE);
+        cont = idNode;
+        for(int i = 0; i<MSG_SIZE;i++){
+            macPacket->setPayload(i,cont);
+            cont++;
+        }
+        macPacket->setCoeficienteArraySize(numhosts);
+        for(int i = 0; i<numhosts;i++){
+            macPacket->setCoeficiente(i,0);
+        }
     }
     /*
      * Aqui verificar e já deve pausar (variavel bool sinalizada no evento de pause),
@@ -1071,15 +1125,28 @@ void Basic802154::fromNetworkLayer(cPacket * pkt, int dstMacAddress) {
         }
 
     }
-
-
-
     encapsulatePacket(macPacket, pkt);
+
     macPacket->setSrcID(SELF_MAC_ADDRESS); //if connected to PAN, would have a short MAC address assigned,
                                            //but we are not using short addresses in this model
     macPacket->setDstID(dstMacAddress);
     macPacket->setMac802154PacketType(MAC_802154_DATA_PACKET);
     macPacket->setSeqNum(seqNum++);
+
+    /*
+     * Se o nodo que estiver enviando um pacote for cooperante, este precisa guardar o
+     * seu pacote na matriz de escutados, para depois codificar e retransmitir junto com os dos vizinhos
+     * */
+
+    if(useNetworkCoding){
+        if(cooperador){
+            Basic802154Packet* framedup = macPacket->dup();
+            MessagesNeighborhood *neig = new MessagesNeighborhood();
+            neig->setFrameTransmission(framedup);
+            neigmapNodosEscutados[SELF_MAC_ADDRESS] = neig;
+
+        }
+    }
 
     if (seqNum > 255)
         seqNum = 0;
@@ -1216,6 +1283,7 @@ void Basic802154::finishSpecific() {
         collectOutput("Tempo simulacao", "", fimSim);
 
 
+
     }
 }
 
@@ -1247,130 +1315,132 @@ void Basic802154::adicionarNodoSolto(int nodoConectado, int nodoSolto) {
 
 // método Ríad
 //método que monta e resolve o probelma de otimização e escreve um arquivo .mod
-void Basic802154::selecionaNodosSmartNumVizinhos(
-        Basic802154Packet *beaconPacket) {
+//void Basic802154::selecionaNodosSmartNumVizinhos(
+//        Basic802154Packet *beaconPacket) {
+//
+//    std::string fileName("prob" + std::to_string(numeroDoProblema) + ".mod");
+//    char *cstr = new char[fileName.length() + 1];
+//    strcpy(cstr, fileName.c_str());
+//
+//    std::ofstream out(cstr);
+//
+//    std::map<int, Neighborhood*>::iterator iterNeighborhood;
+//
+//    out << "min:";
+//    bool primeiro = true;
+//    if (neigmap.size() > 0) {
+//        for (iterNeighborhood = neigmap.begin();
+//                iterNeighborhood != neigmap.end(); iterNeighborhood++) {
+//            Neighborhood *nodo = iterNeighborhood->second;
+//            if (primeiro) {
+//                primeiro = false;
+//                out << beta3 * nodo->numeroDevizinhos << "*x" << nodo->nodeId;
+//            } else {
+//                out << "+" << beta3 * nodo->numeroDevizinhos << "* x"
+//                        << nodo->nodeId;
+//            }
+//
+//        }
+//        out << ";\n";
+//
+//        for (iterNeighborhood = neigmap.begin();
+//                iterNeighborhood != neigmap.end(); iterNeighborhood++) {
+//            Neighborhood *nodo = iterNeighborhood->second;
+//
+//            if (nodo->numeroDevizinhos > 0) {
+//                primeiro = true;
+//                int i, nodosConectados = 0;
+//                for (i = 0; i < nodo->numeroDevizinhos; i++) {
+//
+//                    if (neigmap.find(nodo->vizinhos[i]) == neigmap.end()) {
+//                        adicionarNodoSolto(nodo->nodeId, nodo->vizinhos[i]);
+//                    } else {
+//                        nodosConectados++;
+//                        if (primeiro) {
+//                            out << "C" << nodo->nodeId << ":x" << nodo->nodeId
+//                                    << "+ x" << nodo->vizinhos[i];
+//                            primeiro = false;
+//                        } else {
+//                            out << "+x" << nodo->vizinhos[i];
+//                        }
+//                    }
+//                }
+//                if (!primeiro) {
+//                    out << ">=1;\n";
+//                }
+//            }
+//        }
+//        out << "\n";
+//        std::map<int, vector<int>*>::iterator iter;
+//
+//        for (iter = listaDeNodosSoltos.begin();
+//                iter != listaDeNodosSoltos.end(); iter++) {
+//
+//            vector<int>::iterator v = iter->second->begin();
+//
+//            out << "C" << iter->first << ":";
+//            primeiro = true;
+//            while (iter->second->end() != v) {
+//                if (primeiro) {
+//                    out << "x" << *v;
+//                    primeiro = false;
+//                } else {
+//                    out << "+x" << *v;
+//                }
+//                v++;
+//            }
+//            out << ">=1;\n";
+//        }
+//        out << "\n";
+//
+//        primeiro = true;
+//        int i = 0;
+//        for (iterNeighborhood = neigmap.begin();
+//                iterNeighborhood != neigmap.end(); iterNeighborhood++) {
+//            Neighborhood *nodo = iterNeighborhood->second;
+//            out << "bin x" << nodo->nodeId << ";" << "\n";
+//            i++;
+//
+//        }
+//
+//        out.close();
+//
+//        lprec *lp;
+//
+//        char *lpName = "prob";
+//
+//        lp = read_LP(cstr, 2, lpName);
+//
+//        if (lp == NULL) {
+//            fprintf(stderr, "Unable to read model\n");
+//        } else {
+//
+//            solve(lp);
+//            print_solution(lp, 1);
+//            REAL resultado_lp[i];
+//            get_variables(lp, resultado_lp);
+//            int j = 0;
+//            primeiro = true;
+//            //limpando lista de colaboradores
+//            nodosColaboradores.clear();
+//            //cout<<"Selecao de Cooperantes\n";
+//            for (iterNeighborhood = neigmap.begin();
+//                    iterNeighborhood != neigmap.end(); iterNeighborhood++) {
+//                Neighborhood *nodo = iterNeighborhood->second;
+//
+//                if (resultado_lp[j] == 1) {
+//                    nodosColaboradores.push_back(nodo->nodeId);
+//                    //cout<<"- : "<<nodo->nodeId <<"\n";
+//                }
+//                j++;
+//
+//            }
+//        }
+//        numeroDoProblema++;
+//    }
+//}
 
-    std::string fileName("prob" + std::to_string(numeroDoProblema) + ".mod");
-    char *cstr = new char[fileName.length() + 1];
-    strcpy(cstr, fileName.c_str());
 
-    std::ofstream out(cstr);
-
-    std::map<int, Neighborhood*>::iterator iterNeighborhood;
-
-    out << "min:";
-    bool primeiro = true;
-    if (neigmap.size() > 0) {
-        for (iterNeighborhood = neigmap.begin();
-                iterNeighborhood != neigmap.end(); iterNeighborhood++) {
-            Neighborhood *nodo = iterNeighborhood->second;
-            if (primeiro) {
-                primeiro = false;
-                out << beta3 * nodo->numeroDevizinhos << "*x" << nodo->nodeId;
-            } else {
-                out << "+" << beta3 * nodo->numeroDevizinhos << "* x"
-                        << nodo->nodeId;
-            }
-
-        }
-        out << ";\n";
-
-        for (iterNeighborhood = neigmap.begin();
-                iterNeighborhood != neigmap.end(); iterNeighborhood++) {
-            Neighborhood *nodo = iterNeighborhood->second;
-
-            if (nodo->numeroDevizinhos > 0) {
-                primeiro = true;
-                int i, nodosConectados = 0;
-                for (i = 0; i < nodo->numeroDevizinhos; i++) {
-
-                    if (neigmap.find(nodo->vizinhos[i]) == neigmap.end()) {
-                        adicionarNodoSolto(nodo->nodeId, nodo->vizinhos[i]);
-                    } else {
-                        nodosConectados++;
-                        if (primeiro) {
-                            out << "C" << nodo->nodeId << ":x" << nodo->nodeId
-                                    << "+ x" << nodo->vizinhos[i];
-                            primeiro = false;
-                        } else {
-                            out << "+x" << nodo->vizinhos[i];
-                        }
-                    }
-                }
-                if (!primeiro) {
-                    out << ">=1;\n";
-                }
-            }
-        }
-        out << "\n";
-        std::map<int, vector<int>*>::iterator iter;
-
-        for (iter = listaDeNodosSoltos.begin();
-                iter != listaDeNodosSoltos.end(); iter++) {
-
-            vector<int>::iterator v = iter->second->begin();
-
-            out << "C" << iter->first << ":";
-            primeiro = true;
-            while (iter->second->end() != v) {
-                if (primeiro) {
-                    out << "x" << *v;
-                    primeiro = false;
-                } else {
-                    out << "+x" << *v;
-                }
-                v++;
-            }
-            out << ">=1;\n";
-        }
-        out << "\n";
-
-        primeiro = true;
-        int i = 0;
-        for (iterNeighborhood = neigmap.begin();
-                iterNeighborhood != neigmap.end(); iterNeighborhood++) {
-            Neighborhood *nodo = iterNeighborhood->second;
-            out << "bin x" << nodo->nodeId << ";" << "\n";
-            i++;
-
-        }
-
-        out.close();
-
-        lprec *lp;
-
-        char *lpName = "prob";
-
-        lp = read_LP(cstr, 2, lpName);
-
-        if (lp == NULL) {
-            fprintf(stderr, "Unable to read model\n");
-        } else {
-
-            solve(lp);
-            print_solution(lp, 1);
-            REAL resultado_lp[i];
-            get_variables(lp, resultado_lp);
-            int j = 0;
-            primeiro = true;
-            //limpando lista de colaboradores
-            nodosColaboradores.clear();
-            //cout<<"Selecao de Cooperantes\n";
-            for (iterNeighborhood = neigmap.begin();
-                    iterNeighborhood != neigmap.end(); iterNeighborhood++) {
-                Neighborhood *nodo = iterNeighborhood->second;
-
-                if (resultado_lp[j] == 1) {
-                    nodosColaboradores.push_back(nodo->nodeId);
-                    //cout<<"- : "<<nodo->nodeId <<"\n";
-                }
-                j++;
-
-            }
-        }
-        numeroDoProblema++;
-    }
-}
 //Pegar hora
 const std::string currentDateTime() {
    char            fmt[64], buf[64];
@@ -1913,7 +1983,7 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
     Neighborhood *nodo;
     cout << "Eu sou o: " << SELF_MAC_ADDRESS << "\n";
     unsigned vizinhos = pkt->getVizinhosOuNodosCooperantesArraySize();
-    if (pkt->getDadosVizinhoArraySize() == 0) {
+    if (pkt->getDadosVizinhoArraySize() == 0) { //verifico se é retransmissao
         //if (rssi > limiteRSSI && !oportunista) {
         if (rssi > limiteRSSI) {
             if (iterNeighborhood == neigmap.end()) {
@@ -2077,6 +2147,94 @@ void Basic802154::souNodoCooperante(Basic802154Packet * pkt) {
         i++;
     }
 }
+
+/*
+ * Esse método armazena as mensagens que o coodenador escutou e que chegaram por retransmissão
+ *
+ * */
+void Basic802154::listarNodosEscutadosRetransmissaoNetworkCoding(Basic802154Packet *rcvPacket){
+        int recuperadas = 0;
+        Basic802154Packet* framedup = rcvPacket->dup();
+        /*unsigned short*/ uint8_t coeficiente = 0;
+
+        for(int i = 1;i < numhosts;i++){
+            coeficiente = framedup->getCoeficiente(i);
+            matrix_coeficiente[framedup->getSrcID()][i] = coeficiente; //pensar nesta possibilidade
+            /*if(coeficiente > 0){
+                matrix_coeficiente[codificador->n_equations][i] = coeficiente;
+
+            }*/
+        }
+        trace()<< "matrix_coeficiente" << endl;
+        for(int i = 0;i < numhosts;i++){
+            for(int j = 1;j<numhosts;j++){
+                trace()<< "["<<i<<"]["<<j<<"] = "<< matrix_coeficiente[i][j];
+             }
+            trace()<< endl;
+        }
+
+        trace()<< "Lista Coord Escutou" << endl;
+        trace()<< "Numero de vizinhos Cood" <<neigmapNodosEscutados.size() <<endl;
+        for(int i = 0; i< (int)neigmapNodosEscutados.size();i++){
+            trace()<< "["<<i<<"] = "<<neigmapNodosEscutados[i];
+        }
+        codificador->n_equations++;
+        for(int i=0; i< MSG_SIZE;i++){
+            matrix_combination[framedup->getSrcID()][i] = framedup->getPayload(i);
+        }
+
+        MessagesNeighborhood *neig = neigmapNodosEscutados[framedup->getSrcID()];
+        neig->setFrameRetransmission(framedup);
+        parseMatrix();
+        primeiraRetransCod = true;
+        recuperadas = sucessoMsgCodRecebida;
+        //sucessoMsgCodRecebida = codificador->solve_system(sucessoMsgCodRecebida);
+        sucessoMsgCodRecebida = codificador->solveSystem(sucessoMsgCodRecebida);
+        cout << " sucessoMsgCodRecebida retrans = " << sucessoMsgCodRecebida << endl;
+        recuperadas = sucessoMsgCodRecebida - recuperadas;
+        trace()<< "Mensagens Recuperadas" <<recuperadas<<endl;
+
+}
+/*
+ * Esse método armazena as mensagens que o coordenador e o nodo cooperante escutaram e que chegaram por transmissão direta
+ *
+ * */
+
+void Basic802154::listarNodosEscutadosTransmissaoNetworkCoding(Basic802154Packet *rcvPacket){
+
+    if(isPANCoordinator){
+        Basic802154Packet* framedup = rcvPacket->dup();
+        if(rcvPacket->getRetransmissao() == false){
+            for(int i =0; i< MSG_SIZE;i++){
+                buffer_msg[framedup->getSrcID()][i] = framedup->getPayload(i);
+            }
+
+            MessagesNeighborhood *neig = new MessagesNeighborhood();
+            neig->setFrameTransmission(framedup);
+            neigmapNodosEscutados[framedup->getSrcID()] = neig;
+            codificador->received[framedup->getSrcID()] = 1;
+            sucessoMsgCodRecebida++;
+            cout << " sucessoMsgCodRecebida trans = " << sucessoMsgCodRecebida << endl;
+        }
+    }else{
+        if(cooperador){
+            if (rcvPacket->getMac802154PacketType() == MAC_802154_DATA_PACKET && rcvPacket->getRetransmissao() == false){
+                Basic802154Packet* framedup = rcvPacket->dup();
+                MessagesNeighborhood *neig = new MessagesNeighborhood();
+                neig->setFrameTransmission(framedup);
+                neigmapNodosEscutados[framedup->getSrcID()] = neig;
+
+            }
+
+
+        }
+   }
+}
+
+
+
+
+
 // método Ríad
 void Basic802154::listarNodosEscutados(Basic802154Packet *rcvPacket,
         double rssi) {
@@ -2088,6 +2246,7 @@ void Basic802154::listarNodosEscutados(Basic802154Packet *rcvPacket,
     }
     if (rcvPacket->getDadosVizinhoArraySize() == 0 && rcvPacket->getRetransmissao() == false
             && rcvPacket->getSrcID() != 0 ) { // evita que retransmissoes sejam retransmitidas novamente
+
         for (int i = 0; i < (int) nodosEscutados.size(); i++) {
             if (nodosEscutados[i].idMens == rcvPacket->getSeqNum()
                     && nodosEscutados[i].idNodo == rcvPacket->getSrcID()) {
@@ -2104,9 +2263,22 @@ void Basic802154::listarNodosEscutados(Basic802154Packet *rcvPacket,
             if(isPANCoordinator){
                 pacotesEscutadosT[rcvPacket->getSrcID()] = pacotesEscutadosT[rcvPacket->getSrcID()] + 1;
             }
+            if(useNetworkCoding){
+                //irá armazenar a mensagem (transmissão) escutada se for coordenador ou cooperante
+                listarNodosEscutadosTransmissaoNetworkCoding(rcvPacket);
+            }
         }
 
     }
+    if(useNetworkCoding){
+        if(rcvPacket->getRetransmissao() == true){
+            if (isPANCoordinator) {
+                // irá armazenar a retransmissão escutada se for coordenador
+                listarNodosEscutadosRetransmissaoNetworkCoding(rcvPacket);
+            }
+
+        }
+  }
 }
 //Suelen Este método armazena as retransmissoes por beacon interval
 void Basic802154::armazenaRetransmissoes(Basic802154Packet *rcvPacket) {
@@ -2151,7 +2323,7 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket, double rs
             if(rssi > limiteRSSI){
                 cout << "Numer de escutados: " << rcvPacket->getDadosVizinhoArraySize()
                         << "\n";
-                trace()<< "Numer de escutadosCoop: " << rcvPacket->getDadosVizinhoArraySize();
+                trace()<< "Numer de escutadosCoopSemCood: " << rcvPacket->getDadosVizinhoArraySize();
                 /** Salvando todas as cooperações para excluir cooperantes que estão repetindo as mensagens**/
                 armazenaRetransmissoes(rcvPacket);
 
@@ -2202,6 +2374,9 @@ void Basic802154::verificarRetransmissao(Basic802154Packet *rcvPacket, double rs
                             utilidadeCoop++;
                             utilidadeRetransmissao++;
                             trace()<<"inseri em sucesso o nodo: "<<escutados.idNodo << " e a msg: "<< escutados.idMens<< " Quem escutou foi: "<<rcvPacket->getSrcID();
+
+
+
                         }
                     }
                 } else {
@@ -2513,6 +2688,11 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
             trace()<<"Recebi beacon "<< SELF_MAC_ADDRESS;
             nodosEscutados.clear();
+            if(useNetworkCoding){
+                neigmapNodosEscutados.clear();
+
+            }
+
 
             //Modificação Ríad
             if (userelay) {
@@ -3303,8 +3483,19 @@ void Basic802154::retransmitir(Basic802154Packet *nextPacket) {
             //i++;
         }
     }
+    if(useNetworkCoding){
+        nextPacket->setPayloadArraySize(MSG_SIZE);
+        for(int i = 0; i<MSG_SIZE;i++){
+            nextPacket->setPayload(i,0);
+        }
+        nextPacket->setCoeficienteArraySize(numhosts);
+        for(int i = 0; i<numhosts;i++){
+            nextPacket->setCoeficiente(i,0);
+        }
+    }
 //após enviar o nome dos nodos que foram escutados a lista local é apagada
     nodosEscutados.clear();
+
 }
 
 // continue CSMA-CA algorithm
@@ -3737,3 +3928,81 @@ void Basic802154::ordenaPossiveisCoop(){
 
 }
 
+/*#############################################################################################
+                                             Codificação
+#############################################################################################*/
+
+int Basic802154::parseToVector(){
+
+    //codificador->mapacodificador = neigmap;
+    codificador->mapacodificador.clear();
+    codificador->mapacodificador = neigmapNodosEscutados;
+}
+void Basic802154::parseMatrix(){
+
+    for(int i = 0;i<numhosts; i++){
+        for(int j = 0;j<numhosts;j++){
+            codificador->matrix[i][j] = matrix_coeficiente[i][j];
+        }
+    }
+
+    for(int i = 0;i<numhosts; i++){
+        for(int j = 0;j<MSG_SIZE;j++){
+            codificador->combination1[i][j] = matrix_combination[i][j];
+        }
+    }
+
+    if(!primeiraRetransCod){
+        for(int i = 0;i<numhosts; i++){
+            for(int j = 0;j<MSG_SIZE;j++){
+                codificador->buffer_msg[i][j] = buffer_msg[i][j];
+            }
+        }
+    }
+
+}
+
+
+void Basic802154::inicializaMatriz(){
+
+    primeiraRetransCod = false;
+    for(int i=0;i<numhosts;i++){
+        for(int j=0;j<numhosts;j++){
+            matrix_coeficiente[i][j] = 0;
+        }
+    }
+
+    for(int i=0;i<numhosts;i++){
+        for(int j=0;j<numhosts;j++){
+            codificador->matrix[i][j] = 1;
+        }
+    }
+
+    for(int i=0;i<numhosts;i++){
+        for(int j=0;j<MSG_SIZE;j++){
+            matrix_combination[i][j] = 0;
+        }
+    }
+
+    for(int i=0;i<numhosts;i++){
+        for(int j=0;j<MSG_SIZE;j++){
+            codificador->combination1[i][j] = 0;
+        }
+    }
+
+    for (int i = 1; i < numhosts; i++)
+        codificador->received[i] = 0;
+
+    for(int i = 0;i<numhosts; i++){
+        for(int j = 0;j<MSG_SIZE;j++){
+            codificador->buffer_msg[i][j] = 0;
+        }
+    }
+
+    for(int i = 0;i<numhosts; i++){
+        for(int j = 0;j<MSG_SIZE;j++){
+            buffer_msg[i][j] = 0;
+        }
+    }
+
+}

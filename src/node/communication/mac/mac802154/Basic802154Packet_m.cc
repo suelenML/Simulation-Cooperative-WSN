@@ -528,6 +528,10 @@ Basic802154Packet::Basic802154Packet(const char *name, int kind) : ::MacPacket(n
     this->tempAtualizVizinhanca_var = 0;
     this->primeiraSelecao_var = 0;
     this->idBeacon_var = 0;
+    payload_arraysize = 0;
+    this->payload_var = 0;
+    coeficiente_arraysize = 0;
+    this->coeficiente_var = 0;
 }
 
 Basic802154Packet::Basic802154Packet(const Basic802154Packet& other) : ::MacPacket(other)
@@ -538,6 +542,10 @@ Basic802154Packet::Basic802154Packet(const Basic802154Packet& other) : ::MacPack
     this->vizinhosOuNodosCooperantes_var = 0;
     dadosVizinho_arraysize = 0;
     this->dadosVizinho_var = 0;
+    payload_arraysize = 0;
+    this->payload_var = 0;
+    coeficiente_arraysize = 0;
+    this->coeficiente_var = 0;
     copy(other);
 }
 
@@ -546,6 +554,8 @@ Basic802154Packet::~Basic802154Packet()
     delete [] GTSlist_var;
     delete [] vizinhosOuNodosCooperantes_var;
     delete [] dadosVizinho_var;
+    delete [] payload_var;
+    delete [] coeficiente_var;
 }
 
 Basic802154Packet& Basic802154Packet::operator=(const Basic802154Packet& other)
@@ -592,6 +602,16 @@ void Basic802154Packet::copy(const Basic802154Packet& other)
     this->tempAtualizVizinhanca_var = other.tempAtualizVizinhanca_var;
     this->primeiraSelecao_var = other.primeiraSelecao_var;
     this->idBeacon_var = other.idBeacon_var;
+    delete [] this->payload_var;
+    this->payload_var = (other.payload_arraysize==0) ? NULL : new unsigned short[other.payload_arraysize];
+    payload_arraysize = other.payload_arraysize;
+    for (unsigned int i=0; i<payload_arraysize; i++)
+        this->payload_var[i] = other.payload_var[i];
+    delete [] this->coeficiente_var;
+    this->coeficiente_var = (other.coeficiente_arraysize==0) ? NULL : new unsigned short[other.coeficiente_arraysize];
+    coeficiente_arraysize = other.coeficiente_arraysize;
+    for (unsigned int i=0; i<coeficiente_arraysize; i++)
+        this->coeficiente_var[i] = other.coeficiente_var[i];
 }
 
 void Basic802154Packet::parsimPack(cCommBuffer *b)
@@ -622,6 +642,10 @@ void Basic802154Packet::parsimPack(cCommBuffer *b)
     doPacking(b,this->tempAtualizVizinhanca_var);
     doPacking(b,this->primeiraSelecao_var);
     doPacking(b,this->idBeacon_var);
+    b->pack(payload_arraysize);
+    doPacking(b,this->payload_var,payload_arraysize);
+    b->pack(coeficiente_arraysize);
+    doPacking(b,this->coeficiente_var,coeficiente_arraysize);
 }
 
 void Basic802154Packet::parsimUnpack(cCommBuffer *b)
@@ -670,6 +694,22 @@ void Basic802154Packet::parsimUnpack(cCommBuffer *b)
     doUnpacking(b,this->tempAtualizVizinhanca_var);
     doUnpacking(b,this->primeiraSelecao_var);
     doUnpacking(b,this->idBeacon_var);
+    delete [] this->payload_var;
+    b->unpack(payload_arraysize);
+    if (payload_arraysize==0) {
+        this->payload_var = 0;
+    } else {
+        this->payload_var = new unsigned short[payload_arraysize];
+        doUnpacking(b,this->payload_var,payload_arraysize);
+    }
+    delete [] this->coeficiente_var;
+    b->unpack(coeficiente_arraysize);
+    if (coeficiente_arraysize==0) {
+        this->coeficiente_var = 0;
+    } else {
+        this->coeficiente_var = new unsigned short[coeficiente_arraysize];
+        doUnpacking(b,this->coeficiente_var,coeficiente_arraysize);
+    }
 }
 
 int Basic802154Packet::getMac802154PacketType() const
@@ -948,6 +988,66 @@ void Basic802154Packet::setIdBeacon(short idBeacon)
     this->idBeacon_var = idBeacon;
 }
 
+void Basic802154Packet::setPayloadArraySize(unsigned int size)
+{
+    unsigned short *payload_var2 = (size==0) ? NULL : new unsigned short[size];
+    unsigned int sz = payload_arraysize < size ? payload_arraysize : size;
+    for (unsigned int i=0; i<sz; i++)
+        payload_var2[i] = this->payload_var[i];
+    for (unsigned int i=sz; i<size; i++)
+        payload_var2[i] = 0;
+    payload_arraysize = size;
+    delete [] this->payload_var;
+    this->payload_var = payload_var2;
+}
+
+unsigned int Basic802154Packet::getPayloadArraySize() const
+{
+    return payload_arraysize;
+}
+
+unsigned short Basic802154Packet::getPayload(unsigned int k) const
+{
+    if (k>=payload_arraysize) throw cRuntimeError("Array of size %d indexed by %d", payload_arraysize, k);
+    return payload_var[k];
+}
+
+void Basic802154Packet::setPayload(unsigned int k, unsigned short payload)
+{
+    if (k>=payload_arraysize) throw cRuntimeError("Array of size %d indexed by %d", payload_arraysize, k);
+    this->payload_var[k] = payload;
+}
+
+void Basic802154Packet::setCoeficienteArraySize(unsigned int size)
+{
+    unsigned short *coeficiente_var2 = (size==0) ? NULL : new unsigned short[size];
+    unsigned int sz = coeficiente_arraysize < size ? coeficiente_arraysize : size;
+    for (unsigned int i=0; i<sz; i++)
+        coeficiente_var2[i] = this->coeficiente_var[i];
+    for (unsigned int i=sz; i<size; i++)
+        coeficiente_var2[i] = 0;
+    coeficiente_arraysize = size;
+    delete [] this->coeficiente_var;
+    this->coeficiente_var = coeficiente_var2;
+}
+
+unsigned int Basic802154Packet::getCoeficienteArraySize() const
+{
+    return coeficiente_arraysize;
+}
+
+unsigned short Basic802154Packet::getCoeficiente(unsigned int k) const
+{
+    if (k>=coeficiente_arraysize) throw cRuntimeError("Array of size %d indexed by %d", coeficiente_arraysize, k);
+    return coeficiente_var[k];
+}
+
+void Basic802154Packet::setCoeficiente(unsigned int k, unsigned short coeficiente)
+{
+    if (k>=coeficiente_arraysize) throw cRuntimeError("Array of size %d indexed by %d", coeficiente_arraysize, k);
+    this->coeficiente_var[k] = coeficiente;
+}
+
 class Basic802154PacketDescriptor : public cClassDescriptor
 {
   public:
@@ -995,7 +1095,7 @@ const char *Basic802154PacketDescriptor::getProperty(const char *propertyname) c
 int Basic802154PacketDescriptor::getFieldCount(void *object) const
 {
     cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 22+basedesc->getFieldCount(object) : 22;
+    return basedesc ? 24+basedesc->getFieldCount(object) : 24;
 }
 
 unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int field) const
@@ -1029,8 +1129,10 @@ unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int fi
         FD_ISEDITABLE,
         FD_ISEDITABLE,
         FD_ISEDITABLE,
+        FD_ISARRAY | FD_ISEDITABLE,
+        FD_ISARRAY | FD_ISEDITABLE,
     };
-    return (field>=0 && field<22) ? fieldTypeFlags[field] : 0;
+    return (field>=0 && field<24) ? fieldTypeFlags[field] : 0;
 }
 
 const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) const
@@ -1064,8 +1166,10 @@ const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) c
         "tempAtualizVizinhanca",
         "primeiraSelecao",
         "idBeacon",
+        "payload",
+        "coeficiente",
     };
-    return (field>=0 && field<22) ? fieldNames[field] : NULL;
+    return (field>=0 && field<24) ? fieldNames[field] : NULL;
 }
 
 int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) const
@@ -1094,6 +1198,8 @@ int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) 
     if (fieldName[0]=='t' && strcmp(fieldName, "tempAtualizVizinhanca")==0) return base+19;
     if (fieldName[0]=='p' && strcmp(fieldName, "primeiraSelecao")==0) return base+20;
     if (fieldName[0]=='i' && strcmp(fieldName, "idBeacon")==0) return base+21;
+    if (fieldName[0]=='p' && strcmp(fieldName, "payload")==0) return base+22;
+    if (fieldName[0]=='c' && strcmp(fieldName, "coeficiente")==0) return base+23;
     return basedesc ? basedesc->findField(object, fieldName) : -1;
 }
 
@@ -1128,8 +1234,10 @@ const char *Basic802154PacketDescriptor::getFieldTypeString(void *object, int fi
         "bool",
         "short",
         "short",
+        "unsigned short",
+        "unsigned short",
     };
-    return (field>=0 && field<22) ? fieldTypeStrings[field] : NULL;
+    return (field>=0 && field<24) ? fieldTypeStrings[field] : NULL;
 }
 
 const char *Basic802154PacketDescriptor::getFieldProperty(void *object, int field, const char *propertyname) const
@@ -1161,6 +1269,8 @@ int Basic802154PacketDescriptor::getArraySize(void *object, int field) const
         case 11: return pp->getGTSlistArraySize();
         case 12: return pp->getVizinhosOuNodosCooperantesArraySize();
         case 15: return pp->getDadosVizinhoArraySize();
+        case 22: return pp->getPayloadArraySize();
+        case 23: return pp->getCoeficienteArraySize();
         default: return 0;
     }
 }
@@ -1197,6 +1307,8 @@ std::string Basic802154PacketDescriptor::getFieldAsString(void *object, int fiel
         case 19: return bool2string(pp->getTempAtualizVizinhanca());
         case 20: return long2string(pp->getPrimeiraSelecao());
         case 21: return long2string(pp->getIdBeacon());
+        case 22: return ulong2string(pp->getPayload(i));
+        case 23: return ulong2string(pp->getCoeficiente(i));
         default: return "";
     }
 }
@@ -1231,6 +1343,8 @@ bool Basic802154PacketDescriptor::setFieldAsString(void *object, int field, int 
         case 19: pp->setTempAtualizVizinhanca(string2bool(value)); return true;
         case 20: pp->setPrimeiraSelecao(string2long(value)); return true;
         case 21: pp->setIdBeacon(string2long(value)); return true;
+        case 22: pp->setPayload(i,string2ulong(value)); return true;
+        case 23: pp->setCoeficiente(i,string2ulong(value)); return true;
         default: return false;
     }
 }

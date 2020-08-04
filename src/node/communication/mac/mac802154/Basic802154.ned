@@ -83,6 +83,10 @@ simple Basic802154 like node.communication.mac.iMac {
 	double beta2 = default(-1.5);
 	double beta3 = default(-2.0);
 	double beta4 = default(-1.0);
+	
+	
+	//Codificação
+	bool useNetworkCoding = default(false);
     
 	
 	

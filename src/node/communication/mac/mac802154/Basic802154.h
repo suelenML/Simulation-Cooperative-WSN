@@ -18,6 +18,8 @@ using namespace std;
 #include "AlgoritmoGenetico.h"
 #include "Neighborhood.h"
 #include "Neighbor.h"
+#include "Codificador.h"
+#include "MessagesNeighborhood.h"
 extern "C" {
     #include <lpsolve/lp_lib.h>
 
@@ -318,6 +320,13 @@ class Basic802154: public VirtualMac {
 	    void limparMatrizAdjacencia();//Suelen
 	    void heuristicGreedy(); // Suelen
 	    void algGenetic(); //Suelen
+	    /*Codificacao*/
+	    int parseToVector();
+	    void parseMatrix();
+	    void inicializaMatriz();
+	    void listarNodosEscutadosRetransmissaoNetworkCoding(Basic802154Packet *rcvPacket);
+	    void listarNodosEscutadosTransmissaoNetworkCoding(Basic802154Packet *rcvPacket);
+	    void retransmissaoNetworkCoding(Basic802154Packet *packetRetrans);
 
 
 
@@ -405,6 +414,16 @@ class Basic802154: public VirtualMac {
 	    simtime_t inicioSim;
 	    std::vector<double> times;
 
+	    /*Codificação */
+	    bool useNetworkCoding;
+	    Codificador *codificador;
+	    int sucessoMsgCodRecebida;
+	    /*unsigned char*/ uint8_t buffer_msg[21][127];//matriz de armazenamento de msg
+	    /*unsigned short*/ uint8_t matrix_coeficiente[21][21]; // numero de nodos X numero de vizinhos
+	    /*unsigned short*/ uint8_t matrix_combination[21][127];
+	    // neigmapNodosEscutados representa as mensagens que o nodo escutou dos vizinhos
+	    bool primeiraRetransCod;
+	    std::map<int, MessagesNeighborhood*> neigmapNodosEscutados; // to pensando em essa estrutura substituir o vetor de nodosEscutados
 
 };
 

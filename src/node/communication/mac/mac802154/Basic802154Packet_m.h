@@ -107,6 +107,11 @@ void doUnpacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
  *     short primeiraSelecao;
  *     short idBeacon;
  * 
+ *     //codificacao
+ *     unsigned short payload[];
+ *     unsigned short coeficiente[];
+ * 	//int coeficiente[];
+ * 
  * }
  * </pre>
  */
@@ -138,6 +143,10 @@ class Basic802154Packet : public ::MacPacket
     bool tempAtualizVizinhanca_var;
     short primeiraSelecao_var;
     short idBeacon_var;
+    unsigned short *payload_var; // array ptr
+    unsigned int payload_arraysize;
+    unsigned short *coeficiente_var; // array ptr
+    unsigned int coeficiente_arraysize;
 
   private:
     void copy(const Basic802154Packet& other);
@@ -208,6 +217,14 @@ class Basic802154Packet : public ::MacPacket
     virtual void setPrimeiraSelecao(short primeiraSelecao);
     virtual short getIdBeacon() const;
     virtual void setIdBeacon(short idBeacon);
+    virtual void setPayloadArraySize(unsigned int size);
+    virtual unsigned int getPayloadArraySize() const;
+    virtual unsigned short getPayload(unsigned int k) const;
+    virtual void setPayload(unsigned int k, unsigned short payload);
+    virtual void setCoeficienteArraySize(unsigned int size);
+    virtual unsigned int getCoeficienteArraySize() const;
+    virtual unsigned short getCoeficiente(unsigned int k) const;
+    virtual void setCoeficiente(unsigned int k, unsigned short coeficiente);
 };
 
 inline void doPacking(cCommBuffer *b, Basic802154Packet& obj) {obj.parsimPack(b);}

@@ -16,6 +16,7 @@
 #ifndef NEIGHBORHOOD_H_
 #define NEIGHBORHOOD_H_
 #include <omnetpp.h>
+#include "Basic802154Packet_m.h"
 
 
 
@@ -33,6 +34,8 @@ public:
     int numeroDevizinhos=0;
     double txSucesso;
     double txSucessoVizinhanca;
+
+
 
 };
 

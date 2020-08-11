@@ -15,12 +15,13 @@
 
 #include "Codificador.h"
 
+//Número de nodos maximo (incluindo o coordenador).
+#define N_NODES 101
 #define MSG_SIZE 127
 #define NO_COEFFICIENT        0x0000
 #define MULTIPLE_COEFFICIENTS 0xFFFF
 
-//Número de nodos maximo (incluindo o coordenador).
-#define N_MOTES 9
+
 
 Define_Module(Codificador);
 
@@ -96,7 +97,7 @@ void Codificador::swapLines( uint8_t c1, uint8_t c2){
 
     uint8_t n, b, e1, e2;
 
-    for (n = 1; n < N_MOTES; n++){
+    for (n = 1; n < N_NODES; n++){
         e1 = matrix[c1][n];
         e2 = matrix[c2][n];
 
@@ -121,7 +122,7 @@ void Codificador::swapLines( uint8_t c1, uint8_t c2){
 void Codificador:: combineLines(uint8_t c1, uint8_t c2, uint8_t f){
     uint8_t n, b, e1, e2, auxMul, auxSub;
 
-    for (n = 1; n < N_MOTES; n++){
+    for (n = 1; n < N_NODES; n++){
         e1 = matrix[c1][n];
         e2 = matrix[c2][n];
 
@@ -151,7 +152,7 @@ void Codificador:: clearColumn(uint8_t cp, uint8_t n){
 
     kpinv = inv(matrix[cp][n]);
 
-    for (c = cp + 1; c < N_MOTES; c++){
+    for (c = cp + 1; c < N_NODES; c++){
         k = matrix[c][n];
 
         if (k != 0)
@@ -169,7 +170,7 @@ void Codificador::subtractMsg(int idNode){
 
     uint8_t c, k, b, m, r, aux = 0;
 
-        for (c = 1; c < N_MOTES; c++)
+        for (c = 1; c < N_NODES; c++)
         {
             k = matrix[c][idNode];
             if (k != 0){
@@ -192,7 +193,7 @@ void Codificador::subtractMsg(int idNode){
 void Codificador::removeKnownElements(){
     uint8_t n;
 
-        for (n = 1; n < N_MOTES; n++)
+        for (n = 1; n < N_NODES; n++)
         {
             if (received[n]){
                 subtractMsg(n);
@@ -206,11 +207,11 @@ void Codificador::reduceMatrix(){
     uint8_t cp = 1;
     uint8_t n, c, k;
 
-    for (n = 1; n < N_MOTES; n++){
+    for (n = 1; n < N_NODES; n++){
         k = matrix[cp][n];
 
         if (k == 0){
-            for (c = cp + 1; c < N_MOTES; c++){
+            for (c = cp + 1; c < N_NODES; c++){
                 k = matrix[c][n];
 
                 if (k != 0){
@@ -235,7 +236,7 @@ int Codificador:: getCoefficientCol(uint8_t c){
     uint16_t u = NO_COEFFICIENT;
     uint8_t  n, k;
 
-    for (n = 1; n < N_MOTES; n++){
+    for (n = 1; n < N_NODES; n++){
         k = matrix[c][n];
 
         if (k != 0){
@@ -261,7 +262,7 @@ int Codificador:: substituteBack(){
     uint16_t n;
     int auxPrint = 0;
 
-    for (c = N_MOTES-1; c > 0; c--)
+    for (c = N_NODES-1; c > 0; c--)
     {
         n = getCoefficientCol(c);
 
@@ -280,6 +281,8 @@ int Codificador:: substituteBack(){
                 std::cout<< "buffer_msg["<< (int)auxConv<<"]["<<(int)b<< "]: " << auxPrint  <<"\n";
             }
             received[n] = 1;
+            // recoverPerNode[auxConv]: armazena a quantidade de mensagens recuperadas de determinado nodo, no geral da simulação
+            recoverPerNode[auxConv]++;
             subtractMsg((uint8_t) n);
             count++;
         }
@@ -417,7 +420,7 @@ void Codificador::encode_messages(int idCooperante) //codifica, constroi e trans
         msg_array[i] = 0;
     }
 
-    for(int i=0;i<=N_MOTES;i++){
+    for(int i=0;i<N_NODES;i++){
          coeficientes[i] = 0;
     }
 
@@ -433,7 +436,7 @@ void Codificador::encode_messages(int idCooperante) //codifica, constroi e trans
                    if(neig->frametrans->getPayloadArraySize() > 0){
 
                        Basic802154Packet *frame = neig->frametrans;
-                       coef = iter1->first + idCooperante; // tem que colocar o módulo
+                       coef = (iter1->first + idCooperante) % (N_NODES-1); // tem que colocar o módulo
                        coeficientes[iter1->first] = coef;
 
 
@@ -450,7 +453,7 @@ void Codificador::encode_messages(int idCooperante) //codifica, constroi e trans
                        for(int i = 0; i < MSG_SIZE; i++){
                            byte = frame->getPayload(i);
                            r = msg_array[i];
-                           byte = mult(coef, byte);//coeficiente: iter1->first + idCooperante
+                           byte = mult(coef, byte);
                            msg_array[i] = r ^ byte;
                            std::cout<<(int)msg_array[i] <<endl;
                        }

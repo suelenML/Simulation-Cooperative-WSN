@@ -179,6 +179,9 @@ void Basic802154::startup() {
     if(useNetworkCoding){
         codificador = new Codificador();
         sucessoMsgCodRecebida = 0;
+        sucessoMsgDirRecebida = 0;
+        retransCoded = 0;
+        inicializeMetric();
         inicializaMatriz();
         neigmapNodosEscutados.clear();
     }
@@ -569,6 +572,7 @@ void Basic802154::timerFiredCallback(int index) {
                     inicializaMatriz();
                     codificador->n_equations = 0;
                     sucessoMsgCodRecebida = 0;
+                    sucessoMsgDirRecebida = 0;
                 }
 
 
@@ -1005,6 +1009,8 @@ void Basic802154::timerFiredCallback(int index) {
             packetRetrans->setRetransmissao(true);
             retransmitir(packetRetrans);
             retransmissaoNetworkCoding(packetRetrans);
+            relayNetworkCoding++;
+
 
 
             transmitPacket(packetRetrans);
@@ -1208,6 +1214,12 @@ void Basic802154::finishSpecific() {
         //declareOutput("Msg's enviadas");
         //collectOutput("Msg's enviadas", "", msgEnviadas);
 
+        if(useNetworkCoding){
+               declareOutput("Numero de Retransmissões Codificadas por Relay");
+               collectOutput("Numero de Retransmissões Codificadas por Relay", "", relayNetworkCoding);
+
+        }
+
 
     } else {
         double fimSim = 0;
@@ -1240,7 +1252,7 @@ void Basic802154::finishSpecific() {
             int cont = 1;
             declareOutput("Mensagens Individuais retransmitidas");
 
-            for(int i = 1; i < msgRecuperadas.size(); i++){
+            for(int i = 1; i < (int)msgRecuperadas.size(); i++){
                 collectOutput("Mensagens Individuais retransmitidas", cont, "Mensagens", msgRecuperadas[i]);
                 trace()<<"nodo: "<<i<<"recuperou "<< msgRecuperadas[i];
                 cont++;
@@ -1268,8 +1280,7 @@ void Basic802154::finishSpecific() {
 
         // numero de retransmissões em que nenhuma mensagem foi recuperada
         declareOutput("Retransmissoes Nao Uteis");
-        collectOutput("Retransmissoes Nao Uteis", "",
-                retransmissoesNaoEfetivas);
+        collectOutput("Retransmissoes Nao Uteis", "", retransmissoesNaoEfetivas);
 
         declareOutput("Msg's Recuperadas");
         collectOutput("Msg's Recuperadas", "", mensagensRecuperadas);
@@ -1277,7 +1288,25 @@ void Basic802154::finishSpecific() {
         declareOutput("Numero de Selecoes Realizadas");
         collectOutput("Numero de Selecoes Realizadas", "", numSelRealizadas);
 
-       fimSim = SIMTIME_DBL(simTime() - inicioSim);
+        if(useNetworkCoding){
+            declareOutput("Numero de Mensagens recebidas Codificadas");
+            collectOutput("Numero de Mensagens recebidas Codificadas", "", retransCoded);
+
+
+            int cont = 1;
+            declareOutput("Mensagens Individuais Recuperadas Codificacao");
+
+            for(int i = 1; i < numhosts; i++){
+                collectOutput("Mensagens Individuais Recuperadas Codificacao", cont, "Mensagens", recoverPerNode[i]);
+                trace()<<"nodo: "<<i<<"recuperou "<< recoverPerNode[i];
+                cont++;
+
+            }
+
+
+        }
+
+        fimSim = SIMTIME_DBL(simTime() - inicioSim);
 
         declareOutput("Tempo simulacao");
         collectOutput("Tempo simulacao", "", fimSim);
@@ -2159,11 +2188,7 @@ void Basic802154::listarNodosEscutadosRetransmissaoNetworkCoding(Basic802154Pack
 
         for(int i = 1;i < numhosts;i++){
             coeficiente = framedup->getCoeficiente(i);
-            matrix_coeficiente[framedup->getSrcID()][i] = coeficiente; //pensar nesta possibilidade
-            /*if(coeficiente > 0){
-                matrix_coeficiente[codificador->n_equations][i] = coeficiente;
-
-            }*/
+            matrix_coeficiente[framedup->getSrcID()][i] = coeficiente;
         }
         trace()<< "matrix_coeficiente" << endl;
         for(int i = 0;i < numhosts;i++){
@@ -2193,6 +2218,9 @@ void Basic802154::listarNodosEscutadosRetransmissaoNetworkCoding(Basic802154Pack
         cout << " sucessoMsgCodRecebida retrans = " << sucessoMsgCodRecebida << endl;
         recuperadas = sucessoMsgCodRecebida - recuperadas;
         trace()<< "Mensagens Recuperadas" <<recuperadas<<endl;
+        for(int i = 1;i < numhosts;i++){
+            recoverPerNode[i] = codificador->recoverPerNode[i];
+        }
 
 }
 /*
@@ -2213,8 +2241,9 @@ void Basic802154::listarNodosEscutadosTransmissaoNetworkCoding(Basic802154Packet
             neig->setFrameTransmission(framedup);
             neigmapNodosEscutados[framedup->getSrcID()] = neig;
             codificador->received[framedup->getSrcID()] = 1;
-            sucessoMsgCodRecebida++;
-            cout << " sucessoMsgCodRecebida trans = " << sucessoMsgCodRecebida << endl;
+            //sucessoMsgCodRecebida++;
+            sucessoMsgDirRecebida++;
+            cout << " sucessoMsgCodRecebida trans = " << sucessoMsgDirRecebida << endl;
         }
     }else{
         if(cooperador){
@@ -2273,6 +2302,7 @@ void Basic802154::listarNodosEscutados(Basic802154Packet *rcvPacket,
     if(useNetworkCoding){
         if(rcvPacket->getRetransmissao() == true){
             if (isPANCoordinator) {
+                retransCoded++; //Número de mensagens codificadas recebidas
                 // irá armazenar a retransmissão escutada se for coordenador
                 listarNodosEscutadosRetransmissaoNetworkCoding(rcvPacket);
             }
@@ -3932,6 +3962,14 @@ void Basic802154::ordenaPossiveisCoop(){
                                              Codificação
 #############################################################################################*/
 
+void Basic802154::inicializeMetric(){
+    relayNetworkCoding = 0;
+    for(int i = 0; i< numhosts; i++){
+           codificador->recoverPerNode[i] = 0;
+           recoverPerNode[i] = 0;
+       }
+}
+
 int Basic802154::parseToVector(){
 
     //codificador->mapacodificador = neigmap;
@@ -3998,6 +4036,7 @@ void Basic802154::inicializaMatriz(){
             codificador->buffer_msg[i][j] = 0;
         }
     }
+
 
     for(int i = 0;i<numhosts; i++){
         for(int j = 0;j<MSG_SIZE;j++){

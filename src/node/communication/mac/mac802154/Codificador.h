@@ -17,6 +17,8 @@
 #include "MessagesNeighborhood.h"
 #include <string.h>
 #include <stdint.h>
+#define MSG_SIZE 127
+#define N_NODES 101
 
 #ifndef CODIFICADOR_H_
 #define CODIFICADOR_H_
@@ -46,15 +48,16 @@ public:
 
    std::map<int, MessagesNeighborhood*> mapacodificador;
 
-   uint8_t buffer_msg[21][127];/*matriz de armazenamento de msg sem codificação*/
-   uint8_t matrix[21][21];/*matriz de coeficiente*/
-   /*unsigned short*/ uint8_t combination1[21][127];/*mensagens retransmitidas recebidas (codificadas)*/
-   uint8_t msg_array[127]; /*matriz que armazena as mensagens codificadas */
-   uint8_t coeficientes[21];
+   uint8_t buffer_msg[N_NODES][MSG_SIZE];/*matriz de armazenamento de msg sem codificação*/
+   uint8_t matrix[N_NODES][N_NODES];/*matriz de coeficiente*/
+   /*unsigned short*/ uint8_t combination1[N_NODES][MSG_SIZE];/*mensagens retransmitidas recebidas (codificadas)*/
+   uint8_t msg_array[MSG_SIZE]; /*matriz que armazena as mensagens codificadas */
+   uint8_t coeficientes[N_NODES];
    //int coeficientes[21];
-   unsigned short received[21]; /* vetor que sinaliza de quem o coordenador escutou*/
+   unsigned short received[N_NODES]; /* vetor que sinaliza quem o coordenador escutou*/
+   int recoverPerNode[N_NODES];
    int n_equations;
-   short rec_motes[21];
+   short rec_motes[N_NODES];
    int controle_rec_motes;
 
 };

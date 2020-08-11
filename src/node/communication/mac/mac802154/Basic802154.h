@@ -24,6 +24,8 @@ extern "C" {
     #include <lpsolve/lp_lib.h>
 
 }
+#define MSG_SIZE 127
+#define N_NODES 101
 
 #define absLocal(x) ((x)<0 ? (-x) : (x))
 /*
@@ -327,6 +329,7 @@ class Basic802154: public VirtualMac {
 	    void listarNodosEscutadosRetransmissaoNetworkCoding(Basic802154Packet *rcvPacket);
 	    void listarNodosEscutadosTransmissaoNetworkCoding(Basic802154Packet *rcvPacket);
 	    void retransmissaoNetworkCoding(Basic802154Packet *packetRetrans);
+	    void inicializeMetric();
 
 
 
@@ -418,12 +421,16 @@ class Basic802154: public VirtualMac {
 	    bool useNetworkCoding;
 	    Codificador *codificador;
 	    int sucessoMsgCodRecebida;
-	    /*unsigned char*/ uint8_t buffer_msg[21][127];//matriz de armazenamento de msg
-	    /*unsigned short*/ uint8_t matrix_coeficiente[21][21]; // numero de nodos X numero de vizinhos
-	    /*unsigned short*/ uint8_t matrix_combination[21][127];
+	    int sucessoMsgDirRecebida;
+	    int retransCoded;
+	    /*unsigned char*/ uint8_t buffer_msg[N_NODES][MSG_SIZE];//matriz de armazenamento de msg
+	    /*unsigned short*/ uint8_t matrix_coeficiente[N_NODES][N_NODES]; // numero de nodos X numero de vizinhos
+	    /*unsigned short*/ uint8_t matrix_combination[N_NODES][MSG_SIZE];
 	    // neigmapNodosEscutados representa as mensagens que o nodo escutou dos vizinhos
 	    bool primeiraRetransCod;
 	    std::map<int, MessagesNeighborhood*> neigmapNodosEscutados; // to pensando em essa estrutura substituir o vetor de nodosEscutados
+	    int recoverPerNode[N_NODES]; /*Número de mensagens recuperadas por nodo*/
+	    int relayNetworkCoding;/*Número de mensagens retransmitidas por relay (using network coding)*/
 
 };
 

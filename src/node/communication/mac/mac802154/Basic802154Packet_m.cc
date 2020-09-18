@@ -63,6 +63,7 @@ EXECUTE_ON_STARTUP(
     e->insert(MAC_802154_GTS_REQUEST_PACKET, "MAC_802154_GTS_REQUEST_PACKET");
     e->insert(MAC_802154_PAUSE_PACKET, "MAC_802154_PAUSE_PACKET");
     e->insert(MAC_802154_RESTART_PACKET, "MAC_802154_RESTART_PACKET");
+    e->insert(MAC_802154_GACK, "MAC_802154_GACK");
 );
 
 Basic802154GTSspec::Basic802154GTSspec()
@@ -532,6 +533,8 @@ Basic802154Packet::Basic802154Packet(const char *name, int kind) : ::MacPacket(n
     this->payload_var = 0;
     coeficiente_arraysize = 0;
     this->coeficiente_var = 0;
+    gack_arraysize = 0;
+    this->gack_var = 0;
 }
 
 Basic802154Packet::Basic802154Packet(const Basic802154Packet& other) : ::MacPacket(other)
@@ -546,6 +549,8 @@ Basic802154Packet::Basic802154Packet(const Basic802154Packet& other) : ::MacPack
     this->payload_var = 0;
     coeficiente_arraysize = 0;
     this->coeficiente_var = 0;
+    gack_arraysize = 0;
+    this->gack_var = 0;
     copy(other);
 }
 
@@ -556,6 +561,7 @@ Basic802154Packet::~Basic802154Packet()
     delete [] dadosVizinho_var;
     delete [] payload_var;
     delete [] coeficiente_var;
+    delete [] gack_var;
 }
 
 Basic802154Packet& Basic802154Packet::operator=(const Basic802154Packet& other)
@@ -612,6 +618,11 @@ void Basic802154Packet::copy(const Basic802154Packet& other)
     coeficiente_arraysize = other.coeficiente_arraysize;
     for (unsigned int i=0; i<coeficiente_arraysize; i++)
         this->coeficiente_var[i] = other.coeficiente_var[i];
+    delete [] this->gack_var;
+    this->gack_var = (other.gack_arraysize==0) ? NULL : new unsigned short[other.gack_arraysize];
+    gack_arraysize = other.gack_arraysize;
+    for (unsigned int i=0; i<gack_arraysize; i++)
+        this->gack_var[i] = other.gack_var[i];
 }
 
 void Basic802154Packet::parsimPack(cCommBuffer *b)
@@ -646,6 +657,8 @@ void Basic802154Packet::parsimPack(cCommBuffer *b)
     doPacking(b,this->payload_var,payload_arraysize);
     b->pack(coeficiente_arraysize);
     doPacking(b,this->coeficiente_var,coeficiente_arraysize);
+    b->pack(gack_arraysize);
+    doPacking(b,this->gack_var,gack_arraysize);
 }
 
 void Basic802154Packet::parsimUnpack(cCommBuffer *b)
@@ -709,6 +722,14 @@ void Basic802154Packet::parsimUnpack(cCommBuffer *b)
     } else {
         this->coeficiente_var = new unsigned short[coeficiente_arraysize];
         doUnpacking(b,this->coeficiente_var,coeficiente_arraysize);
+    }
+    delete [] this->gack_var;
+    b->unpack(gack_arraysize);
+    if (gack_arraysize==0) {
+        this->gack_var = 0;
+    } else {
+        this->gack_var = new unsigned short[gack_arraysize];
+        doUnpacking(b,this->gack_var,gack_arraysize);
     }
 }
 
@@ -1048,6 +1069,36 @@ void Basic802154Packet::setCoeficiente(unsigned int k, unsigned short coeficient
     this->coeficiente_var[k] = coeficiente;
 }
 
+void Basic802154Packet::setGackArraySize(unsigned int size)
+{
+    unsigned short *gack_var2 = (size==0) ? NULL : new unsigned short[size];
+    unsigned int sz = gack_arraysize < size ? gack_arraysize : size;
+    for (unsigned int i=0; i<sz; i++)
+        gack_var2[i] = this->gack_var[i];
+    for (unsigned int i=sz; i<size; i++)
+        gack_var2[i] = 0;
+    gack_arraysize = size;
+    delete [] this->gack_var;
+    this->gack_var = gack_var2;
+}
+
+unsigned int Basic802154Packet::getGackArraySize() const
+{
+    return gack_arraysize;
+}
+
+unsigned short Basic802154Packet::getGack(unsigned int k) const
+{
+    if (k>=gack_arraysize) throw cRuntimeError("Array of size %d indexed by %d", gack_arraysize, k);
+    return gack_var[k];
+}
+
+void Basic802154Packet::setGack(unsigned int k, unsigned short gack)
+{
+    if (k>=gack_arraysize) throw cRuntimeError("Array of size %d indexed by %d", gack_arraysize, k);
+    this->gack_var[k] = gack;
+}
+
 class Basic802154PacketDescriptor : public cClassDescriptor
 {
   public:
@@ -1095,7 +1146,7 @@ const char *Basic802154PacketDescriptor::getProperty(const char *propertyname) c
 int Basic802154PacketDescriptor::getFieldCount(void *object) const
 {
     cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 24+basedesc->getFieldCount(object) : 24;
+    return basedesc ? 25+basedesc->getFieldCount(object) : 25;
 }
 
 unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int field) const
@@ -1131,8 +1182,9 @@ unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int fi
         FD_ISEDITABLE,
         FD_ISARRAY | FD_ISEDITABLE,
         FD_ISARRAY | FD_ISEDITABLE,
+        FD_ISARRAY | FD_ISEDITABLE,
     };
-    return (field>=0 && field<24) ? fieldTypeFlags[field] : 0;
+    return (field>=0 && field<25) ? fieldTypeFlags[field] : 0;
 }
 
 const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) const
@@ -1168,8 +1220,9 @@ const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) c
         "idBeacon",
         "payload",
         "coeficiente",
+        "gack",
     };
-    return (field>=0 && field<24) ? fieldNames[field] : NULL;
+    return (field>=0 && field<25) ? fieldNames[field] : NULL;
 }
 
 int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) const
@@ -1200,6 +1253,7 @@ int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) 
     if (fieldName[0]=='i' && strcmp(fieldName, "idBeacon")==0) return base+21;
     if (fieldName[0]=='p' && strcmp(fieldName, "payload")==0) return base+22;
     if (fieldName[0]=='c' && strcmp(fieldName, "coeficiente")==0) return base+23;
+    if (fieldName[0]=='g' && strcmp(fieldName, "gack")==0) return base+24;
     return basedesc ? basedesc->findField(object, fieldName) : -1;
 }
 
@@ -1236,8 +1290,9 @@ const char *Basic802154PacketDescriptor::getFieldTypeString(void *object, int fi
         "short",
         "unsigned short",
         "unsigned short",
+        "unsigned short",
     };
-    return (field>=0 && field<24) ? fieldTypeStrings[field] : NULL;
+    return (field>=0 && field<25) ? fieldTypeStrings[field] : NULL;
 }
 
 const char *Basic802154PacketDescriptor::getFieldProperty(void *object, int field, const char *propertyname) const
@@ -1271,6 +1326,7 @@ int Basic802154PacketDescriptor::getArraySize(void *object, int field) const
         case 15: return pp->getDadosVizinhoArraySize();
         case 22: return pp->getPayloadArraySize();
         case 23: return pp->getCoeficienteArraySize();
+        case 24: return pp->getGackArraySize();
         default: return 0;
     }
 }
@@ -1309,6 +1365,7 @@ std::string Basic802154PacketDescriptor::getFieldAsString(void *object, int fiel
         case 21: return long2string(pp->getIdBeacon());
         case 22: return ulong2string(pp->getPayload(i));
         case 23: return ulong2string(pp->getCoeficiente(i));
+        case 24: return ulong2string(pp->getGack(i));
         default: return "";
     }
 }
@@ -1345,6 +1402,7 @@ bool Basic802154PacketDescriptor::setFieldAsString(void *object, int field, int 
         case 21: pp->setIdBeacon(string2long(value)); return true;
         case 22: pp->setPayload(i,string2ulong(value)); return true;
         case 23: pp->setCoeficiente(i,string2ulong(value)); return true;
+        case 24: pp->setGack(i,string2ulong(value)); return true;
         default: return false;
     }
 }

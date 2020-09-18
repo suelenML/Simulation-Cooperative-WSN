@@ -32,6 +32,7 @@
  *     MAC_802154_GTS_REQUEST_PACKET = 1005;
  *     MAC_802154_PAUSE_PACKET = 1006;
  *     MAC_802154_RESTART_PACKET = 1007;
+ *     MAC_802154_GACK = 1008;
  * 
  * }
  * </pre>
@@ -43,11 +44,12 @@ enum Mac802154Packet_type {
     MAC_802154_ACK_PACKET = 1004,
     MAC_802154_GTS_REQUEST_PACKET = 1005,
     MAC_802154_PAUSE_PACKET = 1006,
-    MAC_802154_RESTART_PACKET = 1007
+    MAC_802154_RESTART_PACKET = 1007,
+    MAC_802154_GACK = 1008
 };
 
 /**
- * Struct generated from src/node/communication/mac/mac802154/Basic802154Packet.msg:30 by nedtool.
+ * Struct generated from src/node/communication/mac/mac802154/Basic802154Packet.msg:31 by nedtool.
  */
 struct Basic802154GTSspec
 {
@@ -62,7 +64,7 @@ void doPacking(cCommBuffer *b, Basic802154GTSspec& a);
 void doUnpacking(cCommBuffer *b, Basic802154GTSspec& a);
 
 /**
- * Struct generated from src/node/communication/mac/mac802154/Basic802154Packet.msg:36 by nedtool.
+ * Struct generated from src/node/communication/mac/mac802154/Basic802154Packet.msg:37 by nedtool.
  */
 struct MENSAGENS_ESCUTADAS
 {
@@ -75,7 +77,7 @@ void doPacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
 void doUnpacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
 
 /**
- * Class generated from <tt>src/node/communication/mac/mac802154/Basic802154Packet.msg:42</tt> by nedtool.
+ * Class generated from <tt>src/node/communication/mac/mac802154/Basic802154Packet.msg:43</tt> by nedtool.
  * <pre>
  * packet Basic802154Packet extends MacPacket
  * {
@@ -110,6 +112,7 @@ void doUnpacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
  *     //codificacao
  *     unsigned short payload[];
  *     unsigned short coeficiente[];
+ *     unsigned short gack[];
  * 	//int coeficiente[];
  * 
  * }
@@ -147,6 +150,8 @@ class Basic802154Packet : public ::MacPacket
     unsigned int payload_arraysize;
     unsigned short *coeficiente_var; // array ptr
     unsigned int coeficiente_arraysize;
+    unsigned short *gack_var; // array ptr
+    unsigned int gack_arraysize;
 
   private:
     void copy(const Basic802154Packet& other);
@@ -225,6 +230,10 @@ class Basic802154Packet : public ::MacPacket
     virtual unsigned int getCoeficienteArraySize() const;
     virtual unsigned short getCoeficiente(unsigned int k) const;
     virtual void setCoeficiente(unsigned int k, unsigned short coeficiente);
+    virtual void setGackArraySize(unsigned int size);
+    virtual unsigned int getGackArraySize() const;
+    virtual unsigned short getGack(unsigned int k) const;
+    virtual void setGack(unsigned int k, unsigned short gack);
 };
 
 inline void doPacking(cCommBuffer *b, Basic802154Packet& obj) {obj.parsimPack(b);}

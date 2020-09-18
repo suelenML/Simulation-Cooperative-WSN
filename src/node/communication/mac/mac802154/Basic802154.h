@@ -25,7 +25,7 @@ extern "C" {
 
 }
 #define MSG_SIZE 127
-#define N_NODES 101
+#define N_NODES 9
 
 #define absLocal(x) ((x)<0 ? (-x) : (x))
 /*
@@ -69,6 +69,8 @@ enum Mac802154Timers {
 	WAKE_UP_START = 10,
 	PAUSE_NODE = 11,
 	RESTART_NODE = 12,
+	GTS_SECOND_RETRANS = 13,
+	START_GACK = 14,
 };
 
 enum macApp{
@@ -202,8 +204,12 @@ class Basic802154: public VirtualMac {
     short inicioGTSRetrans;
     simtime_t primeiraRetrans;
     simtime_t irDormir;
-
-
+    bool firstCoop;
+    double delayRadio;
+    simtime_t second_GTSstartRetrans;
+    simtime_t second_GTSendRetrans;
+    simtime_t second_GTSlengthRetrans;
+    simtime_t start_gack; // sinaliza o tempo para o coordenador enviar o GACK;
 
 
 
@@ -330,6 +336,12 @@ class Basic802154: public VirtualMac {
 	    void listarNodosEscutadosTransmissaoNetworkCoding(Basic802154Packet *rcvPacket);
 	    void retransmissaoNetworkCoding(Basic802154Packet *packetRetrans);
 	    void inicializeMetric();
+	    void selectMsgNetworkCoding();
+	    void retransmissionGTS();
+	    void preencherListaGack(Basic802154Packet *beaconPacket);
+	    void msgNotReceived();
+	    void matrizVizinhancaNodos(Basic802154Packet * pkt);
+	    void preSelectMsgNetworkCoding();
 
 
 
@@ -431,7 +443,18 @@ class Basic802154: public VirtualMac {
 	    std::map<int, MessagesNeighborhood*> neigmapNodosEscutados; // to pensando em essa estrutura substituir o vetor de nodosEscutados
 	    int recoverPerNode[N_NODES]; /*Número de mensagens recuperadas por nodo*/
 	    int relayNetworkCoding;/*Número de mensagens retransmitidas por relay (using network coding)*/
-
+	    std::map<int, MessagesNeighborhood*> neigmapNodosEscutadosRefinamento; // Essa estrutura armazena só três msg que serão codificadas
+	    std::vector<int> vizinhosCoop; //cada cooperante armazenará a lista de coop para não retransmitir msg de outro relay.
+        int numeroDeCoop;
+        std::vector<int> GACK; //vetor que o coordenador enviará antes da coop, avisando quais msg ele precisa
+        std::vector<int> nodesNotReceived; // vetor para cada nodo saber as msg que o coord perdeu
+        int numberRecover;
+        std::map<int, MessagesNeighborhood*> nodesCanRecover; //mensagem que o cooperante pode recuperar dentre as que o coord não escutou
+        std::map<int, MessagesNeighborhood*> neigmapNodosEnviados;
+        std::map<int, vector<int>> matrizVizinhos;// mantem uma matriz de adjacencia da rede
+        std::map<int, MessagesNeighborhood*> otherRecover; // guarda as mensagem que possui, mas que outros cooperantes também possuem
+        std::map<int, MessagesNeighborhood*> neigmapNodosEscutadosSelecionados; // mensagens que foram selecionadas para a codificação
+        bool secondRetrans; // sinaliza se é a segunda retransmissao
 };
 
 #endif	//BASIC_802154

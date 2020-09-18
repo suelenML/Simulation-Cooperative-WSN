@@ -129,15 +129,20 @@ void StaticGTS802154::prepareBeacon_hub(Basic802154Packet *beaconPacket) {
 //        }
 //    }
 
-
+    cout<< "Numero de coop "<< beaconPacket->getVizinhosOuNodosCooperantesArraySize() <<"\n";
 
     if(beaconPacket->getVizinhosOuNodosCooperantesArraySize()>0){
             /*for (int k = 0; k < (int)GTSlist.size(); k++) {
                 cout<< "Lista GTS Depois de copiar****Básico*****["<<k<<"]: "<<GTSlist[k].owner<<"\n";
             }*/
 
+        /*Aqui tenho que dar um slot para o coordenador enviar o GACK (talves seja só inserir o primeiro id como zero)e aí sim depois desse os coop recebem slots
+         * ver para dar mais de um slot para os coop*/
+        gtsRequest_hubRetransmissao(0,1);
+
             // Atribui slot GTS para retransmissores
             for (int j = 0; j < (int) beaconPacket->getVizinhosOuNodosCooperantesArraySize(); j++){
+               gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
                gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
             }
 //            trace()<<"GTS Antes Ordenar";

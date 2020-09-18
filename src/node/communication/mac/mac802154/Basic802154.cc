@@ -53,9 +53,13 @@ void Basic802154::startup() {
     GTSstartRetrans = 0;
     GTSendRetrans = 0;
     GTSlengthRetrans = 0;
+    second_GTSstartRetrans = 0;
+    second_GTSendRetrans = 0;
+    second_GTSlengthRetrans = 0;
     primeiraRetrans = 0;
     irDormir = 0;
     primeiraSelecao = 0;
+    start_gack = 0;
     msgEnviadas = 0;
     msgRecebidas = 0;
     msgRtrans = 0;
@@ -79,6 +83,7 @@ void Basic802154::startup() {
     historicoDeCooperacao.clear();
     listaDeNodosSoltos.clear();
     neigmap.clear();
+    matrizVizinhos.clear();
 
 
 
@@ -184,6 +189,16 @@ void Basic802154::startup() {
         inicializeMetric();
         inicializaMatriz();
         neigmapNodosEscutados.clear();
+        neigmapNodosEscutadosRefinamento.clear();
+        neigmapNodosEnviados.clear();
+        nodesCanRecover.clear();
+        numeroDeCoop = 0;
+        secondRetrans = false;
+        for(int i = 0; i< numhosts; i++){
+            vizinhosCoop.push_back(0);
+            GACK.push_back(0);
+            nodesNotReceived.push_back(0);
+        }
     }
 
 
@@ -399,6 +414,20 @@ void Basic802154::enviarNodosCooperantes(Basic802154Packet *beaconPacket) {
     }
 }
 
+void Basic802154::preencherListaGack(Basic802154Packet *beaconPacket) {
+
+    int tamanhoLista = GACK.size();
+
+    if (tamanhoLista > 0) {
+
+        beaconPacket->setGackArraySize(tamanhoLista);
+        int i;
+        for (i = 0; i < tamanhoLista; i++) {
+            beaconPacket->setGack(i, GACK[i]);
+        }
+    }
+}
+
 void Basic802154::timerFiredCallback(int index) {
     switch (index) {
 
@@ -573,6 +602,11 @@ void Basic802154::timerFiredCallback(int index) {
                     codificador->n_equations = 0;
                     sucessoMsgCodRecebida = 0;
                     sucessoMsgDirRecebida = 0;
+                    GACK.clear();
+                    for(int i = 0; i< numhosts; i++){
+                       GACK.push_back(0);
+                    }
+
                 }
 
 
@@ -674,8 +708,24 @@ void Basic802154::timerFiredCallback(int index) {
             CAPlength = beaconPacket->getCAPlength();
             CAPend = CAPlength * baseSlotDuration * (1 << frameOrder)
                     * symbolLen;
+
+            if(useNetworkCoding){
+                if(beaconPacket->getGTSlistArraySize()> 0){
+                    for(int i = 0; i < (int) beaconPacket->getGTSlistArraySize(); i++) {
+                         if(beaconPacket->getGTSlist(i).owner == SELF_MAC_ADDRESS) {
+                           start_gack = (beaconPacket->getGTSlist(i).start - 1)
+                                   * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                           setTimer(START_GACK, start_gack);
+                           break;
+                       }
+                     }
+
+                }
+            }
+
             sentBeacons++;
 
+            cout << "Coord enviará o GACK: " << start_gack << endl;
             cout << "CAPlength = " << CAPlength<< "\n";
             cout << "CAPend = " << CAPend<< "\n";
             trace() << "Transmitting [PAN beacon packet] now, BSN = " << macBSN;
@@ -988,16 +1038,22 @@ void Basic802154::timerFiredCallback(int index) {
             // we delay transmission attempt by the time required by radio to wake up
             // note that GTS_START timer was scheduled exactly phyDelaySleep2Tx seconds
             // earlier than the actual start time of GTS slot
-
             GTSend = GTSendRetrans;
             GTSstart = GTSstartRetrans;
             GTSlength = GTSlengthRetrans;
 
+
             cout << "GTSend: "<< GTSend <<"\n";
             cout << "GTSstart: "<< GTSend <<"\n";
             cout << "GTSlength: "<< GTSend <<"\n";
+            cout << "Sou o nodo: "<< SELF_MAC_ADDRESS <<endl;
 
-            Basic802154Packet *packetRetrans = new Basic802154Packet(
+
+
+
+
+
+            /*Basic802154Packet *packetRetrans = new Basic802154Packet(
                     "Retransmissao", MAC_LAYER_PACKET);
             packetRetrans->setPANid(SELF_MAC_ADDRESS);
             packetRetrans->setMac802154PacketType(MAC_802154_DATA_PACKET);
@@ -1008,20 +1064,102 @@ void Basic802154::timerFiredCallback(int index) {
             packetRetrans->setByteLength(COMMAND_PKT_SIZE);
             packetRetrans->setRetransmissao(true);
             retransmitir(packetRetrans);
-            retransmissaoNetworkCoding(packetRetrans);
-            relayNetworkCoding++;
 
+            if(useNetworkCoding){
+               std::map<int, MessagesNeighborhood*>::iterator iter;
+                for (iter = neigmapNodosEscutados.begin(); iter != neigmapNodosEscutados.end(); iter++) {
+                    if (iter->first == SELF_MAC_ADDRESS){
+                        MessagesNeighborhood *neig = iter->second;
+                        neigmapNodosEscutadosRefinamento[iter->first] = neig;
+                    }
+                }
+                retransmissaoNetworkCoding(packetRetrans);
+                relayNetworkCoding++;
 
+           }
 
-            transmitPacket(packetRetrans);
-            qntidadeVezesCooperou = qntidadeVezesCooperou + 1;
+             transmitPacket(packetRetrans);*/
+            retransmissionGTS();
 
-            //limpa o buffer da aplicacao antes de dormir
-            //setTimer(CLEAR_BUFFER_APP, GTSlength);
-            // set a timer to go to sleep after this GTS slot ends
+             if(!useNetworkCoding){
+                 qntidadeVezesCooperou = qntidadeVezesCooperou + 1;
 
-            setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
+                 //limpa o buffer da aplicacao antes de dormir
+                 //setTimer(CLEAR_BUFFER_APP, GTSlength);
+                 // set a timer to go to sleep after this GTS slot ends
+
+                 setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
+             }
         }
+        break;
+    }
+
+    case GTS_SECOND_RETRANS: {
+        if(!pausado){
+            if (macState == MAC_STATE_SLEEP) {
+                toRadioLayer(createRadioCommand(SET_STATE, RX));
+            }
+            setMacState(MAC_STATE_GTS);
+
+            if(useNetworkCoding){
+                secondRetrans = true;
+                cout << "Sou o nodo: "<< SELF_MAC_ADDRESS <<endl;
+                GTSend = second_GTSendRetrans;
+                GTSstart = second_GTSstartRetrans;
+                GTSlength = second_GTSlengthRetrans;
+                retransmissionGTS();
+                qntidadeVezesCooperou = qntidadeVezesCooperou + 1;
+                relayNetworkCoding++;
+
+               //limpa o buffer da aplicacao antes de dormir
+               //setTimer(CLEAR_BUFFER_APP, GTSlength);
+               // set a timer to go to sleep after this GTS slot ends
+
+               setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
+            }
+        }
+
+        break;
+    }
+
+    case START_GACK:{
+        if (macState == MAC_STATE_SLEEP) {
+            toRadioLayer(createRadioCommand(SET_STATE, RX));
+        }
+        //setMacState(MAC_STATE_GTS);
+
+        // we delay transmission attempt by the time required by radio to wake up
+        // note that GTS_START timer was scheduled exactly phyDelaySleep2Tx seconds
+        // earlier than the actual start time of GTS slot
+        //setTimer(ATTEMPT_TX, phyDelaySleep2Tx);
+
+        limparBufferAplicacao();
+
+        //Aqui montar a msg que o cood vai enviar com o gack
+        Basic802154Packet *packetGACK = new Basic802154Packet(
+                     "GroupACK", MAC_LAYER_PACKET);
+        packetGACK->setDstID(BROADCAST_MAC_ADDRESS);
+        packetGACK->setPANid(SELF_MAC_ADDRESS);
+        packetGACK->setMac802154PacketType(MAC_802154_GACK);
+        packetGACK->setSrcID(SELF_MAC_ADDRESS);
+        packetGACK->setSource(SELF_MAC_ADDRESS);
+        packetGACK->setByteLength(BASE_BEACON_PKT_SIZE + packetGACK->getGackArraySize());
+        preencherListaGack(packetGACK);
+
+
+
+        //transmitPacket(packetGACK);
+        setMacState(MAC_STATE_CAP);
+       toRadioLayer(packetGACK);
+       toRadioLayer(createRadioCommand(SET_STATE, TX));
+       setTimer(ATTEMPT_TX, TX_TIME(packetGACK->getByteLength()));
+
+
+
+
+        //toRadioLayer(createRadioCommand(SET_STATE, RX));
+        //setMacState(MAC_STATE_CAP);
+
         break;
     }
 
@@ -1036,10 +1174,55 @@ void Basic802154::timerFiredCallback(int index) {
 
     }
 }
+//Este método monta o pacote de retransmissão e envia
+void Basic802154:: retransmissionGTS(){
+    Basic802154Packet *packetRetrans = new Basic802154Packet(
+             "Retransmissao", MAC_LAYER_PACKET);
+     packetRetrans->setPANid(SELF_MAC_ADDRESS);
+     packetRetrans->setMac802154PacketType(MAC_802154_DATA_PACKET);
+     packetRetrans->setSrcID(SELF_MAC_ADDRESS);
+     packetRetrans->setSource(SELF_MAC_ADDRESS);
+     //packetRetrans->setSeqNum(seqNum++);
+     packetRetrans->setDstID(0);
+     packetRetrans->setByteLength(COMMAND_PKT_SIZE);
+     packetRetrans->setRetransmissao(true);
+     retransmitir(packetRetrans);
+
+     if(useNetworkCoding){
+         /* Aqui insiro a msg do próprio nodo para estar na codificação*/
+        /*std::map<int, MessagesNeighborhood*>::iterator iter;
+         for (iter = neigmapNodosEscutados.begin(); iter != neigmapNodosEscutados.end(); iter++) {
+             if (iter->first == SELF_MAC_ADDRESS){
+                 MessagesNeighborhood *neig = iter->second;
+                 neigmapNodosEscutadosRefinamento[iter->first] = neig;
+                 break;
+             }
+         }*/
+         /*Aqui retiro da lista de escutados os outros nodos que são cooperantes*/
+         std::map<int, MessagesNeighborhood*>::iterator ite;
+         for (ite = neigmapNodosEscutados.begin(); ite != neigmapNodosEscutados.end(); ite++) {
+             for(int i = 0; i< numeroDeCoop; i++){
+                 if ((ite->first == vizinhosCoop[i]) && (vizinhosCoop[i]!= SELF_MAC_ADDRESS )){
+                     neigmapNodosEscutados.erase(ite);
+                 }
+             }
+         }
+         retransmissaoNetworkCoding(packetRetrans);
+         //relayNetworkCoding++;
+
+    }
+
+      transmitPacket(packetRetrans);
+
+}
+
+
+
 /*Este método chama a codificação, insere a mensagem codificada no pacote de retransmissão e seta os coeficientes utilizados na retransmissão*/
 
 void Basic802154:: retransmissaoNetworkCoding(Basic802154Packet *packetRetrans){
     uint8_t byte = 0;
+   selectMsgNetworkCoding();
    parseToVector();
    codificador->encode_messages(SELF_MAC_ADDRESS);
    for(int i=0;i<MSG_SIZE;i++){
@@ -1052,8 +1235,229 @@ void Basic802154:: retransmissaoNetworkCoding(Basic802154Packet *packetRetrans){
    }
 
    if(useNetworkCoding){
-        neigmapNodosEscutados.clear();
+       neigmapNodosEscutadosRefinamento.clear();
+        //neigmapNodosEscutados.clear();
     }
+
+}
+
+/*Metodo verifica as mensagens que o coordenador não recebeu
+ * e que o cooperante escutou e armazena as msg na estrutura nodesCanRecover*/
+void Basic802154:: msgNotReceived(){
+    int numMsgLost = nodesNotReceived.size();
+    std::map<int, MessagesNeighborhood*>::iterator iter;
+    numberRecover = 0;
+    nodesCanRecover.clear();
+
+    for (iter = neigmapNodosEscutados.begin(); iter != neigmapNodosEscutados.end(); iter++) {
+        for(int i = 1; i < numMsgLost; i++){
+            if(iter->first == nodesNotReceived[i]){
+                numberRecover++;
+
+                MessagesNeighborhood *neig = iter->second;
+                nodesCanRecover[iter->first] = neig;
+                neigmapNodosEscutados.erase(iter);
+                break;
+            }
+        }
+    }
+
+
+}
+
+/*Este método seleciona apenas três mensagens das escutadas para enviar*/
+void Basic802154::preSelectMsgNetworkCoding(){
+    std::map<int, vector<int>>::iterator iterNeighborhood; // iterar em matrizVizinhos
+    std::map<int, MessagesNeighborhood*>::iterator iter; // iterar em nodesCanRecover
+    vector<int> listaVizinhos;
+    bool notRecover=true;
+
+    otherRecover.clear();
+
+    for (iter = nodesCanRecover.begin(); iter != nodesCanRecover.end(); iter++) {
+        notRecover = true;
+        for(int i = 0;i < numeroDeCoop; i++){
+            if(vizinhosCoop[i] != SELF_MAC_ADDRESS){
+                iterNeighborhood = matrizVizinhos.find(vizinhosCoop[i]);
+                if (iterNeighborhood != matrizVizinhos.end()) { //existe na matriz
+                    listaVizinhos = iterNeighborhood->second;
+                    for(int j = 0; j < (int)listaVizinhos.size();j++){
+                        if(iter->first == listaVizinhos[j]){
+                            MessagesNeighborhood *neig = iter->second;
+                            otherRecover[iter->first] = neig;
+                            notRecover = false;
+                        }
+                    }
+                }
+            }
+        }
+        if(notRecover){
+            MessagesNeighborhood *neig = iter->second;
+            neigmapNodosEscutadosSelecionados[iter->first] = neig;
+        }
+    }
+
+
+}
+
+
+/*Este método seleciona apenas três mensagens das escutadas para enviar*/
+void Basic802154::selectMsgNetworkCoding(){
+    std::map<int, MessagesNeighborhood*>::iterator iter;
+    std::map<int, MessagesNeighborhood*>::iterator iterNodes;
+    int random_pos = 0;
+    srand(time(NULL));
+    int numMsg;
+    int k,j;
+    if(!secondRetrans){
+        msgNotReceived();
+        preSelectMsgNetworkCoding();
+    }
+    neigmapNodosEscutadosRefinamento.clear();
+    /*Aqui coloca a mensagem do próprio nodo para codificar*/
+    for (iterNodes = neigmapNodosEscutados.begin(); iterNodes != neigmapNodosEscutados.end(); iterNodes++) {
+        if(iterNodes->first == SELF_MAC_ADDRESS){
+            MessagesNeighborhood *neig = iterNodes->second;
+            neigmapNodosEscutadosRefinamento[iterNodes->first] = neig;
+            break;
+        }
+    }
+    numMsg = neigmapNodosEscutadosSelecionados.size();
+    if(numMsg > 0){
+        /*Aqui seleciona uma mensagem que o coordenador não recebeu para codificar
+         * Se não funcionar adequadamente posso selecionar uma msg que o coordenador já tem*/
+        for (iter = neigmapNodosEscutadosSelecionados.begin(); iter != neigmapNodosEscutadosSelecionados.end(); iter++) {
+            MessagesNeighborhood *neig = iter->second;
+            neigmapNodosEscutadosRefinamento[iter->first] = neig;
+            neigmapNodosEscutadosSelecionados.erase(iter);
+            break;
+        }
+        /*Aqui pega aleatoriamente uma mensagem escutada por mais nodos para codificar*/
+        if(otherRecover.size()>0){
+            random_pos = (rand() % otherRecover.size()) + 1;
+            for (iter = otherRecover.begin(); iter != otherRecover.end(); iter++) {
+            for(int i = 0;i < (int)otherRecover.size(); i++){
+                if(random_pos == iter->first){
+                    MessagesNeighborhood *neig = iter->second;
+                    neigmapNodosEscutadosRefinamento[iter->first] = neig;
+                    otherRecover.erase(iter);
+                }
+
+            }
+        }
+
+
+        }
+    }else{
+        if(nodesCanRecover.size()>0){
+            k = 0;
+            while (k<2){
+                random_pos = (rand() % nodesCanRecover.size()) + 1;
+                j = 1;
+                cout<<"sou o nodo: " << SELF_MAC_ADDRESS <<"\n";
+                for (iter = nodesCanRecover.begin(); iter != nodesCanRecover.end(); iter++) {
+                    if((j==random_pos) && (iter->first!= SELF_MAC_ADDRESS)){
+                        MessagesNeighborhood *neig = iter->second;
+                        neigmapNodosEscutadosRefinamento[iter->first] = neig;
+                        //neigmapNodosEscutados.erase(iter);
+
+                        k++;
+                        if(nodesCanRecover.size()==1){
+                            k=2;
+                        }
+                        break;
+                    }
+                    j++;
+                }
+            }
+        }else
+        if(neigmapNodosEscutados.size()>0){
+            k = 0;
+            while (k<2){
+                random_pos = (rand() % neigmapNodosEscutados.size()) + 1;
+                j = 1;
+                cout<<"sou o nodo: " << SELF_MAC_ADDRESS <<"\n";
+                for (iter = neigmapNodosEscutados.begin(); iter != neigmapNodosEscutados.end(); iter++) {
+                    if((j==random_pos) && (iter->first!= SELF_MAC_ADDRESS)){
+                        MessagesNeighborhood *neig = iter->second;
+                        neigmapNodosEscutadosRefinamento[iter->first] = neig;
+                        //neigmapNodosEscutados.erase(iter);
+
+                        k++;
+                        break;
+                    }
+                    j++;
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /*  Fazer uma cópia da estrutura que armazena as msg  para retransmitir
+     * selecionar duas msg de forma aleatoria e mais a do próprio nodo e
+     * inserir essa nova estrutura no parse vector.
+    std::map<int, MessagesNeighborhood*>::iterator iter;
+    int numberNeighborRec = 0;
+    int numberNeighborCoop = 0;
+    int random_pos = 0, i = 0, j;
+    numberNeighborCoop = neigmapNodosEscutados.size();
+    numberNeighborRec = nodesCanRecover.size();
+    if(numberNeighborRec >= 2){// verifica se vou poder selecionar mensagens para codificar
+        Seleciona uma mensagem da lista que o coordenadore não recebeu
+        while (i<=1){
+         random_pos = (rand() % numberNeighborRec) + 1;
+         j = 1;
+         for (iter = nodesCanRecover.begin(); iter != nodesCanRecover.end(); iter++) {
+             if(j==random_pos){
+                 MessagesNeighborhood *neig = iter->second;
+                 neigmapNodosEscutadosRefinamento[iter->first] = neig;
+                 neigmapNodosEnviados[iter->first] = neig;
+                 nodesCanRecover.erase(iter);
+                 i++;
+                 break;
+             }
+         }
+
+        }
+//PAREI AQUI, AQUI VER COMO FICARIA SE FOR USAR A MATRIZ DE ADJACENCIA EM CADA COOP
+
+        Seleciona uma mensagem da lista que o coordenador conhece
+        while (i<2){
+            random_pos = (rand() % numberNeighborCoop) + 1;
+            j = 1;
+            cout<<"sou o nodo: " << SELF_MAC_ADDRESS <<"\n";
+            for (iter = neigmapNodosEscutados.begin(); iter != neigmapNodosEscutados.end(); iter++) {
+                if((j==random_pos) && (iter->first!= SELF_MAC_ADDRESS)){
+                    MessagesNeighborhood *neig = iter->second;
+                    neigmapNodosEscutadosRefinamento[iter->first] = neig;
+                    //neigmapNodosEscutados.erase(iter);
+
+                    i++;
+                    break;
+                }
+                j++;
+            }
+        }
+    }else{
+        for (iter = neigmapNodosEscutados.begin(); iter != neigmapNodosEscutados.end(); iter++) {
+            if(iter->first == SELF_MAC_ADDRESS){
+                MessagesNeighborhood *neig = iter->second;
+                nodesCanRecover[iter->first] = neig;
+            }
+        }
+        neigmapNodosEscutadosRefinamento =  nodesCanRecover;
+    }*/
 
 }
 
@@ -1150,6 +1554,7 @@ void Basic802154::fromNetworkLayer(cPacket * pkt, int dstMacAddress) {
             MessagesNeighborhood *neig = new MessagesNeighborhood();
             neig->setFrameTransmission(framedup);
             neigmapNodosEscutados[SELF_MAC_ADDRESS] = neig;
+            neigmapNodosEscutadosRefinamento[SELF_MAC_ADDRESS] = neig;
 
         }
     }
@@ -1996,6 +2401,19 @@ void Basic802154::limparMatrizAdjacencia(){
       }
 
 }
+void Basic802154::matrizVizinhancaNodos(Basic802154Packet * pkt){
+    unsigned vizinhos = pkt->getVizinhosOuNodosCooperantesArraySize();
+    int i;
+    std::vector<int> vizinhanca;
+    if(vizinhos > 0){
+        vizinhanca.clear();
+        for (i = 0; i < (int)vizinhos; i++) {
+            vizinhanca.push_back(pkt->getVizinhosOuNodosCooperantes(i));
+        }
+        matrizVizinhos[pkt->getSrcID()] = vizinhanca;
+    }
+
+}
 
 
 // método Ríad
@@ -2075,6 +2493,9 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
                     }
                 }
 
+            }
+            if(!isPANCoordinator){
+                matrizVizinhancaNodos(pkt);
             }
         }/*else{// se for a tecnica oportunista não preciso verificar a qualidade da comunicação
             if(oportunista){
@@ -2186,6 +2607,8 @@ void Basic802154::listarNodosEscutadosRetransmissaoNetworkCoding(Basic802154Pack
         Basic802154Packet* framedup = rcvPacket->dup();
         /*unsigned short*/ uint8_t coeficiente = 0;
 
+        cout<<"Coordenador recebeu retrans do nodo: " <<framedup->getSrcID()<<endl;
+
         for(int i = 1;i < numhosts;i++){
             coeficiente = framedup->getCoeficiente(i);
             matrix_coeficiente[framedup->getSrcID()][i] = coeficiente;
@@ -2241,6 +2664,7 @@ void Basic802154::listarNodosEscutadosTransmissaoNetworkCoding(Basic802154Packet
             neig->setFrameTransmission(framedup);
             neigmapNodosEscutados[framedup->getSrcID()] = neig;
             codificador->received[framedup->getSrcID()] = 1;
+            GACK[framedup->getSrcID()] = 1;
             //sucessoMsgCodRecebida++;
             sucessoMsgDirRecebida++;
             cout << " sucessoMsgCodRecebida trans = " << sucessoMsgDirRecebida << endl;
@@ -2670,6 +3094,7 @@ Basic802154Packet *Basic802154::newGtsRequest(int PANid, int slots) {
  */
 void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
     Basic802154Packet *rcvPacket = dynamic_cast<Basic802154Packet*>(pkt);
+    //cout << "tipo de Pacote: " << rcvPacket->getMac802154PacketType() << endl;
     if (!rcvPacket) {
         return;
     }
@@ -2697,8 +3122,28 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
             if (cooperador) { // essa variavel é setada ao ouvir o beacon
                 listarNodosEscutados(rcvPacket, rssi); // insere o nodo que enviou o pacote como escutado
+
             }
         }
+     /*   if(useNetworkCoding){
+            if (cooperador) { // essa variavel é setada ao ouvir o beacon
+                cout<<"Tipo de pacote: "<< rcvPacket->getMac802154PacketType()<<endl;
+                    if(rcvPacket->getMac802154PacketType() == MAC_802154_GACK){
+                    cout <<"Sou o nodo: " << SELF_MAC_ADDRESS <<endl;
+                    Aqui cada nodo que for cooperante deve verificar as msg que o coord não recebeu e que eles possuem.
+                    *
+
+
+                    for(int i = 0; i < rcvPacket->getGackArraySize();i++){
+                        cout<<"Lista GACK: " << rcvPacket->getGack(i)<< endl;
+                        if(rcvPacket->getGack(i) == 0){
+                            cout << "Coordenador não recebeu a mensagem do nodo: " << i <<endl;
+                        }
+                    }
+                }
+            }
+        }*/
+
     }
     if (rcvPacket->getDstID() != SELF_MAC_ADDRESS
             && rcvPacket->getDstID() != BROADCAST_MAC_ADDRESS) {
@@ -2720,6 +3165,18 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
             nodosEscutados.clear();
             if(useNetworkCoding){
                 neigmapNodosEscutados.clear();
+                neigmapNodosEscutadosRefinamento.clear();
+                neigmapNodosEnviados.clear();
+                neigmapNodosEscutadosSelecionados.clear();
+                vizinhosCoop.clear();
+                secondRetrans = false;
+                GACK.clear();
+                nodesNotReceived.clear();
+
+                for(int i = 0; i< numhosts; i++){
+                 GACK.push_back(0);
+                }
+
 
             }
 
@@ -2771,18 +3228,27 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                         GTSstartRetrans = 0;
                         GTSendRetrans = 0;
                         GTSlengthRetrans = 0;
+                        //delayRadio = 0;
 
                         //Suelen
                         if (userelay) {
                             primeiraRetrans = 0;
                             irDormir = 0;
                             inicioGTSRetrans = rcvPacket->getSlotInicioRetrans();
+                            firstCoop = false;
 
 
                             //SUELEN
                             cout << "Beacon Recebido no Nodo:" << SELF_MAC_ADDRESS << "\n";
-                            int teste = rcvPacket->getVizinhosOuNodosCooperantesArraySize();
-                            cout << "Este Beacon informa que tem " << teste
+                            numeroDeCoop = 0;
+                            numeroDeCoop = rcvPacket->getVizinhosOuNodosCooperantesArraySize();
+                            if(useNetworkCoding){
+                                for(int i = 0;i < (int)rcvPacket->getVizinhosOuNodosCooperantesArraySize();i++){
+                                    vizinhosCoop.push_back(rcvPacket->getVizinhosOuNodosCooperantes(i));
+                                }
+                            }
+
+                            cout << "Este Beacon informa que tem " << numeroDeCoop
                                     << " Nodos Cooperantes\n";
                             if ((int) rcvPacket->getGTSlistArraySize() > 0
                                     && rcvPacket->getVizinhosOuNodosCooperantesArraySize()
@@ -2804,37 +3270,67 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
                                 //Suelen obs:antes era só o conteudo do else
                                 if (rcvPacket->getGTSlist(i).retransmissor) {
-                                    cout << "Tamanho Lista: "
+
+                                    if(firstCoop){
+                                        cout << "Tamanho Lista: "
+                                                << (int) rcvPacket->getGTSlistArraySize()
+                                                << "Lista GTS[" << i << "]: "
+                                                << rcvPacket->getGTSlist(i).owner
+                                                << " Cooperante\n";
+                                        GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
+                                                * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                                        GTSendRetrans = GTSstartRetrans
+                                                + rcvPacket->getGTSlist(i).length * baseSlotDuration
+                                                        * (1 << frameOrder) * symbolLen;
+                                        GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
+
+
+
+                                        //delayRadio = offset;
+
+                                        //trace()<<"tempo Atual: " << simTime();
+                                        //trace()<<"getClok(): " << getClock();
+                                        //trace()<<"GTSstartRetrans: " << GTSstartRetrans;
+                                        //trace()<<"GTSendRetrans: " << GTSendRetrans;
+                                        //trace()<<"GTSlengthRetrans: " << GTSlengthRetrans;
+
+
+                                        //trace() << "GTS slot from " << getClock() + GTSstartRetrans
+                                          //      << " to " << getClock() + GTSendRetrans
+                                            //    << " length " << GTSlengthRetrans;
+                                        cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                                                << " Usa o GTS slot from "
+                                                << getClock() + GTSstartRetrans << " to "
+                                                << getClock() + GTSendRetrans << " length "
+                                                << GTSlengthRetrans << "\n";
+
+                                        // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
+                                        setTimer(GTS_RETRANS,
+                                                GTSstartRetrans - phyDelaySleep2Tx - offset);
+                                    }else{
+                                        firstCoop = true;
+                                        second_GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
+                                                * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                                        second_GTSendRetrans = second_GTSstartRetrans
+                                                + rcvPacket->getGTSlist(i).length * baseSlotDuration
+                                                        * (1 << frameOrder) * symbolLen;
+                                        second_GTSlengthRetrans = second_GTSendRetrans - second_GTSstartRetrans;
+
+                                        cout << "Tamanho Lista: "
                                             << (int) rcvPacket->getGTSlistArraySize()
                                             << "Lista GTS[" << i << "]: "
                                             << rcvPacket->getGTSlist(i).owner
                                             << " Cooperante\n";
-                                    GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
-                                            * baseSlotDuration * (1 << frameOrder) * symbolLen;
-                                    GTSendRetrans = GTSstartRetrans
-                                            + rcvPacket->getGTSlist(i).length * baseSlotDuration
-                                                    * (1 << frameOrder) * symbolLen;
-                                    GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
 
-                                    //trace()<<"tempo Atual: " << simTime();
-                                    //trace()<<"getClok(): " << getClock();
-                                    //trace()<<"GTSstartRetrans: " << GTSstartRetrans;
-                                    //trace()<<"GTSendRetrans: " << GTSendRetrans;
-                                    //trace()<<"GTSlengthRetrans: " << GTSlengthRetrans;
+                                        cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                                                        << " Usa o GTS slot from "
+                                                        << getClock() + second_GTSstartRetrans << " to "
+                                                        << getClock() + second_GTSendRetrans << " length "
+                                                        << second_GTSlengthRetrans << "\n";
 
+                                        setTimer(GTS_SECOND_RETRANS, second_GTSstartRetrans - phyDelaySleep2Tx - offset);
 
-                                    //trace() << "GTS slot from " << getClock() + GTSstartRetrans
-                                      //      << " to " << getClock() + GTSendRetrans
-                                        //    << " length " << GTSlengthRetrans;
-                                    cout << "Nodo " << rcvPacket->getGTSlist(i).owner
-                                            << " Usa o GTS slot from "
-                                            << getClock() + GTSstartRetrans << " to "
-                                            << getClock() + GTSendRetrans << " length "
-                                            << GTSlengthRetrans << "\n";
-
-                                    // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
-                                    setTimer(GTS_RETRANS,
-                                            GTSstartRetrans - phyDelaySleep2Tx - offset);
+                                    }
 
                                 } else {
                                     cout << "Tamanho Lista: "
@@ -3178,6 +3674,25 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
             break;
         }
 
+        case MAC_802154_GACK:{
+           cout <<"Sou o nodo: " << SELF_MAC_ADDRESS <<endl;
+           cout <<"Pacote: " << rcvPacket->getMac802154PacketType() <<endl;
+           nodesNotReceived.clear();
+           if(useNetworkCoding){
+                    if (cooperador) {
+                            for(int i = 0; i < rcvPacket->getGackArraySize();i++){
+                                cout<<"Lista GACK: " << rcvPacket->getGack(i)<< endl;
+                                if(rcvPacket->getGack(i) == 0){
+                                    cout << "Coordenador não recebeu a mensagem do nodo: " << i <<endl;
+                                    nodesNotReceived.push_back(i);
+                                }
+                            }
+
+                    }
+                }
+           break;
+        }
+
 
             // data frame
         case MAC_802154_DATA_PACKET: {
@@ -3277,7 +3792,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
             }
         }
 
-        default: {
+       default: {
             //trace() << "WARNING: unknown packet type received ["<< rcvPacket->getName() << "]";
         }
     }
@@ -3434,6 +3949,7 @@ void Basic802154::transmitPacket(Basic802154Packet *pkt, int retries,
         currentPacketRetries = retries == 0 ? macMaxFrameRetries : retries;
         currentPacketResponse = ackWaitDuration;
     }
+
     if (getTimer(ATTEMPT_TX) < 0 && getTimer(ACK_TIMEOUT) < 0)
         attemptTransmission("transmitPacket() called");
 }
@@ -3569,9 +4085,13 @@ void Basic802154::transmitCurrentPacket() {
             //transmission will not fit in CAP
             allowTx = 0;
     } else if (macState == MAC_STATE_GTS) {	//currently in GTS
-        if (currentFrameStart + GTSend < txEndTime)
-            //transmission will not fit in GTS
-            allowTx = 0;
+        cout<<"currentFrameStart + GTSend: "<<currentFrameStart + GTSend<<endl;
+        cout<<"txEndTime: "<<txEndTime<<endl;
+        if(!isPANCoordinator){
+            if (currentFrameStart + GTSend < txEndTime)
+                //transmission will not fit in GTS
+                allowTx = 0;
+        }
     }
 
     if (allowTx) {
@@ -3974,7 +4494,8 @@ int Basic802154::parseToVector(){
 
     //codificador->mapacodificador = neigmap;
     codificador->mapacodificador.clear();
-    codificador->mapacodificador = neigmapNodosEscutados;
+    //codificador->mapacodificador = neigmapNodosEscutados;
+    codificador->mapacodificador = neigmapNodosEscutadosRefinamento;
 }
 void Basic802154::parseMatrix(){
 

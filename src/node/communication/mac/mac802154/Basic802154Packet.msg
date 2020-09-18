@@ -24,6 +24,7 @@ enum Mac802154Packet_type {
 	MAC_802154_GTS_REQUEST_PACKET = 1005;
 	MAC_802154_PAUSE_PACKET = 1006;
 	MAC_802154_RESTART_PACKET = 1007;
+	MAC_802154_GACK = 1008;
 
 }
 
@@ -71,6 +72,7 @@ packet Basic802154Packet extends MacPacket {
 	//codificacao
 	unsigned short payload[];
 	unsigned short coeficiente[];
+	unsigned short gack[];
 	//int coeficiente[];
 	
 }

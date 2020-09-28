@@ -144,6 +144,7 @@ void StaticGTS802154::prepareBeacon_hub(Basic802154Packet *beaconPacket) {
             for (int j = 0; j < (int) beaconPacket->getVizinhosOuNodosCooperantesArraySize(); j++){
                gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
                gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
+               gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
             }
 //            trace()<<"GTS Antes Ordenar";
 //            for (int k = 0; k < (int)GTSlist.size(); k++) {

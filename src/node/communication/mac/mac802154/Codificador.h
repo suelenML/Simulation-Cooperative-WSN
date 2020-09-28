@@ -18,7 +18,7 @@
 #include <string.h>
 #include <stdint.h>
 #define MSG_SIZE 127
-#define N_NODES 9
+#define N_NODES 101
 
 #ifndef CODIFICADOR_H_
 #define CODIFICADOR_H_

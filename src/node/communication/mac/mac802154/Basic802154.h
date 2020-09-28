@@ -25,7 +25,7 @@ extern "C" {
 
 }
 #define MSG_SIZE 127
-#define N_NODES 9
+#define N_NODES 101
 
 #define absLocal(x) ((x)<0 ? (-x) : (x))
 /*
@@ -71,6 +71,7 @@ enum Mac802154Timers {
 	RESTART_NODE = 12,
 	GTS_SECOND_RETRANS = 13,
 	START_GACK = 14,
+    GTS_THIRD_RETRANS = 15,
 };
 
 enum macApp{
@@ -205,11 +206,15 @@ class Basic802154: public VirtualMac {
     simtime_t primeiraRetrans;
     simtime_t irDormir;
     bool firstCoop;
+    bool thirdCoop;
     double delayRadio;
     simtime_t second_GTSstartRetrans;
     simtime_t second_GTSendRetrans;
     simtime_t second_GTSlengthRetrans;
     simtime_t start_gack; // sinaliza o tempo para o coordenador enviar o GACK;
+    simtime_t third_GTSstartRetrans;
+    simtime_t third_GTSendRetrans;
+    simtime_t third_GTSlengthRetrans;
 
 
 
@@ -455,6 +460,11 @@ class Basic802154: public VirtualMac {
         std::map<int, MessagesNeighborhood*> otherRecover; // guarda as mensagem que possui, mas que outros cooperantes também possuem
         std::map<int, MessagesNeighborhood*> neigmapNodosEscutadosSelecionados; // mensagens que foram selecionadas para a codificação
         bool secondRetrans; // sinaliza se é a segunda retransmissao
+        int var_msg_perNode;
+        int var_msg_otherNodes;
+        int var_msg_notRecover;
+        int numCoopSel;// é so para saber o numero total de cooperantes selecionados
+        int numMSGSolicitadas; // é so para saber qntas mensagens o coordenador precisa recuperar
 };
 
 #endif	//BASIC_802154

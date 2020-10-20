@@ -16,7 +16,7 @@
 #include "Codificador.h"
 
 //Número de nodos maximo (incluindo o coordenador).
-#define N_NODES 101
+#define N_NODES 81
 #define MSG_SIZE 127
 #define NO_COEFFICIENT        0x0000
 #define MULTIPLE_COEFFICIENTS 0xFFFF
@@ -302,7 +302,8 @@ int Codificador::solveSystem(int sucesso){
     removeKnownElements();
     reduceMatrix();
     recuperadas = substituteBack();
-    return recuperadas + sucesso;
+    //return recuperadas + sucesso;
+    return recuperadas;
 
 }
 

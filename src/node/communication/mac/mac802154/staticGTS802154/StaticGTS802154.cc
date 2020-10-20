@@ -31,6 +31,7 @@ void StaticGTS802154::startup() {
 	baseSlot = par("baseSlotDuration");
 	minCap = par("minCAPLength");
 	frameOrder = par("frameOrder");
+	useGACK = par("useGACK");
 	/*
 	cout<<"------------GTS------------------\n";
 	cout<<"requestGTS: "<< requestGTS<<"\n";
@@ -138,13 +139,21 @@ void StaticGTS802154::prepareBeacon_hub(Basic802154Packet *beaconPacket) {
 
         /*Aqui tenho que dar um slot para o coordenador enviar o GACK (talves seja só inserir o primeiro id como zero)e aí sim depois desse os coop recebem slots
          * ver para dar mais de um slot para os coop*/
-        gtsRequest_hubRetransmissao(0,1);
+        if(useGACK){
+            gtsRequest_hubRetransmissao(0,1);
+        }
 
             // Atribui slot GTS para retransmissores
             for (int j = 0; j < (int) beaconPacket->getVizinhosOuNodosCooperantesArraySize(); j++){
                gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
-               gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
-               gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
+               //gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
+               //gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
+            }
+            /* Aqui estou atribuindo um slot para cada cooperante auxiliar*/
+            if(beaconPacket->getCoopAuxiliaresArraySize() >0){
+                for(int i = 0;i < (int) beaconPacket->getCoopAuxiliaresArraySize();i++){
+                    gtsRequest_hubRetransmissao(beaconPacket->getCoopAuxiliares(i),1);
+                }
             }
 //            trace()<<"GTS Antes Ordenar";
 //            for (int k = 0; k < (int)GTSlist.size(); k++) {
@@ -277,12 +286,7 @@ int StaticGTS802154::gtsRequest_hubRetransmissao(int id, int length) {
     newGTSspec.owner = id;
     newGTSspec.retransmissor = true;
     GTSlist.push_back(newGTSspec);
-    //cout<< "Alocou um GTS Retransmissao: "<< newGTSspec.owner <<"\n";
-    //trace()<< "Alocou um GTS retransmissao";
 
-   /* for (int i = 0; i < (int)GTSlist.size(); i++) {
-           cout<< "Lista GTS depois de inserir["<<i<<"]: "<<GTSlist[i].owner<<"\n";
-       }*/
     return newGTSspec.length;
 }
 //inverte a ordem da lista do GTS (o primeiro serao ultimo e o ultimo se torna o primeiro)

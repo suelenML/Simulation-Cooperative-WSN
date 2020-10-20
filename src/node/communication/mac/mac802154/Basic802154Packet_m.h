@@ -113,7 +113,8 @@ void doUnpacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
  *     unsigned short payload[];
  *     unsigned short coeficiente[];
  *     unsigned short gack[];
- * 	//int coeficiente[];
+ *     //int coeficiente[];
+ *     short coopAuxiliares[];
  * 
  * }
  * </pre>
@@ -152,6 +153,8 @@ class Basic802154Packet : public ::MacPacket
     unsigned int coeficiente_arraysize;
     unsigned short *gack_var; // array ptr
     unsigned int gack_arraysize;
+    short *coopAuxiliares_var; // array ptr
+    unsigned int coopAuxiliares_arraysize;
 
   private:
     void copy(const Basic802154Packet& other);
@@ -234,6 +237,10 @@ class Basic802154Packet : public ::MacPacket
     virtual unsigned int getGackArraySize() const;
     virtual unsigned short getGack(unsigned int k) const;
     virtual void setGack(unsigned int k, unsigned short gack);
+    virtual void setCoopAuxiliaresArraySize(unsigned int size);
+    virtual unsigned int getCoopAuxiliaresArraySize() const;
+    virtual short getCoopAuxiliares(unsigned int k) const;
+    virtual void setCoopAuxiliares(unsigned int k, short coopAuxiliares);
 };
 
 inline void doPacking(cCommBuffer *b, Basic802154Packet& obj) {obj.parsimPack(b);}

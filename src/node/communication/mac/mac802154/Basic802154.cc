@@ -79,6 +79,8 @@ void Basic802154::startup() {
 
     //Informa se utilizará codificação
     useNetworkCoding = par("useNetworkCoding");
+    useCoopAux = par("useCoopAux");
+    useGACK = par("useGACK");
 
 
     //Vetores
@@ -189,6 +191,7 @@ void Basic802154::startup() {
         codificador = new Codificador();
         sucessoMsgCodRecebida = 0;
         sucessoMsgDirRecebida = 0;
+        num_msg_decod_sucess = 0;
         retransCoded = 0;
         inicializeMetric();
         inicializaMatriz();
@@ -201,6 +204,11 @@ void Basic802154::startup() {
         var_msg_perNode = 0;
         var_msg_otherNodes = 0;
         var_msg_notRecover = 0;
+        if(useCoopAux){
+            nodosColaboradoresAuxiliares.clear();
+            cooperanteAuxiliar = false;
+            cooperanteAuxiliarAuxiliar = false;
+        }
         for(int i = 0; i< numhosts; i++){
             vizinhosCoop.push_back(0);
             GACK.push_back(0);
@@ -424,6 +432,21 @@ void Basic802154::enviarNodosCooperantes(Basic802154Packet *beaconPacket) {
     }
 }
 
+void Basic802154::enviarCooperantesAuxiliares(Basic802154Packet *beaconPacket) {
+
+    int tamanhoLista = nodosColaboradoresAuxiliares.size();
+
+    if (tamanhoLista > 0) {
+
+        beaconPacket->setCoopAuxiliaresArraySize(tamanhoLista);
+        int i;
+        for (i = 0; i < tamanhoLista; i++) {
+            beaconPacket->setCoopAuxiliares(i,nodosColaboradoresAuxiliares[i]);
+
+        }
+    }
+}
+
 void Basic802154::preencherListaGack(Basic802154Packet *beaconPacket) {
 
     int tamanhoLista = GACK.size();
@@ -616,10 +639,6 @@ void Basic802154::timerFiredCallback(int index) {
                     codificador->n_equations = 0;
                     sucessoMsgCodRecebida = 0;
                     sucessoMsgDirRecebida = 0;
-                    GACK.clear();
-                    for(int i = 0; i< numhosts; i++){
-                       GACK.push_back(0);
-                    }
 
                 }
 
@@ -632,6 +651,10 @@ void Basic802154::timerFiredCallback(int index) {
                         //cout<< "tempo de inicio "<< tempExecInicio << endl;
                         //cout<< "tempo de inicioOmnet "<< inicioExec << endl;
                         selecionaNodosSmart(beaconPacket); // Função Correta
+                        if(useCoopAux){
+                            selectCoopAux();
+
+                        }
                         //vizinhanca();// Heuristica Gulosa
                         //algGenetic(); // Algoritmo Genetico
 
@@ -676,6 +699,9 @@ void Basic802154::timerFiredCallback(int index) {
                         numSelRealizadas++;
                     }
                     enviarNodosCooperantes(beaconPacket);
+                    if(useCoopAux){
+                        enviarCooperantesAuxiliares(beaconPacket);
+                    }
                     tempoDeBeacon = 0;
                     idBeacon ++;
                     beaconPacket->setTempoBeacon(tempoDeBeacon);
@@ -695,6 +721,9 @@ void Basic802154::timerFiredCallback(int index) {
                     if (primeiraSelecao == 1) {
                         //Para manter os colaboradores até a próxima seleção
                         enviarNodosCooperantes(beaconPacket);
+                        if(useCoopAux){
+                            enviarCooperantesAuxiliares(beaconPacket);
+                        }
                     }
                     idBeacon ++;
                     tempoDeBeacon++; // Para sinalizar quando terá uma seleção
@@ -708,6 +737,14 @@ void Basic802154::timerFiredCallback(int index) {
                 }
                 //Suelen
                 numdadosrecebidosnogtstransmissao = 0;
+
+                if(useGACK){
+                    GACK.clear();
+                    for(int i = 0; i< numhosts; i++){
+                       GACK.push_back(0);
+                    }
+
+                }
 
             }
             nchildrenAntigos = nchildrenActual;
@@ -724,7 +761,8 @@ void Basic802154::timerFiredCallback(int index) {
             CAPend = CAPlength * baseSlotDuration * (1 << frameOrder)
                     * symbolLen;
 
-            if(useNetworkCoding){
+               /* Aqui disparo o timer para o GACK*/
+            if(useGACK){
                 if(beaconPacket->getGTSlistArraySize()> 0){
                     for(int i = 0; i < (int) beaconPacket->getGTSlistArraySize(); i++) {
                          if(beaconPacket->getGTSlist(i).owner == SELF_MAC_ADDRESS) {
@@ -832,7 +870,7 @@ void Basic802154::timerFiredCallback(int index) {
             //SUELEN
             // Aqui fazer o controle de quando ir dormir se for retransmissor
             if (userelay){
-                if (cooperador) {
+                if ((cooperador) || (cooperanteAuxiliar) || (cooperanteAuxiliarAuxiliar)) {
                     //Se for cooperante só dorme depois da retransmissão
                     // inform the decision layer that GTS has started
                     startedGTS_node();
@@ -1095,6 +1133,9 @@ void Basic802154::timerFiredCallback(int index) {
 
              transmitPacket(packetRetrans);*/
             retransmissionGTS();
+            if(useCoopAux){
+                setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
+            }
 
              if(!useNetworkCoding){
                  qntidadeVezesCooperou = qntidadeVezesCooperou + 1;
@@ -1258,7 +1299,12 @@ void Basic802154:: retransmissionGTS(){
 
 void Basic802154:: retransmissaoNetworkCoding(Basic802154Packet *packetRetrans){
     uint8_t byte = 0;
-   selectMsgNetworkCoding();
+   if(useCoopAux){
+       selectMsgNetworkCodingAux();
+   }else{
+       selectMsgNetworkCoding();
+   }
+
    parseToVector();
    codificador->encode_messages(SELF_MAC_ADDRESS);
    for(int i=0;i<MSG_SIZE;i++){
@@ -1292,8 +1338,8 @@ void Basic802154:: msgNotReceived(){
 
                 MessagesNeighborhood *neig = iter->second;
                 nodesCanRecover[iter->first] = neig;
-                iter = neigmapNodosEscutados.erase(iter);
-                iter--;
+                //iter = neigmapNodosEscutados.erase(iter);
+                //iter--;
                 break;
             }
         }
@@ -1336,6 +1382,161 @@ void Basic802154::preSelectMsgNetworkCoding(){
 
 
 }
+/*
+ * Este método considera que o coordenador selecionou
+ * os cooperantes principais e auxiliares para ajudar
+ * os principais.
+ *
+ * Aqui cada cooperante faz a intersecção das suas msgs escutadas com
+ * as que o coordenador perdeu e com as dos seus auxiliares. Salva o
+ * resultado em neigmapNodosEscutadosRefinamento.
+ * */
+void Basic802154::selectMsgCoopAux(){
+    /*Deixa em uma estrutura as msgs escutadas e que o coord não recebeu*/
+    /*Verificar as msg em comum entre o Coop Principal e os coop Aux*/
+
+    std::map<int, vector<int>>::iterator iterNeighborhood1;
+    std::map<int, vector<int>>::iterator iterNeighborhood2;
+    std::map<int, MessagesNeighborhood*>::iterator iter;
+
+    vector<int> listaVizinhos1;
+    vector<int> listaVizinhos2;
+    vector<int> listaAux;
+    int numMsg;
+    bool exist1 = false;
+    bool exist2 = false;
+    if(cooperador){
+        listaAux = coopAuxPerNode;
+    }else{
+        if(cooperanteAuxiliar || cooperanteAuxiliarAuxiliar){
+            listaAux = coopHelped;
+        }
+    }
+    nodesCanRecoverInCommon.clear();
+    listaVizinhos1.clear();
+    listaVizinhos2.clear();
+    msgNotReceived();// armazena o resultado em nodesCanRecover
+    numMsg = nodesCanRecover.size();
+    if(numMsg > 0){
+        for (iter = nodesCanRecover.begin(); iter != nodesCanRecover.end(); iter++) {
+            //for(int i = 0; i < (int) listaAux.size(); i++){
+            if(listaAux.size()==2){ // significa que há dois auxiliares
+                iterNeighborhood1 = matrizVizinhos.find(listaAux[0]);
+                iterNeighborhood2 = matrizVizinhos.find(listaAux[1]);
+                if (iterNeighborhood1 != matrizVizinhos.end()){
+                    if (iterNeighborhood2 != matrizVizinhos.end()){
+                        listaVizinhos1 = iterNeighborhood1->second;
+                        listaVizinhos2 = iterNeighborhood2->second;
+                        exist1 = false;
+                        exist2 = false;
+                        exist1 = std::find(listaVizinhos1.begin(), listaVizinhos1.end(), iter->first) != listaVizinhos1.end();
+                        exist2 = std::find(listaVizinhos2.begin(), listaVizinhos2.end(), iter->first) != listaVizinhos2.end();
+                        if(exist1 && exist2){
+                            MessagesNeighborhood *neig = iter->second;
+                            nodesCanRecoverInCommon[iter->first] = neig;
+                        }
+                    }
+                }
+
+            }else{
+                if(listaAux.size() == 1){// Há apenas um auxiliar
+                    iterNeighborhood1 = matrizVizinhos.find(listaAux[0]);
+                    if (iterNeighborhood1 != matrizVizinhos.end()) {
+                        listaVizinhos1 = iterNeighborhood1->second;
+                        if (std::find(listaVizinhos1.begin(), listaVizinhos1.end(), iter->first) != listaVizinhos1.end()){
+                            MessagesNeighborhood *neig = iter->second;
+                            nodesCanRecoverInCommon[iter->first] = neig;
+                        }
+                    }
+                }
+            }
+       }
+    }
+
+
+}
+
+/*
+ * coop envia: A + B + C
+ * Aux1 envia: B + C
+ * Aux2 envia: proprioAux + C
+ * */
+void Basic802154::selectMsgNetworkCodingAux(){
+    std::map<int, MessagesNeighborhood*>::iterator iter;
+    std::map<int, MessagesNeighborhood*>::iterator iterNodes;
+    int numMsg = 0;
+    selectMsgCoopAux();
+
+    neigmapNodosEscutadosRefinamento.clear();
+    if(cooperador){
+        numMsg = 0;
+        if(nodesCanRecoverInCommon.size()>0){
+            for (iter = nodesCanRecoverInCommon.begin(); iter != nodesCanRecoverInCommon.end(); iter++) {
+                MessagesNeighborhood *neig = iter->second;
+                neigmapNodosEscutadosRefinamento[iter->first] = neig;
+                //iter = nodesCanRecoverInCommon.erase(iter);
+                //iter--;
+                numMsg++;
+                if(numMsg == 3){// significa que já há três msg prontas para codificar
+                    break;
+                }
+            }
+        }
+
+    }else{
+        if(cooperanteAuxiliar){
+            //inicia o for já na segunda msg
+            if(nodesCanRecoverInCommon.size() > 1){// considerando que quero a segunda
+            numMsg = 0;
+            iter = nodesCanRecoverInCommon.begin();
+                for (++iter; iter != nodesCanRecoverInCommon.end(); iter++) {
+                    MessagesNeighborhood *neig = iter->second;
+                    neigmapNodosEscutadosRefinamento[iter->first] = neig;
+                    //iter = nodesCanRecoverInCommon.erase(iter);
+                    //iter--;
+                    numMsg++;
+                    if(numMsg == 2){// significa que já há duas msg prontas para codificar
+                        break;
+                    }
+                }
+            }
+
+        }else{
+            if(cooperanteAuxiliarAuxiliar){
+                // Insere a msg do proprio auxiliar
+                for (iterNodes = neigmapNodosEscutados.begin(); iterNodes != neigmapNodosEscutados.end(); iterNodes++) {
+                        if(iterNodes->first == SELF_MAC_ADDRESS){
+                            MessagesNeighborhood *neig = iterNodes->second;
+                            neigmapNodosEscutadosRefinamento[iterNodes->first] = neig;
+                            break;
+                        }
+                    }
+                // inicia o for na terceira msg
+                numMsg = 0;
+                if(nodesCanRecoverInCommon.size()>2){// considerando que quero a terceira msg
+                    iter = ++nodesCanRecoverInCommon.begin();
+                    for (++iter; iter != nodesCanRecoverInCommon.end(); iter++) {
+                           MessagesNeighborhood *neig = iter->second;
+                           neigmapNodosEscutadosRefinamento[iter->first] = neig;
+                           //iter = nodesCanRecoverInCommon.erase(iter);
+                           //iter--;
+                           numMsg++;
+                           if(numMsg == 1){// significa que já há duas msg prontas para codificar
+                               break;
+                           }
+                       }
+                }else{
+                    for (iter = nodesCanRecoverInCommon.begin(); iter != nodesCanRecoverInCommon.end(); iter++) {
+                       MessagesNeighborhood *neig = iter->second;
+                       neigmapNodosEscutadosRefinamento[iter->first] = neig;
+                   }
+
+                }
+            }
+
+        }
+    }
+}
 
 
 /*Este método seleciona mensagens das escutadas para enviar*/
@@ -1348,10 +1549,12 @@ void Basic802154::selectMsgNetworkCoding(){
     int k,j;
     numMsg = 0;
     numMsgOther = 0;
+
     if(!secondRetrans){
-        msgNotReceived();
-        preSelectMsgNetworkCoding();
+            msgNotReceived();
+            preSelectMsgNetworkCoding();
     }
+
     neigmapNodosEscutadosRefinamento.clear();
     /*Aqui coloca a mensagem do próprio nodo para codificar*/
     for (iterNodes = neigmapNodosEscutados.begin(); iterNodes != neigmapNodosEscutados.end(); iterNodes++) {
@@ -1580,7 +1783,7 @@ void Basic802154::fromNetworkLayer(cPacket * pkt, int dstMacAddress) {
      * */
 
     if(useNetworkCoding){
-        if(cooperador){
+        if((cooperador) || (cooperanteAuxiliar) || (cooperanteAuxiliarAuxiliar)){
             Basic802154Packet* framedup = macPacket->dup();
             MessagesNeighborhood *neig = new MessagesNeighborhood();
             neig->setFrameTransmission(framedup);
@@ -1654,9 +1857,10 @@ void Basic802154::finishSpecific() {
                declareOutput("Numero de Retransmissões Codificadas por Relay");
                collectOutput("Numero de Retransmissões Codificadas por Relay", "", relayNetworkCoding);
 
+               /*Parametro só para teste*/
                declareOutput("Numero de Mensagens a ser codificadas unicamente por um relay");
                collectOutput("Numero de Mensagens a ser codificadas unicamente por um relay", "", var_msg_perNode);
-
+               /*Parametro só para teste*/
                declareOutput("Numero de Mensagens a ser codificadas por outros relays");
                collectOutput("Numero de Mensagens a ser codificadas por outros relays", "", var_msg_otherNodes);
 
@@ -1738,9 +1942,13 @@ void Basic802154::finishSpecific() {
             declareOutput("Numero de Mensagens recebidas Codificadas");
             collectOutput("Numero de Mensagens recebidas Codificadas", "", retransCoded);
 
+            /*Número de retransmissão codificadas que não foram decodificadas de imediato*/
             declareOutput("Numero de Mensagens recebidas Codificadas nao recuperadas");
             collectOutput("Numero de Mensagens recebidas Codificadas nao recuperadas", "", var_msg_notRecover);
 
+            /* Número total de mensagens que foram recuperadas pela codificação */
+            declareOutput("Numero de Mensagens extraidas da codificacao com sucesso");
+            collectOutput("Numero de Mensagens extraidas da codificacao com sucesso", "", num_msg_decod_sucess);
 
 
 
@@ -1953,6 +2161,169 @@ void Basic802154::tratarDivisao(Neighborhood *nodo){
 
 
 }
+void Basic802154:: selectCoopAux(){
+    /* Preciso saber quem são os cooperantes. (nodosColaboradores)*
+     * Para cada cooperante preciso saber quem são os seus vizinhos;
+     * Para cada vizinho do cooperante que comunique com o coordenador, verifico a lista de vizinhos deste nodo
+     * procurando se ele escutou algum nodo que o coordenador perdeu a mensagem;
+     * Salvo os dois vizinhos do Coop que mais tenha escutado mensagens perdidas.
+     *
+     */
+    bool exist = false;
+    bool existCoop = false;
+    std::map<int, Neighborhood*>::iterator iterNeighborhood;
+    std::map<int, Neighborhood*>::iterator iter;
+    Neighborhood *nodo;
+    Neighborhood *nodovizinho;
+    int numvizinhos = 0;
+    std::vector<int> GACK_msgPerdidas;
+    int numMsgCanRecover = 0;
+    int nodeCanRecover = 0;
+    int auxNumMsgCanRecover = 0;
+    int auxNodeCanRecover = 0;
+
+    int auxNumMsgEmComum = 0;
+    int numMsgEmComum = 0;
+    int auxNodeMsgEmComum = 0;
+    int nodeMsgEmComum = 0;
+
+    int numMsgCoop = 0;
+    int coopAux1 = 0;
+    int coopAux2 = 0;
+
+
+
+    std::vector<int> msgCanRecover;
+    std::vector<int> auxMsgCanRecover;
+    std::vector<int> auxMsgEmComum;
+    std::vector<int> msgEmComum;
+    std::vector<int> coopAux;
+
+    GACK_msgPerdidas.clear();
+    msgCanRecover.clear();
+    auxMsgCanRecover.clear();
+    auxMsgEmComum.clear();
+    msgEmComum.clear();
+    coopAux.clear();
+    nodosColaboradoresAuxiliares.clear();
+    //Armazenos as mensagens que o coord perdeu no vetor GACK_msgPerdidas
+    for(int i = 1; i < (int) GACK.size();i++){
+        if(GACK[i] == 0){
+            GACK_msgPerdidas.push_back(i);
+        }
+    }
+
+    for(int i = 0;i < (int)nodosColaboradores.size();i++){
+        cout<<"Nodo Colaborador: "<< nodosColaboradores[i]<<endl;
+        iterNeighborhood = neigmap.find(nodosColaboradores[i]);
+        if(iterNeighborhood != neigmap.end()){
+            nodo = iterNeighborhood->second;
+            numvizinhos = nodo->vizinhos.size();
+            if((numvizinhos > 0) && (GACK_msgPerdidas.size()>0)){
+                for (int j = 0; j < numvizinhos; j++) {
+                    exist = false;
+                    existCoop = false;
+                    existCoop = std::find(nodosColaboradores.begin(), nodosColaboradores.end(), nodo->vizinhos[j]) != nodosColaboradores.end();
+                    exist = std::find(nodosColaboradoresAuxiliares.begin(), nodosColaboradoresAuxiliares.end(), nodo->vizinhos[j]) != nodosColaboradoresAuxiliares.end();
+                    if((!exist) && (!existCoop)){
+                        auxNumMsgCanRecover = 0;
+                        auxMsgCanRecover.clear();
+                        auxNodeCanRecover = 0;
+                        cout<<"vizinho colaborador: "<< nodo->vizinhos[j]<<endl;
+                        // verifica se cada vizinho comunica com o coordenador
+                        iter = neigmap.find(nodo->vizinhos[j]);
+                        if(iter!=neigmap.end()){
+                            nodovizinho = iter->second;
+                            for(int m = 0; m < (int)nodovizinho->vizinhos.size();m++){
+                                cout<<"vizinho do vizinho do coop: "<< nodovizinho->vizinhos[m]<<endl;
+                                for(int n = 0; n < numvizinhos; n++){
+                                    cout<<"vizinho do coop: "<< nodo->vizinhos[n]<<endl;
+                                    for(int k = 0; k < (int)GACK_msgPerdidas.size();k++){
+                                        cout<<"msg perdida: "<< GACK_msgPerdidas[k]<<endl;
+                                        /*Aqui salvo as msgs que o cooperante tem em comum com os vizinhos*/
+                                        if((nodovizinho->vizinhos[m] == nodo->vizinhos[n]) && (nodovizinho->vizinhos[m] == GACK_msgPerdidas[k])){
+                                            cout<<"O vizinho do coop e o coop escutaram a mesma msg perdida"<<endl;
+                                            auxNumMsgCanRecover++;
+                                            auxMsgCanRecover.push_back(GACK_msgPerdidas[k]);
+                                            auxNodeCanRecover = nodo->vizinhos[j];
+                                            break;
+
+                                        }
+                                    }
+                                }
+                            }
+                            if(auxNumMsgCanRecover > numMsgEmComum){
+                            //Aqui faço a intersecção das msgs em comum com um segundo auxiliar
+                                for (int p = j +1; p < numvizinhos; p++) {
+                                        auxNumMsgEmComum = 0;
+                                        auxMsgEmComum.clear();
+                                        auxNodeMsgEmComum = 0;
+                                        exist = false;
+                                        existCoop = false;
+                                        existCoop = std::find(nodosColaboradores.begin(), nodosColaboradores.end(), nodo->vizinhos[p]) != nodosColaboradores.end();
+                                        exist = std::find(nodosColaboradoresAuxiliares.begin(), nodosColaboradoresAuxiliares.end(), nodo->vizinhos[p]) != nodosColaboradoresAuxiliares.end();
+                                        if((!exist) && (!existCoop)){
+                                            iter = neigmap.find(nodo->vizinhos[p]);
+                                            if(iter!=neigmap.end()){
+                                                nodovizinho = iter->second;
+                                                for(int o = 0;o < auxNumMsgCanRecover;o++){
+                                                    for(int m = 0; m < (int)nodovizinho->vizinhos.size();m++){
+                                                        if(auxMsgCanRecover[o] == nodovizinho->vizinhos[m]){
+                                                            auxNumMsgEmComum++;
+                                                            auxMsgEmComum.push_back(auxMsgCanRecover[o]);
+                                                            auxNodeMsgEmComum = nodo->vizinhos[p];
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                                if(auxNumMsgEmComum > numMsgEmComum){// no fim o "nodeMsgEmComum" resulta no nodo que tem mais em comum como primeiro auxiliar e o cooperante
+                                                    numMsgEmComum = auxNumMsgEmComum;
+                                                    msgEmComum = auxMsgEmComum;
+                                                    nodeMsgEmComum = auxNodeMsgEmComum;
+
+
+                                                    auxNumMsgEmComum = 0;
+                                                    auxMsgEmComum.clear();
+                                                    auxNodeMsgEmComum = 0;
+                                                }
+                                          }
+                                    }
+                                }
+                            }
+
+                    }
+                        if(numMsgEmComum > numMsgCoop){
+                            numMsgCoop = numMsgEmComum;
+                            coopAux1 = auxNodeCanRecover;
+                            coopAux2 = nodeMsgEmComum;
+                        }
+                }
+            }
+
+        }
+    }
+        //coopAux.push_back(coopAux1);
+        //coopAux.push_back(coopAux2);
+        nodosColaboradoresAuxiliares.push_back(coopAux1);
+        nodosColaboradoresAuxiliares.push_back(coopAux2);
+        numMsgEmComum = 0;
+        numMsgCoop = 0;
+
+
+
+}
+    for(int i=0;i<nodosColaboradoresAuxiliares.size();i++){
+        cout<<"Auxiliares: "<<nodosColaboradoresAuxiliares[i]<<endl;
+    }
+}
+
+
+
+
+
+
+
+
 // método correto
 //método que monta e resolve o probelma de otimização e escreve um arquivo .mod
 void Basic802154::selecionaNodosSmart(Basic802154Packet *beaconPacket) {
@@ -2631,17 +3002,102 @@ double Basic802154::taxaDeSucesso(int id, int recebidas) {
 // método Ríad
 //
 void Basic802154::souNodoCooperante(Basic802154Packet * pkt) {
-    unsigned int i = 0;
+    int i = 0;
     cooperador = false;
+    coopAuxPerNode.clear();
 
-    while (pkt->getVizinhosOuNodosCooperantesArraySize() > i) {
+    if(!useCoopAux){
+        while (pkt->getVizinhosOuNodosCooperantesArraySize() > i) {
 
-        if (pkt->getVizinhosOuNodosCooperantes(i) == self) {
-            cooperador = true;
+            if (pkt->getVizinhosOuNodosCooperantes(i) == self) {
+                cooperador = true;
+                break;
+            }
+            i++;
+        }
+    }
+    if(useCoopAux){
+        int numeroCooperante;
+        numeroCooperante = (int)pkt->getVizinhosOuNodosCooperantesArraySize();
+        int a = 0;
+        int b = 2;
+        int j;
+        cout<< "numeroCooperante: "<< numeroCooperante << endl;
+        if(numeroCooperante > 0){
+            for(i = 0; i< numeroCooperante;i++){
+                if (pkt->getVizinhosOuNodosCooperantes(i) == self) {
+                    cooperador = true;
+                    cout<< "A: "<< a << endl;
+                    cout<< "B: "<< b << endl;
+                    if((int)pkt->getCoopAuxiliaresArraySize() > 0){
+                        for(j = a; j < b; j++){
+                            coopAuxPerNode.push_back(pkt->getCoopAuxiliares(j));
+                        }
+                    }
+                    break;
+
+                }
+                a = b;
+                b = b + 2;
+            }
+        }
+    }
+
+
+}
+void Basic802154::souNodoCooperanteAuxiliar(Basic802154Packet * pkt) {
+    //unsigned int i = 0;
+    cooperanteAuxiliar = false;
+    cooperanteAuxiliarAuxiliar = false;
+    coopHelped.clear();
+
+    /*while (pkt->getCoopAuxiliaresArraySize() > i) {
+
+        if (pkt->getCoopAuxiliares(i) == self) {
+            cooperanteAuxiliar = true;
             break;
         }
         i++;
+    }*/
+    int numeroCooperante = (int)pkt->getVizinhosOuNodosCooperantesArraySize();
+    int numeroCooperanteAuxiliar = (int)pkt->getCoopAuxiliaresArraySize();
+    int a = 0;
+    int b = 2;
+    int j,i;
+    int identifierAux = 0;
+    cout<< "numeroCooperanteAuxiliar: "<< numeroCooperanteAuxiliar << endl;
+    cout<< "numeroCooperante: "<< numeroCooperante << endl;
+    if((numeroCooperanteAuxiliar > 0) && (numeroCooperante >0)){
+        for(j = 0; j < numeroCooperante;j++){
+            identifierAux = 0;
+            cout<< "A: "<< a << endl;
+            cout<< "B: "<< b << endl;
+            for(i = a; i < b; i++){
+                identifierAux++;
+                if (pkt->getCoopAuxiliares(i) == self) {
+                    if(identifierAux == 2){//significa que é o segundo auxiliar, é o cooperanteAuxiliarAuxiliar
+                        cooperanteAuxiliarAuxiliar = true;
+                    }else{
+                        if(identifierAux == 1){ //É o primeiro auxiliar
+                            cooperanteAuxiliar = true;
+                        }
+                    }
+                    coopHelped.push_back(pkt->getVizinhosOuNodosCooperantes(j));
+                    if(cooperanteAuxiliarAuxiliar){//Aqui guarda o outro auxiliar
+                        coopHelped.push_back(pkt->getCoopAuxiliares(i-1));
+                    }else{//Aqui guarda o outro auxiliar
+                        coopHelped.push_back(pkt->getCoopAuxiliares(i+1));
+                    }
+                    break;
+                }
+            }
+            a = b;
+            b = b + 2;
+        }
     }
+
+
+
 }
 
 /*
@@ -2681,15 +3137,16 @@ void Basic802154::listarNodosEscutadosRetransmissaoNetworkCoding(Basic802154Pack
         neig->setFrameRetransmission(framedup);
         parseMatrix();
         primeiraRetransCod = true;
-        recuperadas = sucessoMsgCodRecebida;
+        //recuperadas = sucessoMsgCodRecebida;
+        num_msg_decod_sucess = num_msg_decod_sucess + sucessoMsgCodRecebida;
         //sucessoMsgCodRecebida = codificador->solve_system(sucessoMsgCodRecebida);
         sucessoMsgCodRecebida = codificador->solveSystem(sucessoMsgCodRecebida);
         if(sucessoMsgCodRecebida == 0){
             var_msg_notRecover++;
         }
         cout << " sucessoMsgCodRecebida retrans = " << sucessoMsgCodRecebida << endl;
-        recuperadas = sucessoMsgCodRecebida - recuperadas;
-        trace()<< "Mensagens Recuperadas" <<recuperadas<<endl;
+        //recuperadas = sucessoMsgCodRecebida - recuperadas;
+        //trace()<< "Mensagens Recuperadas" <<recuperadas<<endl;
         for(int i = 1;i < numhosts;i++){
             recoverPerNode[i] = codificador->recoverPerNode[i];
         }
@@ -2714,12 +3171,12 @@ void Basic802154::listarNodosEscutadosTransmissaoNetworkCoding(Basic802154Packet
             neigmapNodosEscutados[framedup->getSrcID()] = neig;
             codificador->received[framedup->getSrcID()] = 1;
             GACK[framedup->getSrcID()] = 1;
-            //sucessoMsgCodRecebida++;
             sucessoMsgDirRecebida++;
             cout << " sucessoMsgCodRecebida trans = " << sucessoMsgDirRecebida << endl;
         }
     }else{
-        if(cooperador){
+        if((cooperador) || (cooperanteAuxiliar) || (cooperanteAuxiliarAuxiliar)){
+            cout<< "Sou o nodo: " << self << endl;
             if (rcvPacket->getMac802154PacketType() == MAC_802154_DATA_PACKET && rcvPacket->getRetransmissao() == false){
                 Basic802154Packet* framedup = rcvPacket->dup();
                 MessagesNeighborhood *neig = new MessagesNeighborhood();
@@ -3147,7 +3604,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
     if (!rcvPacket) {
         return;
     }
-
+    cout<<"sou o nodo: "<<self<<endl;
     if(pausado){
         //Colocar o nodo para dormir e deletar o pacote
         //toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
@@ -3165,7 +3622,8 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                     verificarRetransmissao(rcvPacket,rssi);
                 }
 
-                if (cooperador) { // essa variavel é setada ao ouvir o beacon
+                if ((cooperador) ||(cooperanteAuxiliar)|| (cooperanteAuxiliarAuxiliar)) { // essa variavel é setada ao ouvir o beacon
+                    cout<<"sou o nodo: "<<self<<endl;
                     listarNodosEscutados(rcvPacket, rssi); // insere o nodo que enviou o pacote como escutado
 
                 }
@@ -3198,6 +3656,9 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                 secondRetrans = false;
                 GACK.clear();
                 nodesNotReceived.clear();
+                if(useCoopAux){
+                    souNodoCooperanteAuxiliar(rcvPacket);
+                }
 
                 for(int i = 0; i< numhosts; i++){
                  GACK.push_back(0);
@@ -3299,12 +3760,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                                 //Suelen obs:antes era só o conteudo do else
                                 if (rcvPacket->getGTSlist(i).retransmissor) {
 
-                                    if(firstCoop){
-                                        cout << "Tamanho Lista: "
-                                                << (int) rcvPacket->getGTSlistArraySize()
-                                                << "Lista GTS[" << i << "]: "
-                                                << rcvPacket->getGTSlist(i).owner
-                                                << " Cooperante\n";
+                                    if(useCoopAux){
                                         GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
                                                 * baseSlotDuration * (1 << frameOrder) * symbolLen;
                                         GTSendRetrans = GTSstartRetrans
@@ -3312,76 +3768,102 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                                                         * (1 << frameOrder) * symbolLen;
                                         GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
 
-
-
-                                        //delayRadio = offset;
-
-                                        //trace()<<"tempo Atual: " << simTime();
-                                        //trace()<<"getClok(): " << getClock();
-                                        //trace()<<"GTSstartRetrans: " << GTSstartRetrans;
-                                        //trace()<<"GTSendRetrans: " << GTSendRetrans;
-                                        //trace()<<"GTSlengthRetrans: " << GTSlengthRetrans;
-
-
-                                        //trace() << "GTS slot from " << getClock() + GTSstartRetrans
-                                          //      << " to " << getClock() + GTSendRetrans
-                                            //    << " length " << GTSlengthRetrans;
                                         cout << "Nodo " << rcvPacket->getGTSlist(i).owner
-                                                << " Usa o GTS slot from "
-                                                << getClock() + GTSstartRetrans << " to "
-                                                << getClock() + GTSendRetrans << " length "
-                                                << GTSlengthRetrans << "\n";
+                                            << " Usa o GTS slot from "
+                                            << getClock() + GTSstartRetrans << " to "
+                                            << getClock() + GTSendRetrans << " length "
+                                            << GTSlengthRetrans << "\n";
 
-                                        // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
+                                    // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
                                         setTimer(GTS_RETRANS,
-                                                GTSstartRetrans - phyDelaySleep2Tx - offset);
+                                            GTSstartRetrans - phyDelaySleep2Tx - offset);
+
                                     }else{
-                                        if(thirdCoop){
-                                            thirdCoop = false;
-                                            third_GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
+
+                                        if(firstCoop){
+                                            cout << "Tamanho Lista: "
+                                                    << (int) rcvPacket->getGTSlistArraySize()
+                                                    << "Lista GTS[" << i << "]: "
+                                                    << rcvPacket->getGTSlist(i).owner
+                                                    << " Cooperante\n";
+                                            GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
                                                     * baseSlotDuration * (1 << frameOrder) * symbolLen;
-                                            third_GTSendRetrans = third_GTSstartRetrans
+                                            GTSendRetrans = GTSstartRetrans
                                                     + rcvPacket->getGTSlist(i).length * baseSlotDuration
                                                             * (1 << frameOrder) * symbolLen;
-                                            third_GTSlengthRetrans = third_GTSendRetrans - third_GTSstartRetrans;
+                                            GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
 
-                                            cout << "Tamanho Lista: "
-                                                << (int) rcvPacket->getGTSlistArraySize()
-                                                << "Lista GTS[" << i << "]: "
-                                                << rcvPacket->getGTSlist(i).owner
-                                                << " Cooperante\n";
 
+
+                                            //delayRadio = offset;
+
+                                            //trace()<<"tempo Atual: " << simTime();
+                                            //trace()<<"getClok(): " << getClock();
+                                            //trace()<<"GTSstartRetrans: " << GTSstartRetrans;
+                                            //trace()<<"GTSendRetrans: " << GTSendRetrans;
+                                            //trace()<<"GTSlengthRetrans: " << GTSlengthRetrans;
+
+
+                                            //trace() << "GTS slot from " << getClock() + GTSstartRetrans
+                                              //      << " to " << getClock() + GTSendRetrans
+                                                //    << " length " << GTSlengthRetrans;
                                             cout << "Nodo " << rcvPacket->getGTSlist(i).owner
-                                                            << " Usa o GTS slot from "
-                                                            << getClock() + third_GTSstartRetrans << " to "
-                                                            << getClock() + third_GTSendRetrans << " length "
-                                                            << third_GTSlengthRetrans << "\n";
+                                                    << " Usa o GTS slot from "
+                                                    << getClock() + GTSstartRetrans << " to "
+                                                    << getClock() + GTSendRetrans << " length "
+                                                    << GTSlengthRetrans << "\n";
 
-                                            setTimer(GTS_THIRD_RETRANS, third_GTSstartRetrans - phyDelaySleep2Tx - offset);
+                                            // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
+                                            setTimer(GTS_RETRANS,
+                                                    GTSstartRetrans - phyDelaySleep2Tx - offset);
+                                        }else{
+                                            if(thirdCoop){
+                                                thirdCoop = false;
+                                                third_GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
+                                                        * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                                                third_GTSendRetrans = third_GTSstartRetrans
+                                                        + rcvPacket->getGTSlist(i).length * baseSlotDuration
+                                                                * (1 << frameOrder) * symbolLen;
+                                                third_GTSlengthRetrans = third_GTSendRetrans - third_GTSstartRetrans;
 
-                                        }
-                                        else{
-                                            firstCoop = true;
-                                            second_GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
-                                                    * baseSlotDuration * (1 << frameOrder) * symbolLen;
-                                            second_GTSendRetrans = second_GTSstartRetrans
-                                                    + rcvPacket->getGTSlist(i).length * baseSlotDuration
-                                                            * (1 << frameOrder) * symbolLen;
-                                            second_GTSlengthRetrans = second_GTSendRetrans - second_GTSstartRetrans;
+                                                cout << "Tamanho Lista: "
+                                                    << (int) rcvPacket->getGTSlistArraySize()
+                                                    << "Lista GTS[" << i << "]: "
+                                                    << rcvPacket->getGTSlist(i).owner
+                                                    << " Cooperante\n";
 
-                                            cout << "Tamanho Lista: "
-                                                << (int) rcvPacket->getGTSlistArraySize()
-                                                << "Lista GTS[" << i << "]: "
-                                                << rcvPacket->getGTSlist(i).owner
-                                                << " Cooperante\n";
+                                                cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                                                                << " Usa o GTS slot from "
+                                                                << getClock() + third_GTSstartRetrans << " to "
+                                                                << getClock() + third_GTSendRetrans << " length "
+                                                                << third_GTSlengthRetrans << "\n";
 
-                                            cout << "Nodo " << rcvPacket->getGTSlist(i).owner
-                                                            << " Usa o GTS slot from "
-                                                            << getClock() + second_GTSstartRetrans << " to "
-                                                            << getClock() + second_GTSendRetrans << " length "
-                                                            << second_GTSlengthRetrans << "\n";
+                                                setTimer(GTS_THIRD_RETRANS, third_GTSstartRetrans - phyDelaySleep2Tx - offset);
 
-                                            setTimer(GTS_SECOND_RETRANS, second_GTSstartRetrans - phyDelaySleep2Tx - offset);
+                                            }
+                                            else{
+                                                firstCoop = true;
+                                                second_GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
+                                                        * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                                                second_GTSendRetrans = second_GTSstartRetrans
+                                                        + rcvPacket->getGTSlist(i).length * baseSlotDuration
+                                                                * (1 << frameOrder) * symbolLen;
+                                                second_GTSlengthRetrans = second_GTSendRetrans - second_GTSstartRetrans;
+
+                                                cout << "Tamanho Lista: "
+                                                    << (int) rcvPacket->getGTSlistArraySize()
+                                                    << "Lista GTS[" << i << "]: "
+                                                    << rcvPacket->getGTSlist(i).owner
+                                                    << " Cooperante\n";
+
+                                                cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                                                                << " Usa o GTS slot from "
+                                                                << getClock() + second_GTSstartRetrans << " to "
+                                                                << getClock() + second_GTSendRetrans << " length "
+                                                                << second_GTSlengthRetrans << "\n";
+
+                                                setTimer(GTS_SECOND_RETRANS, second_GTSstartRetrans - phyDelaySleep2Tx - offset);
+                                            }
                                         }
                                     }
 
@@ -3522,7 +4004,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                                   }else{
                                       //Se for cooperante irá escutar todos os vizinhos
                                       //if((smart || smartPeriodic) && cooperador){// Se o nodo for cooperante acorda no inicio para escutar os vizinhos
-                                      if(cooperador){//Se for cooperante irá escutar todos os vizinhos
+                                      if((cooperador) || (cooperanteAuxiliar) || (cooperanteAuxiliarAuxiliar)){//Se for cooperante irá escutar todos os vizinhos
                                           setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
                                       }else{
                                           if((smart || smartPeriodic) && !cooperador){
@@ -3732,7 +4214,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
            cout <<"Pacote: " << rcvPacket->getMac802154PacketType() <<endl;
            nodesNotReceived.clear();
            if(useNetworkCoding){
-                    if (cooperador) {
+                    if (cooperador || cooperanteAuxiliar || cooperanteAuxiliarAuxiliar) {
                             for(int i = 0; i < rcvPacket->getGackArraySize();i++){
                                 cout<<"Lista GACK: " << rcvPacket->getGack(i)<< endl;
                                 if(rcvPacket->getGack(i) == 0){

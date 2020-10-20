@@ -87,7 +87,8 @@ simple Basic802154 like node.communication.mac.iMac {
 	
 	//Codificação
 	bool useNetworkCoding = default(false);
-    
+	bool useCoopAux = default(false); // se a rede terá cooperantes auxiliares para a codificação
+    bool useGACK = default(false);
 	
 	
 	

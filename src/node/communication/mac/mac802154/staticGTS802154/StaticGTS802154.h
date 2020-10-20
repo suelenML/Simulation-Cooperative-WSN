@@ -25,6 +25,7 @@ class StaticGTS802154: public Basic802154 {
 	vector<Basic802154GTSspec> GTSlist;	// list of GTS specifications (for PAN coordinator)
 	int assignedGTS,requestGTS,totalGTS,totalSlots,baseSlot,minCap,frameOrder;
 	bool gtsOnly;
+	bool useGACK;
 
 	//SUELEN VARIÁVEIS
 	vector<Basic802154GTSspec> GTSlistCopy;

@@ -25,7 +25,7 @@ extern "C" {
 
 }
 #define MSG_SIZE 127
-#define N_NODES 101
+#define N_NODES 81
 
 #define absLocal(x) ((x)<0 ? (-x) : (x))
 /*
@@ -347,6 +347,11 @@ class Basic802154: public VirtualMac {
 	    void msgNotReceived();
 	    void matrizVizinhancaNodos(Basic802154Packet * pkt);
 	    void preSelectMsgNetworkCoding();
+	    void selectCoopAux();
+	    void enviarCooperantesAuxiliares(Basic802154Packet *beaconPacket);
+	    void souNodoCooperanteAuxiliar(Basic802154Packet * pkt);
+	    void selectMsgCoopAux();
+	    void selectMsgNetworkCodingAux();
 
 
 
@@ -436,8 +441,11 @@ class Basic802154: public VirtualMac {
 
 	    /*Codificação */
 	    bool useNetworkCoding;
+	    bool useCoopAux;
+	    bool useGACK;
 	    Codificador *codificador;
 	    int sucessoMsgCodRecebida;
+	    int num_msg_decod_sucess;
 	    int sucessoMsgDirRecebida;
 	    int retransCoded;
 	    /*unsigned char*/ uint8_t buffer_msg[N_NODES][MSG_SIZE];//matriz de armazenamento de msg
@@ -465,6 +473,13 @@ class Basic802154: public VirtualMac {
         int var_msg_notRecover;
         int numCoopSel;// é so para saber o numero total de cooperantes selecionados
         int numMSGSolicitadas; // é so para saber qntas mensagens o coordenador precisa recuperar
+        vector<int> nodosColaboradoresAuxiliares; // Coordenadore guarda quem são os coop auxiliares
+        bool cooperanteAuxiliar; // sinaliza que o nodo é um coop auxiliar
+        bool cooperanteAuxiliarAuxiliar;
+        vector<int> coopAuxPerNode; // cada nodo cooperante guarda quem saõ seus auxiliares
+        vector<int> coopHelped; // cada cooperante auxiliar guarda qual cooperante principal ele ajudará
+        std::map<int, MessagesNeighborhood*> nodesCanRecoverInCommon; // mensagens que o cooperante e os auxiliares conseguem recuperar em comum
+
 };
 
 #endif	//BASIC_802154

@@ -74,6 +74,7 @@ packet Basic802154Packet extends MacPacket {
 	unsigned short coeficiente[];
 	unsigned short gack[];
 	//int coeficiente[];
+	short coopAuxiliares[];
 	
 }
 

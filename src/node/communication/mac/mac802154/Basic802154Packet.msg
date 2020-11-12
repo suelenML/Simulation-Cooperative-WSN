@@ -39,7 +39,10 @@ struct MENSAGENS_ESCUTADAS {
 	short idNodo;
 	
 }
-
+struct DADOS_RETRANS_GACK { 
+	int GACK;
+	int idCoop;
+}
 packet Basic802154Packet extends MacPacket {
 	int Mac802154PacketType enum (Mac802154Packet_type);
 	int PANid;
@@ -76,5 +79,10 @@ packet Basic802154Packet extends MacPacket {
 	//int coeficiente[];
 	short coopAuxiliares[];
 	
+	//Para a retrans individual
+	short numSlotPerCoop[];
+	short idNodoRetransmitido;
+	uint64_t vetBit[];
+	DADOS_RETRANS_GACK dadosRetrans[];
 }
 

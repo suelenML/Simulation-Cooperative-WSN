@@ -500,6 +500,214 @@ void *MENSAGENS_ESCUTADASDescriptor::getFieldStructPointer(void *object, int fie
     }
 }
 
+DADOS_RETRANS_GACK::DADOS_RETRANS_GACK()
+{
+    GACK = 0;
+    idCoop = 0;
+}
+
+void doPacking(cCommBuffer *b, DADOS_RETRANS_GACK& a)
+{
+    doPacking(b,a.GACK);
+    doPacking(b,a.idCoop);
+}
+
+void doUnpacking(cCommBuffer *b, DADOS_RETRANS_GACK& a)
+{
+    doUnpacking(b,a.GACK);
+    doUnpacking(b,a.idCoop);
+}
+
+class DADOS_RETRANS_GACKDescriptor : public cClassDescriptor
+{
+  public:
+    DADOS_RETRANS_GACKDescriptor();
+    virtual ~DADOS_RETRANS_GACKDescriptor();
+
+    virtual bool doesSupport(cObject *obj) const;
+    virtual const char *getProperty(const char *propertyname) const;
+    virtual int getFieldCount(void *object) const;
+    virtual const char *getFieldName(void *object, int field) const;
+    virtual int findField(void *object, const char *fieldName) const;
+    virtual unsigned int getFieldTypeFlags(void *object, int field) const;
+    virtual const char *getFieldTypeString(void *object, int field) const;
+    virtual const char *getFieldProperty(void *object, int field, const char *propertyname) const;
+    virtual int getArraySize(void *object, int field) const;
+
+    virtual std::string getFieldAsString(void *object, int field, int i) const;
+    virtual bool setFieldAsString(void *object, int field, int i, const char *value) const;
+
+    virtual const char *getFieldStructName(void *object, int field) const;
+    virtual void *getFieldStructPointer(void *object, int field, int i) const;
+};
+
+Register_ClassDescriptor(DADOS_RETRANS_GACKDescriptor);
+
+DADOS_RETRANS_GACKDescriptor::DADOS_RETRANS_GACKDescriptor() : cClassDescriptor("DADOS_RETRANS_GACK", "")
+{
+}
+
+DADOS_RETRANS_GACKDescriptor::~DADOS_RETRANS_GACKDescriptor()
+{
+}
+
+bool DADOS_RETRANS_GACKDescriptor::doesSupport(cObject *obj) const
+{
+    return dynamic_cast<DADOS_RETRANS_GACK *>(obj)!=NULL;
+}
+
+const char *DADOS_RETRANS_GACKDescriptor::getProperty(const char *propertyname) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    return basedesc ? basedesc->getProperty(propertyname) : NULL;
+}
+
+int DADOS_RETRANS_GACKDescriptor::getFieldCount(void *object) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    return basedesc ? 2+basedesc->getFieldCount(object) : 2;
+}
+
+unsigned int DADOS_RETRANS_GACKDescriptor::getFieldTypeFlags(void *object, int field) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getFieldTypeFlags(object, field);
+        field -= basedesc->getFieldCount(object);
+    }
+    static unsigned int fieldTypeFlags[] = {
+        FD_ISEDITABLE,
+        FD_ISEDITABLE,
+    };
+    return (field>=0 && field<2) ? fieldTypeFlags[field] : 0;
+}
+
+const char *DADOS_RETRANS_GACKDescriptor::getFieldName(void *object, int field) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getFieldName(object, field);
+        field -= basedesc->getFieldCount(object);
+    }
+    static const char *fieldNames[] = {
+        "GACK",
+        "idCoop",
+    };
+    return (field>=0 && field<2) ? fieldNames[field] : NULL;
+}
+
+int DADOS_RETRANS_GACKDescriptor::findField(void *object, const char *fieldName) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    int base = basedesc ? basedesc->getFieldCount(object) : 0;
+    if (fieldName[0]=='G' && strcmp(fieldName, "GACK")==0) return base+0;
+    if (fieldName[0]=='i' && strcmp(fieldName, "idCoop")==0) return base+1;
+    return basedesc ? basedesc->findField(object, fieldName) : -1;
+}
+
+const char *DADOS_RETRANS_GACKDescriptor::getFieldTypeString(void *object, int field) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getFieldTypeString(object, field);
+        field -= basedesc->getFieldCount(object);
+    }
+    static const char *fieldTypeStrings[] = {
+        "int",
+        "int",
+    };
+    return (field>=0 && field<2) ? fieldTypeStrings[field] : NULL;
+}
+
+const char *DADOS_RETRANS_GACKDescriptor::getFieldProperty(void *object, int field, const char *propertyname) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getFieldProperty(object, field, propertyname);
+        field -= basedesc->getFieldCount(object);
+    }
+    switch (field) {
+        default: return NULL;
+    }
+}
+
+int DADOS_RETRANS_GACKDescriptor::getArraySize(void *object, int field) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getArraySize(object, field);
+        field -= basedesc->getFieldCount(object);
+    }
+    DADOS_RETRANS_GACK *pp = (DADOS_RETRANS_GACK *)object; (void)pp;
+    switch (field) {
+        default: return 0;
+    }
+}
+
+std::string DADOS_RETRANS_GACKDescriptor::getFieldAsString(void *object, int field, int i) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getFieldAsString(object,field,i);
+        field -= basedesc->getFieldCount(object);
+    }
+    DADOS_RETRANS_GACK *pp = (DADOS_RETRANS_GACK *)object; (void)pp;
+    switch (field) {
+        case 0: return long2string(pp->GACK);
+        case 1: return long2string(pp->idCoop);
+        default: return "";
+    }
+}
+
+bool DADOS_RETRANS_GACKDescriptor::setFieldAsString(void *object, int field, int i, const char *value) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->setFieldAsString(object,field,i,value);
+        field -= basedesc->getFieldCount(object);
+    }
+    DADOS_RETRANS_GACK *pp = (DADOS_RETRANS_GACK *)object; (void)pp;
+    switch (field) {
+        case 0: pp->GACK = string2long(value); return true;
+        case 1: pp->idCoop = string2long(value); return true;
+        default: return false;
+    }
+}
+
+const char *DADOS_RETRANS_GACKDescriptor::getFieldStructName(void *object, int field) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getFieldStructName(object, field);
+        field -= basedesc->getFieldCount(object);
+    }
+    switch (field) {
+        default: return NULL;
+    };
+}
+
+void *DADOS_RETRANS_GACKDescriptor::getFieldStructPointer(void *object, int field, int i) const
+{
+    cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount(object))
+            return basedesc->getFieldStructPointer(object, field, i);
+        field -= basedesc->getFieldCount(object);
+    }
+    DADOS_RETRANS_GACK *pp = (DADOS_RETRANS_GACK *)object; (void)pp;
+    switch (field) {
+        default: return NULL;
+    }
+}
+
 Register_Class(Basic802154Packet);
 
 Basic802154Packet::Basic802154Packet(const char *name, int kind) : ::MacPacket(name,kind)
@@ -537,6 +745,13 @@ Basic802154Packet::Basic802154Packet(const char *name, int kind) : ::MacPacket(n
     this->gack_var = 0;
     coopAuxiliares_arraysize = 0;
     this->coopAuxiliares_var = 0;
+    numSlotPerCoop_arraysize = 0;
+    this->numSlotPerCoop_var = 0;
+    this->idNodoRetransmitido_var = 0;
+    vetBit_arraysize = 0;
+    this->vetBit_var = 0;
+    dadosRetrans_arraysize = 0;
+    this->dadosRetrans_var = 0;
 }
 
 Basic802154Packet::Basic802154Packet(const Basic802154Packet& other) : ::MacPacket(other)
@@ -555,6 +770,12 @@ Basic802154Packet::Basic802154Packet(const Basic802154Packet& other) : ::MacPack
     this->gack_var = 0;
     coopAuxiliares_arraysize = 0;
     this->coopAuxiliares_var = 0;
+    numSlotPerCoop_arraysize = 0;
+    this->numSlotPerCoop_var = 0;
+    vetBit_arraysize = 0;
+    this->vetBit_var = 0;
+    dadosRetrans_arraysize = 0;
+    this->dadosRetrans_var = 0;
     copy(other);
 }
 
@@ -567,6 +788,9 @@ Basic802154Packet::~Basic802154Packet()
     delete [] coeficiente_var;
     delete [] gack_var;
     delete [] coopAuxiliares_var;
+    delete [] numSlotPerCoop_var;
+    delete [] vetBit_var;
+    delete [] dadosRetrans_var;
 }
 
 Basic802154Packet& Basic802154Packet::operator=(const Basic802154Packet& other)
@@ -633,6 +857,22 @@ void Basic802154Packet::copy(const Basic802154Packet& other)
     coopAuxiliares_arraysize = other.coopAuxiliares_arraysize;
     for (unsigned int i=0; i<coopAuxiliares_arraysize; i++)
         this->coopAuxiliares_var[i] = other.coopAuxiliares_var[i];
+    delete [] this->numSlotPerCoop_var;
+    this->numSlotPerCoop_var = (other.numSlotPerCoop_arraysize==0) ? NULL : new short[other.numSlotPerCoop_arraysize];
+    numSlotPerCoop_arraysize = other.numSlotPerCoop_arraysize;
+    for (unsigned int i=0; i<numSlotPerCoop_arraysize; i++)
+        this->numSlotPerCoop_var[i] = other.numSlotPerCoop_var[i];
+    this->idNodoRetransmitido_var = other.idNodoRetransmitido_var;
+    delete [] this->vetBit_var;
+    this->vetBit_var = (other.vetBit_arraysize==0) ? NULL : new uint64_t[other.vetBit_arraysize];
+    vetBit_arraysize = other.vetBit_arraysize;
+    for (unsigned int i=0; i<vetBit_arraysize; i++)
+        this->vetBit_var[i] = other.vetBit_var[i];
+    delete [] this->dadosRetrans_var;
+    this->dadosRetrans_var = (other.dadosRetrans_arraysize==0) ? NULL : new DADOS_RETRANS_GACK[other.dadosRetrans_arraysize];
+    dadosRetrans_arraysize = other.dadosRetrans_arraysize;
+    for (unsigned int i=0; i<dadosRetrans_arraysize; i++)
+        this->dadosRetrans_var[i] = other.dadosRetrans_var[i];
 }
 
 void Basic802154Packet::parsimPack(cCommBuffer *b)
@@ -671,6 +911,13 @@ void Basic802154Packet::parsimPack(cCommBuffer *b)
     doPacking(b,this->gack_var,gack_arraysize);
     b->pack(coopAuxiliares_arraysize);
     doPacking(b,this->coopAuxiliares_var,coopAuxiliares_arraysize);
+    b->pack(numSlotPerCoop_arraysize);
+    doPacking(b,this->numSlotPerCoop_var,numSlotPerCoop_arraysize);
+    doPacking(b,this->idNodoRetransmitido_var);
+    b->pack(vetBit_arraysize);
+    doPacking(b,this->vetBit_var,vetBit_arraysize);
+    b->pack(dadosRetrans_arraysize);
+    doPacking(b,this->dadosRetrans_var,dadosRetrans_arraysize);
 }
 
 void Basic802154Packet::parsimUnpack(cCommBuffer *b)
@@ -750,6 +997,31 @@ void Basic802154Packet::parsimUnpack(cCommBuffer *b)
     } else {
         this->coopAuxiliares_var = new short[coopAuxiliares_arraysize];
         doUnpacking(b,this->coopAuxiliares_var,coopAuxiliares_arraysize);
+    }
+    delete [] this->numSlotPerCoop_var;
+    b->unpack(numSlotPerCoop_arraysize);
+    if (numSlotPerCoop_arraysize==0) {
+        this->numSlotPerCoop_var = 0;
+    } else {
+        this->numSlotPerCoop_var = new short[numSlotPerCoop_arraysize];
+        doUnpacking(b,this->numSlotPerCoop_var,numSlotPerCoop_arraysize);
+    }
+    doUnpacking(b,this->idNodoRetransmitido_var);
+    delete [] this->vetBit_var;
+    b->unpack(vetBit_arraysize);
+    if (vetBit_arraysize==0) {
+        this->vetBit_var = 0;
+    } else {
+        this->vetBit_var = new uint64_t[vetBit_arraysize];
+        doUnpacking(b,this->vetBit_var,vetBit_arraysize);
+    }
+    delete [] this->dadosRetrans_var;
+    b->unpack(dadosRetrans_arraysize);
+    if (dadosRetrans_arraysize==0) {
+        this->dadosRetrans_var = 0;
+    } else {
+        this->dadosRetrans_var = new DADOS_RETRANS_GACK[dadosRetrans_arraysize];
+        doUnpacking(b,this->dadosRetrans_var,dadosRetrans_arraysize);
     }
 }
 
@@ -1149,6 +1421,104 @@ void Basic802154Packet::setCoopAuxiliares(unsigned int k, short coopAuxiliares)
     this->coopAuxiliares_var[k] = coopAuxiliares;
 }
 
+void Basic802154Packet::setNumSlotPerCoopArraySize(unsigned int size)
+{
+    short *numSlotPerCoop_var2 = (size==0) ? NULL : new short[size];
+    unsigned int sz = numSlotPerCoop_arraysize < size ? numSlotPerCoop_arraysize : size;
+    for (unsigned int i=0; i<sz; i++)
+        numSlotPerCoop_var2[i] = this->numSlotPerCoop_var[i];
+    for (unsigned int i=sz; i<size; i++)
+        numSlotPerCoop_var2[i] = 0;
+    numSlotPerCoop_arraysize = size;
+    delete [] this->numSlotPerCoop_var;
+    this->numSlotPerCoop_var = numSlotPerCoop_var2;
+}
+
+unsigned int Basic802154Packet::getNumSlotPerCoopArraySize() const
+{
+    return numSlotPerCoop_arraysize;
+}
+
+short Basic802154Packet::getNumSlotPerCoop(unsigned int k) const
+{
+    if (k>=numSlotPerCoop_arraysize) throw cRuntimeError("Array of size %d indexed by %d", numSlotPerCoop_arraysize, k);
+    return numSlotPerCoop_var[k];
+}
+
+void Basic802154Packet::setNumSlotPerCoop(unsigned int k, short numSlotPerCoop)
+{
+    if (k>=numSlotPerCoop_arraysize) throw cRuntimeError("Array of size %d indexed by %d", numSlotPerCoop_arraysize, k);
+    this->numSlotPerCoop_var[k] = numSlotPerCoop;
+}
+
+short Basic802154Packet::getIdNodoRetransmitido() const
+{
+    return idNodoRetransmitido_var;
+}
+
+void Basic802154Packet::setIdNodoRetransmitido(short idNodoRetransmitido)
+{
+    this->idNodoRetransmitido_var = idNodoRetransmitido;
+}
+
+void Basic802154Packet::setVetBitArraySize(unsigned int size)
+{
+    uint64_t *vetBit_var2 = (size==0) ? NULL : new uint64_t[size];
+    unsigned int sz = vetBit_arraysize < size ? vetBit_arraysize : size;
+    for (unsigned int i=0; i<sz; i++)
+        vetBit_var2[i] = this->vetBit_var[i];
+    for (unsigned int i=sz; i<size; i++)
+        vetBit_var2[i] = 0;
+    vetBit_arraysize = size;
+    delete [] this->vetBit_var;
+    this->vetBit_var = vetBit_var2;
+}
+
+unsigned int Basic802154Packet::getVetBitArraySize() const
+{
+    return vetBit_arraysize;
+}
+
+uint64_t Basic802154Packet::getVetBit(unsigned int k) const
+{
+    if (k>=vetBit_arraysize) throw cRuntimeError("Array of size %d indexed by %d", vetBit_arraysize, k);
+    return vetBit_var[k];
+}
+
+void Basic802154Packet::setVetBit(unsigned int k, uint64_t vetBit)
+{
+    if (k>=vetBit_arraysize) throw cRuntimeError("Array of size %d indexed by %d", vetBit_arraysize, k);
+    this->vetBit_var[k] = vetBit;
+}
+
+void Basic802154Packet::setDadosRetransArraySize(unsigned int size)
+{
+    DADOS_RETRANS_GACK *dadosRetrans_var2 = (size==0) ? NULL : new DADOS_RETRANS_GACK[size];
+    unsigned int sz = dadosRetrans_arraysize < size ? dadosRetrans_arraysize : size;
+    for (unsigned int i=0; i<sz; i++)
+        dadosRetrans_var2[i] = this->dadosRetrans_var[i];
+    dadosRetrans_arraysize = size;
+    delete [] this->dadosRetrans_var;
+    this->dadosRetrans_var = dadosRetrans_var2;
+}
+
+unsigned int Basic802154Packet::getDadosRetransArraySize() const
+{
+    return dadosRetrans_arraysize;
+}
+
+DADOS_RETRANS_GACK& Basic802154Packet::getDadosRetrans(unsigned int k)
+{
+    if (k>=dadosRetrans_arraysize) throw cRuntimeError("Array of size %d indexed by %d", dadosRetrans_arraysize, k);
+    return dadosRetrans_var[k];
+}
+
+void Basic802154Packet::setDadosRetrans(unsigned int k, const DADOS_RETRANS_GACK& dadosRetrans)
+{
+    if (k>=dadosRetrans_arraysize) throw cRuntimeError("Array of size %d indexed by %d", dadosRetrans_arraysize, k);
+    this->dadosRetrans_var[k] = dadosRetrans;
+}
+
 class Basic802154PacketDescriptor : public cClassDescriptor
 {
   public:
@@ -1196,7 +1566,7 @@ const char *Basic802154PacketDescriptor::getProperty(const char *propertyname) c
 int Basic802154PacketDescriptor::getFieldCount(void *object) const
 {
     cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 26+basedesc->getFieldCount(object) : 26;
+    return basedesc ? 30+basedesc->getFieldCount(object) : 30;
 }
 
 unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int field) const
@@ -1234,8 +1604,12 @@ unsigned int Basic802154PacketDescriptor::getFieldTypeFlags(void *object, int fi
         FD_ISARRAY | FD_ISEDITABLE,
         FD_ISARRAY | FD_ISEDITABLE,
         FD_ISARRAY | FD_ISEDITABLE,
+        FD_ISARRAY | FD_ISEDITABLE,
+        FD_ISEDITABLE,
+        FD_ISARRAY | FD_ISEDITABLE,
+        FD_ISARRAY | FD_ISCOMPOUND,
     };
-    return (field>=0 && field<26) ? fieldTypeFlags[field] : 0;
+    return (field>=0 && field<30) ? fieldTypeFlags[field] : 0;
 }
 
 const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) const
@@ -1273,8 +1647,12 @@ const char *Basic802154PacketDescriptor::getFieldName(void *object, int field) c
         "coeficiente",
         "gack",
         "coopAuxiliares",
+        "numSlotPerCoop",
+        "idNodoRetransmitido",
+        "vetBit",
+        "dadosRetrans",
     };
-    return (field>=0 && field<26) ? fieldNames[field] : NULL;
+    return (field>=0 && field<30) ? fieldNames[field] : NULL;
 }
 
 int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) const
@@ -1307,6 +1685,10 @@ int Basic802154PacketDescriptor::findField(void *object, const char *fieldName) 
     if (fieldName[0]=='c' && strcmp(fieldName, "coeficiente")==0) return base+23;
     if (fieldName[0]=='g' && strcmp(fieldName, "gack")==0) return base+24;
     if (fieldName[0]=='c' && strcmp(fieldName, "coopAuxiliares")==0) return base+25;
+    if (fieldName[0]=='n' && strcmp(fieldName, "numSlotPerCoop")==0) return base+26;
+    if (fieldName[0]=='i' && strcmp(fieldName, "idNodoRetransmitido")==0) return base+27;
+    if (fieldName[0]=='v' && strcmp(fieldName, "vetBit")==0) return base+28;
+    if (fieldName[0]=='d' && strcmp(fieldName, "dadosRetrans")==0) return base+29;
     return basedesc ? basedesc->findField(object, fieldName) : -1;
 }
 
@@ -1345,8 +1727,12 @@ const char *Basic802154PacketDescriptor::getFieldTypeString(void *object, int fi
         "unsigned short",
         "unsigned short",
         "short",
+        "short",
+        "short",
+        "uint64_t",
+        "DADOS_RETRANS_GACK",
     };
-    return (field>=0 && field<26) ? fieldTypeStrings[field] : NULL;
+    return (field>=0 && field<30) ? fieldTypeStrings[field] : NULL;
 }
 
 const char *Basic802154PacketDescriptor::getFieldProperty(void *object, int field, const char *propertyname) const
@@ -1382,6 +1768,9 @@ int Basic802154PacketDescriptor::getArraySize(void *object, int field) const
         case 23: return pp->getCoeficienteArraySize();
         case 24: return pp->getGackArraySize();
         case 25: return pp->getCoopAuxiliaresArraySize();
+        case 26: return pp->getNumSlotPerCoopArraySize();
+        case 28: return pp->getVetBitArraySize();
+        case 29: return pp->getDadosRetransArraySize();
         default: return 0;
     }
 }
@@ -1422,6 +1811,10 @@ std::string Basic802154PacketDescriptor::getFieldAsString(void *object, int fiel
         case 23: return ulong2string(pp->getCoeficiente(i));
         case 24: return ulong2string(pp->getGack(i));
         case 25: return long2string(pp->getCoopAuxiliares(i));
+        case 26: return long2string(pp->getNumSlotPerCoop(i));
+        case 27: return long2string(pp->getIdNodoRetransmitido());
+        case 28: return uint642string(pp->getVetBit(i));
+        case 29: {std::stringstream out; out << pp->getDadosRetrans(i); return out.str();}
         default: return "";
     }
 }
@@ -1460,6 +1853,9 @@ bool Basic802154PacketDescriptor::setFieldAsString(void *object, int field, int 
         case 23: pp->setCoeficiente(i,string2ulong(value)); return true;
         case 24: pp->setGack(i,string2ulong(value)); return true;
         case 25: pp->setCoopAuxiliares(i,string2long(value)); return true;
+        case 26: pp->setNumSlotPerCoop(i,string2long(value)); return true;
+        case 27: pp->setIdNodoRetransmitido(string2long(value)); return true;
+        case 28: pp->setVetBit(i,string2uint64(value)); return true;
         default: return false;
     }
 }
@@ -1475,6 +1871,7 @@ const char *Basic802154PacketDescriptor::getFieldStructName(void *object, int fi
     switch (field) {
         case 11: return opp_typename(typeid(Basic802154GTSspec));
         case 15: return opp_typename(typeid(MENSAGENS_ESCUTADAS));
+        case 29: return opp_typename(typeid(DADOS_RETRANS_GACK));
         default: return NULL;
     };
 }
@@ -1491,6 +1888,7 @@ void *Basic802154PacketDescriptor::getFieldStructPointer(void *object, int field
     switch (field) {
         case 11: return (void *)(&pp->getGTSlist(i)); break;
         case 15: return (void *)(&pp->getDadosVizinho(i)); break;
+        case 29: return (void *)(&pp->getDadosRetrans(i)); break;
         default: return NULL;
     }
 }

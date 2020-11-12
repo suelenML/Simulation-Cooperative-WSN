@@ -88,7 +88,9 @@ simple Basic802154 like node.communication.mac.iMac {
 	//Codificação
 	bool useNetworkCoding = default(false);
 	bool useCoopAux = default(false); // se a rede terá cooperantes auxiliares para a codificação
-    bool useGACK = default(false);
+    bool useGACK = default(false); // o coordenador enviará um GACK após receber as transmissões diretas
+    bool useThreeRetransPerCoop = default(false); // cada cooperante enviará três msg de retransmissão codificada
+    bool useRetransIndependent = default(false); // Cada cooperante enviará uma msg de retransmissão por vez
 	
 	
 	

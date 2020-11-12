@@ -14,7 +14,7 @@
 #define BASIC_802154_H_
 
 using namespace std;
-
+#include <bitset>
 #include "AlgoritmoGenetico.h"
 #include "Neighborhood.h"
 #include "Neighbor.h"
@@ -25,7 +25,7 @@ extern "C" {
 
 }
 #define MSG_SIZE 127
-#define N_NODES 81
+#define N_NODES 101
 
 #define absLocal(x) ((x)<0 ? (-x) : (x))
 /*
@@ -95,6 +95,22 @@ struct RETRANSMISSORES_REPETIDOS{
 struct  TAXA_DE_SUCESSO{
     short id;
     double taxaDeSucesso;
+};
+
+//Estrutura para as retransmissões individuais
+struct RETRANSMISSAO{
+    simtime_t GTSstartRetrans;             // Absolute time of the start of GTS of retransmission period for current node
+    simtime_t GTSendRetrans;               // Absolute time of the end of GTS of retransmission period for current node
+    simtime_t GTSlengthRetrans;
+    simtime_t phyDelaySleep2Tx;
+    double offset;
+};
+
+struct RETRANS_GACK{
+    vector<int> GACK;
+    vector<int> idCoop;
+
+    RETRANS_GACK():idCoop(N_NODES, 0) { }  // <- set them here by default
 };
 
 class Basic802154: public VirtualMac {
@@ -283,10 +299,10 @@ class Basic802154: public VirtualMac {
 	    int contadordivtemp;
 	    int histnumnodoscoop;
 
-	    double beta1=-1.0;
-	    double beta2=-1.5;
-	    double beta3=-2.0;
-	    double beta4=-1.0;
+	    double beta1;
+	    double beta2;
+	    double beta3;
+	    double beta4;
 
 	    //dados que eu preciso
 	    double somaDeSinais = 0.0;
@@ -352,6 +368,15 @@ class Basic802154: public VirtualMac {
 	    void souNodoCooperanteAuxiliar(Basic802154Packet * pkt);
 	    void selectMsgCoopAux();
 	    void selectMsgNetworkCodingAux();
+
+	    /*Metodos para a retransmissão sem codificação*/
+	    void  definirNumeroSlotsCooperantes(Basic802154Packet *beaconPacket);
+	    void definirnumSlotsDisponiveis(Basic802154Packet *beaconPacket);
+	    void retransmissaoIndividual(Basic802154Packet *packetRetrans);
+	    void montarVetorDeBit(int addr);
+	    void setMsgPerCoop(Basic802154Packet *beaconPacket);
+	    int pop_cnt_64(uint64_t i);
+	    void inserirNumeroSlotsBeacon(Basic802154Packet *beaconPacket);
 
 
 
@@ -443,6 +468,7 @@ class Basic802154: public VirtualMac {
 	    bool useNetworkCoding;
 	    bool useCoopAux;
 	    bool useGACK;
+	    bool useThreeRetransPerCoop;
 	    Codificador *codificador;
 	    int sucessoMsgCodRecebida;
 	    int num_msg_decod_sucess;
@@ -479,6 +505,24 @@ class Basic802154: public VirtualMac {
         vector<int> coopAuxPerNode; // cada nodo cooperante guarda quem saõ seus auxiliares
         vector<int> coopHelped; // cada cooperante auxiliar guarda qual cooperante principal ele ajudará
         std::map<int, MessagesNeighborhood*> nodesCanRecoverInCommon; // mensagens que o cooperante e os auxiliares conseguem recuperar em comum
+
+
+        /*Variaveis para a retransmissao sem coodificação*/
+        vector<int> numSlotsPerCoop;
+        bool useRetransIndependent;
+        vector<RETRANSMISSAO> timersRetrans;
+        RETRANSMISSAO retransAtual;
+        MessagesNeighborhood *msgRetrans;
+        bool primeiraRetransIndepend;
+        uint64_t vetBit[2];
+        uint64_t bitmapNeigh[N_NODES][2];
+        vector<int> GACKRetrans;
+        RETRANS_GACK informRetrans;
+
+
+
+
+
 
 };
 

@@ -77,7 +77,20 @@ void doPacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
 void doUnpacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
 
 /**
- * Class generated from <tt>src/node/communication/mac/mac802154/Basic802154Packet.msg:43</tt> by nedtool.
+ * Struct generated from src/node/communication/mac/mac802154/Basic802154Packet.msg:42 by nedtool.
+ */
+struct DADOS_RETRANS_GACK
+{
+    DADOS_RETRANS_GACK();
+    int GACK;
+    int idCoop;
+};
+
+void doPacking(cCommBuffer *b, DADOS_RETRANS_GACK& a);
+void doUnpacking(cCommBuffer *b, DADOS_RETRANS_GACK& a);
+
+/**
+ * Class generated from <tt>src/node/communication/mac/mac802154/Basic802154Packet.msg:46</tt> by nedtool.
  * <pre>
  * packet Basic802154Packet extends MacPacket
  * {
@@ -116,6 +129,11 @@ void doUnpacking(cCommBuffer *b, MENSAGENS_ESCUTADAS& a);
  *     //int coeficiente[];
  *     short coopAuxiliares[];
  * 
+ *     //Para a retrans individual
+ *     short numSlotPerCoop[];
+ *     short idNodoRetransmitido;
+ *     uint64_t vetBit[];
+ *     DADOS_RETRANS_GACK dadosRetrans[];
  * }
  * </pre>
  */
@@ -155,6 +173,13 @@ class Basic802154Packet : public ::MacPacket
     unsigned int gack_arraysize;
     short *coopAuxiliares_var; // array ptr
     unsigned int coopAuxiliares_arraysize;
+    short *numSlotPerCoop_var; // array ptr
+    unsigned int numSlotPerCoop_arraysize;
+    short idNodoRetransmitido_var;
+    uint64_t *vetBit_var; // array ptr
+    unsigned int vetBit_arraysize;
+    DADOS_RETRANS_GACK *dadosRetrans_var; // array ptr
+    unsigned int dadosRetrans_arraysize;
 
   private:
     void copy(const Basic802154Packet& other);
@@ -241,6 +266,21 @@ class Basic802154Packet : public ::MacPacket
     virtual unsigned int getCoopAuxiliaresArraySize() const;
     virtual short getCoopAuxiliares(unsigned int k) const;
     virtual void setCoopAuxiliares(unsigned int k, short coopAuxiliares);
+    virtual void setNumSlotPerCoopArraySize(unsigned int size);
+    virtual unsigned int getNumSlotPerCoopArraySize() const;
+    virtual short getNumSlotPerCoop(unsigned int k) const;
+    virtual void setNumSlotPerCoop(unsigned int k, short numSlotPerCoop);
+    virtual short getIdNodoRetransmitido() const;
+    virtual void setIdNodoRetransmitido(short idNodoRetransmitido);
+    virtual void setVetBitArraySize(unsigned int size);
+    virtual unsigned int getVetBitArraySize() const;
+    virtual uint64_t getVetBit(unsigned int k) const;
+    virtual void setVetBit(unsigned int k, uint64_t vetBit);
+    virtual void setDadosRetransArraySize(unsigned int size);
+    virtual unsigned int getDadosRetransArraySize() const;
+    virtual DADOS_RETRANS_GACK& getDadosRetrans(unsigned int k);
+    virtual const DADOS_RETRANS_GACK& getDadosRetrans(unsigned int k) const {return const_cast<Basic802154Packet*>(this)->getDadosRetrans(k);}
+    virtual void setDadosRetrans(unsigned int k, const DADOS_RETRANS_GACK& dadosRetrans);
 };
 
 inline void doPacking(cCommBuffer *b, Basic802154Packet& obj) {obj.parsimPack(b);}

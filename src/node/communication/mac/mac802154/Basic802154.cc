@@ -60,6 +60,8 @@ void Basic802154::startup() {
     third_GTSendRetrans = 0;
     third_GTSlengthRetrans = 0;
 
+    timersRetrans.clear();
+
     primeiraRetrans = 0;
     irDormir = 0;
     primeiraSelecao = 0;
@@ -81,6 +83,10 @@ void Basic802154::startup() {
     useNetworkCoding = par("useNetworkCoding");
     useCoopAux = par("useCoopAux");
     useGACK = par("useGACK");
+    useThreeRetransPerCoop = par("useThreeRetransPerCoop");
+
+    //Informa se será retransmissão individual, ou seja uma msg para cada vizinho escutado
+    useRetransIndependent = par("useRetransIndependent");
 
 
     //Vetores
@@ -91,7 +97,7 @@ void Basic802154::startup() {
     neigmap.clear();
     matrizVizinhos.clear();
 
-
+    neigmapNodosEscutados.clear();//Limpa a lista de mensagens escutadas pelos nodos
 
 
     //Variaveis utilizadas para determinar o número de cooperantes
@@ -193,12 +199,9 @@ void Basic802154::startup() {
         sucessoMsgDirRecebida = 0;
         num_msg_decod_sucess = 0;
         retransCoded = 0;
-        inicializeMetric();
         inicializaMatriz();
-        neigmapNodosEscutados.clear();
         neigmapNodosEscutadosRefinamento.clear();
         neigmapNodosEnviados.clear();
-        nodesCanRecover.clear();
         numeroDeCoop = 0;
         secondRetrans = false;
         var_msg_perNode = 0;
@@ -211,17 +214,42 @@ void Basic802154::startup() {
         }
         for(int i = 0; i< numhosts; i++){
             vizinhosCoop.push_back(0);
-            GACK.push_back(0);
-            nodesNotReceived.push_back(0);
         }
     }
 
+    if(useGACK){
+        inicializeMetric();
+        nodesNotReceived.clear();
+        nodesCanRecover.clear();
+        informRetrans.GACK.clear();
+        informRetrans.idCoop.clear();
+        GACKRetrans.clear();
+        for(int i = 0; i< numhosts; i++){
+            GACK.push_back(0);
+            if(useRetransIndependent){
+                GACKRetrans.push_back(0);
+                informRetrans.GACK.push_back(0);
+                informRetrans.idCoop.push_back(0);
+            }
+        }
+    }
+    if(useRetransIndependent){
+        primeiraRetransIndepend = true;
+        vetBit[0] = 0x0000;
+        vetBit[1] = 0x0000;
+        for(int i = 0; i < numhosts; i++){
+            for(int j = 0; j < 2; j++){
+                bitmapNeigh[i][j]=0x0000;
+            }
+
+        }
+        numSlotsPerCoop.clear();
+    }
 
     // Coordinator initialisation
     if (isPANCoordinator) {
         if (!isFFD) {
-            opp_error(
-                    "Only full-function devices (isFFD=true) can be PAN coordinators");
+            opp_error("Only full-function devices (isFFD=true) can be PAN coordinators");
         }
         if (userelay) {
             beta1 = par("beta1");
@@ -415,8 +443,7 @@ void Basic802154::startup() {
 
  }*/
 
-// método Ríad
-//método usado pelo coordenador para adiciona ao beacon uma lista com os nodos cooperantes.
+//método usado pelo coordenador para adicionar ao beacon uma lista com os nodos cooperantes.
 void Basic802154::enviarNodosCooperantes(Basic802154Packet *beaconPacket) {
 
     int tamanhoLista = nodosColaboradores.size();
@@ -431,7 +458,7 @@ void Basic802154::enviarNodosCooperantes(Basic802154Packet *beaconPacket) {
         }
     }
 }
-
+/*Método utilizado pelo coordenador para inserir a lista de cooperantes auxiliares ao Beacon*/
 void Basic802154::enviarCooperantesAuxiliares(Basic802154Packet *beaconPacket) {
 
     int tamanhoLista = nodosColaboradoresAuxiliares.size();
@@ -446,21 +473,37 @@ void Basic802154::enviarCooperantesAuxiliares(Basic802154Packet *beaconPacket) {
         }
     }
 }
-
+/*Método que insere na mensagem o GACK*/
 void Basic802154::preencherListaGack(Basic802154Packet *beaconPacket) {
+    int tamanhoLista = 0;
+    DADOS_RETRANS_GACK auxiliarRetrans;
+    if(useNetworkCoding){
+        tamanhoLista = GACK.size();
+    }
+    if(useRetransIndependent){
+        tamanhoLista = informRetrans.GACK.size();
+    }
+    numMSGSolicitadas = 0;
 
-    int tamanhoLista = GACK.size();
-    numMSGSolicitadas =0;
 
     if (tamanhoLista > 0) {
 
-        beaconPacket->setGackArraySize(tamanhoLista);
+        beaconPacket->setDadosRetransArraySize(tamanhoLista);
         int i;
         for (i = 0; i < tamanhoLista; i++) {
-            beaconPacket->setGack(i, GACK[i]);
-            if(GACK[i]==0){
-                numMSGSolicitadas++;
+            if(useNetworkCoding){
+                beaconPacket->setGack(i, GACK[i]);
+
+                if(GACK[i]==0){
+                   numMSGSolicitadas++;
+               }
             }
+            if(useRetransIndependent){
+                auxiliarRetrans.GACK = informRetrans.GACK[i];
+                auxiliarRetrans.idCoop = informRetrans.idCoop[i];
+                beaconPacket->setDadosRetrans(i,auxiliarRetrans);
+            }
+
         }
     }
 }
@@ -632,9 +675,9 @@ void Basic802154::timerFiredCallback(int index) {
                 //contabilizarMensagens();
                 //verificaRetransmissoesRepetidas();
                 nodosEscutados.clear();
+                neigmapNodosEscutados.clear();
                 historicoDeSucessoBeacon.clear();
                 if(useNetworkCoding){
-                    neigmapNodosEscutados.clear();
                     inicializaMatriz();
                     codificador->n_equations = 0;
                     sucessoMsgCodRecebida = 0;
@@ -702,6 +745,13 @@ void Basic802154::timerFiredCallback(int index) {
                     if(useCoopAux){
                         enviarCooperantesAuxiliares(beaconPacket);
                     }
+                    if(useRetransIndependent){
+                        if(nodosColaboradores.size()>0){
+                            setMsgPerCoop(beaconPacket);
+                            //definirNumeroSlotsCooperantes(beaconPacket);/*Verifica qntos slots os coop precisam*/
+                        }
+                    }
+
                     tempoDeBeacon = 0;
                     idBeacon ++;
                     beaconPacket->setTempoBeacon(tempoDeBeacon);
@@ -711,16 +761,19 @@ void Basic802154::timerFiredCallback(int index) {
                     beaconPacket->setTempAtualizVizinhanca(tempAtualizVizinhanca);
                     processoSelecao = false;
 
-                    /*if (!redeDinamica && selecao == 4){
-                        selecao = 7;
-                        //tempAtualizVizinhanca = selecao - 1;
-                    }*/
-
                   neigmap.clear();//limpa a lista de vizinhos do coord ao enviar o beacon
                 } else {
                     if (primeiraSelecao == 1) {
                         //Para manter os colaboradores até a próxima seleção
                         enviarNodosCooperantes(beaconPacket);
+                        if(useRetransIndependent){
+                            if(nodosColaboradores.size()>0){
+                                //setMsgPerCoop();
+                                inserirNumeroSlotsBeacon(beaconPacket);
+                                //definirNumeroSlotsCooperantes(beaconPacket);/*Verifica qntos slots os coop precisam*/
+                            }
+                        }
+
                         if(useCoopAux){
                             enviarCooperantesAuxiliares(beaconPacket);
                         }
@@ -738,10 +791,18 @@ void Basic802154::timerFiredCallback(int index) {
                 //Suelen
                 numdadosrecebidosnogtstransmissao = 0;
 
+
+
                 if(useGACK){
                     GACK.clear();
+                    informRetrans.GACK.clear();
+                    GACKRetrans.clear();
+                    //informRetrans.idCoop.clear();
                     for(int i = 0; i< numhosts; i++){
                        GACK.push_back(0);
+                       GACKRetrans.push_back(0);
+                       informRetrans.GACK.push_back(0);
+                       //informRetrans.idCoop.push_back(0);
                     }
 
                 }
@@ -1073,6 +1134,8 @@ void Basic802154::timerFiredCallback(int index) {
         // i.e. when BEACON_ORDER = FRAME_ORDER, overlapping with the interval
         // when a node already tries to prepare for beacon reception. Thus
         // check if BEACON_TIMEOUT timer is set before going to sleep
+        cout<<"Tempo de dormir: " <<getClock()<<endl;
+        cout<<"sou o nodo: " <<self<<endl;
         if (getTimer(BEACON_TIMEOUT) != -1)
             break;
         cancelTimer(PERFORM_CCA);
@@ -1083,6 +1146,44 @@ void Basic802154::timerFiredCallback(int index) {
         //SUELEN
     case GTS_RETRANS: {
         if(!pausado){
+            cout<< "Timer atual: "<<getClock()  <<endl;
+
+            if(useRetransIndependent){
+                //simtime_t GTSendAtual, GTSstartAtual,GTSlengthAtual;
+                GTSend = retransAtual.GTSendRetrans;
+                cout<<"GTSend: "<<GTSend<<endl;
+                GTSstart = retransAtual.GTSstartRetrans;
+                GTSlength = retransAtual.GTSlengthRetrans;
+                if(!timersRetrans.empty()){
+                    setTimer(GTS_RETRANS, (timersRetrans.back().GTSstartRetrans - GTSstart));
+                    cout<<"disparei em: "<< timersRetrans.back().GTSstartRetrans <<"Anterior era: "<<GTSstart<< endl;
+
+
+                   retransAtual.GTSstartRetrans = timersRetrans.back().GTSstartRetrans;
+                   retransAtual.GTSendRetrans = timersRetrans.back().GTSendRetrans;
+                   retransAtual.GTSlengthRetrans = timersRetrans.back().GTSlengthRetrans;
+                   retransAtual.phyDelaySleep2Tx = timersRetrans.back().phyDelaySleep2Tx;
+                   retransAtual.offset = timersRetrans.back().offset;
+                   //cout<<"Timer desparado: "<< timersRetrans[0].GTSstartRetrans - timersRetrans[0].offset<<endl;
+                   cout<<"Timer desparado: "<< getClock() +((timersRetrans.back().GTSstartRetrans - GTSstart))<<endl;
+
+                   //timersRetrans.erase (timersRetrans.begin());
+                   timersRetrans.erase (timersRetrans.end());
+
+                   cout << "GTSend: "<< getClock() + GTSend <<"\n";
+                   cout << "GTSstart: "<< getClock()+ GTSstart <<"\n";
+                   cout << "GTSlength: "<< getClock() + GTSlength <<"\n";
+                   cout << "Sou o nodo: "<< SELF_MAC_ADDRESS <<endl;
+                }else{//A lista está vazia
+                    //setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);// ver se vai dormir na hora certa
+                    //setTimer(SLEEP_START,retransAtual.phyDelaySleep2Tx + retransAtual.GTSlengthRetrans);
+                    setTimer(SLEEP_START,retransAtual.GTSlengthRetrans);
+                    //cout<<"Timer desparado parao nodo: "<< SELF_MAC_ADDRESS <<" ir dormir: "<< getClock() +(retransAtual.phyDelaySleep2Tx + retransAtual.GTSlengthRetrans)<<endl;
+                    cout<<"Timer desparado parao nodo: "<< SELF_MAC_ADDRESS <<" ir dormir: "<< getClock() +(retransAtual.GTSlengthRetrans)<<endl;
+                }
+
+            }
+
             if (macState == MAC_STATE_SLEEP) {
                 toRadioLayer(createRadioCommand(SET_STATE, RX));
             }
@@ -1091,15 +1192,20 @@ void Basic802154::timerFiredCallback(int index) {
             // we delay transmission attempt by the time required by radio to wake up
             // note that GTS_START timer was scheduled exactly phyDelaySleep2Tx seconds
             // earlier than the actual start time of GTS slot
-            GTSend = GTSendRetrans;
-            GTSstart = GTSstartRetrans;
-            GTSlength = GTSlengthRetrans;
+            if(!useRetransIndependent){
+                GTSend = GTSendRetrans;
+                GTSstart = GTSstartRetrans;
+                GTSlength = GTSlengthRetrans;
+
+                cout << "GTSend: "<< getClock() + GTSend <<"\n";
+                cout << "GTSstart: "<< getClock()+ GTSstart <<"\n";
+                cout << "GTSlength: "<< getClock() + GTSlength <<"\n";
+                cout << "Sou o nodo: "<< SELF_MAC_ADDRESS <<endl;
+
+            }
 
 
-            cout << "GTSend: "<< GTSend <<"\n";
-            cout << "GTSstart: "<< GTSend <<"\n";
-            cout << "GTSlength: "<< GTSend <<"\n";
-            cout << "Sou o nodo: "<< SELF_MAC_ADDRESS <<endl;
+
 
 
 
@@ -1136,8 +1242,11 @@ void Basic802154::timerFiredCallback(int index) {
             if(useCoopAux){
                 setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
             }
+            if(useRetransIndependent){
+                qntidadeVezesCooperou = qntidadeVezesCooperou + 1;
+            }
 
-             if(!useNetworkCoding){
+             if(!useNetworkCoding && !useRetransIndependent){
                  qntidadeVezesCooperou = qntidadeVezesCooperou + 1;
 
                  //limpa o buffer da aplicacao antes de dormir
@@ -1145,6 +1254,10 @@ void Basic802154::timerFiredCallback(int index) {
                  // set a timer to go to sleep after this GTS slot ends
 
                  setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
+             }else{
+                 if(!useRetransIndependent && !useThreeRetransPerCoop){
+                     setTimer(SLEEP_START, phyDelaySleep2Tx + GTSlength);
+                 }
              }
         }
         break;
@@ -1227,7 +1340,12 @@ void Basic802154::timerFiredCallback(int index) {
         packetGACK->setMac802154PacketType(MAC_802154_GACK);
         packetGACK->setSrcID(SELF_MAC_ADDRESS);
         packetGACK->setSource(SELF_MAC_ADDRESS);
-        packetGACK->setByteLength(BASE_BEACON_PKT_SIZE + packetGACK->getGackArraySize());
+        if(useNetworkCoding){
+            packetGACK->setByteLength(BASE_BEACON_PKT_SIZE + packetGACK->getGackArraySize());
+        }
+        if(useRetransIndependent){
+            packetGACK->setByteLength(BASE_BEACON_PKT_SIZE + packetGACK->getDadosRetransArraySize());
+        }
         preencherListaGack(packetGACK);
 
 
@@ -1287,9 +1405,56 @@ void Basic802154:: retransmissionGTS(){
          retransmissaoNetworkCoding(packetRetrans);
          relayNetworkCoding++;
 
+    }else{
+        if(useRetransIndependent){
+            retransmissaoIndividual(packetRetrans);
+        }
     }
 
       transmitPacket(packetRetrans);
+
+}
+/*Este método escolhe uma mensagem para retransmitir sem codificar*/
+void Basic802154:: retransmissaoIndividual(Basic802154Packet *packetRetrans){
+    int numMsgLost = nodesNotReceived.size();
+      std::map<int, MessagesNeighborhood*>::iterator iter;
+      uint16_t byte;
+      int tamPayload = 0;
+      numberRecover = 0;
+
+      if(primeiraRetransIndepend){
+          nodesCanRecover.clear();
+
+          for (iter = neigmapNodosEscutados.begin(); iter != neigmapNodosEscutados.end(); iter++) {
+              for(int i = 1; i < numMsgLost; i++){
+                  if(iter->first == nodesNotReceived[i]){
+                      MessagesNeighborhood *neig = iter->second;
+                      nodesCanRecover[iter->first] = neig;
+                      break;
+                  }
+              }
+          }
+          primeiraRetransIndepend = false;
+      }
+
+
+
+      if(nodesCanRecover.size()>0){
+          iter = nodesCanRecover.begin();
+          msgRetrans = iter->second;
+          tamPayload = msgRetrans->frametrans->getPayloadArraySize();
+          if(tamPayload > 0){
+              Basic802154Packet *frame = msgRetrans->frametrans;
+              packetRetrans->setPayloadArraySize(MSG_SIZE);
+              for(int i = 0; i < MSG_SIZE; i++){
+                   byte = frame->getPayload(i);
+                   packetRetrans->setPayload(i,byte);
+               }
+              packetRetrans->setIdNodoRetransmitido(iter->first);
+          }
+          nodesCanRecover.erase(iter);
+
+      }
 
 }
 
@@ -1301,7 +1466,7 @@ void Basic802154:: retransmissaoNetworkCoding(Basic802154Packet *packetRetrans){
     uint8_t byte = 0;
    if(useCoopAux){
        selectMsgNetworkCodingAux();
-   }else{
+   }else{//Utiliza a codificação normal, sem cooperantes auxiliares.
        selectMsgNetworkCoding();
    }
 
@@ -1551,8 +1716,8 @@ void Basic802154::selectMsgNetworkCoding(){
     numMsgOther = 0;
 
     if(!secondRetrans){
-            msgNotReceived();
-            preSelectMsgNetworkCoding();
+        msgNotReceived();
+        preSelectMsgNetworkCoding();
     }
 
     neigmapNodosEscutadosRefinamento.clear();
@@ -1728,6 +1893,15 @@ void Basic802154::preencherDados(Basic802154Packet *macPacket) {
         //limpar a vizinhança atual Aqui
        //neigmap.clear();
     }
+    if(useRetransIndependent){
+        if((vetBit[0] != 0x0000) || (vetBit[1] != 0x0000)){
+            macPacket->setVetBitArraySize(2);
+            for(int i = 0; i < 2; i++){ // é dois pq esse é o tamanho (que são duas posições de 64 bits para dar o numero máximo de nodos que testo)
+                macPacket->setVetBit(i,vetBit[i]);
+            }
+
+        }
+    }
 
 }
 
@@ -1740,7 +1914,7 @@ void Basic802154::fromNetworkLayer(cPacket * pkt, int dstMacAddress) {
     if (userelay) {
         preencherDados(macPacket);
     }
-    if(useNetworkCoding){
+
         int idNode = SELF_MAC_ADDRESS;
         int cont = 0;
         macPacket->setPayloadArraySize(MSG_SIZE);
@@ -1749,6 +1923,7 @@ void Basic802154::fromNetworkLayer(cPacket * pkt, int dstMacAddress) {
             macPacket->setPayload(i,cont);
             cont++;
         }
+    if(useNetworkCoding){
         macPacket->setCoeficienteArraySize(numhosts);
         for(int i = 0; i<numhosts;i++){
             macPacket->setCoeficiente(i,0);
@@ -1788,8 +1963,6 @@ void Basic802154::fromNetworkLayer(cPacket * pkt, int dstMacAddress) {
             MessagesNeighborhood *neig = new MessagesNeighborhood();
             neig->setFrameTransmission(framedup);
             neigmapNodosEscutados[SELF_MAC_ADDRESS] = neig;
-            neigmapNodosEscutadosRefinamento[SELF_MAC_ADDRESS] = neig;
-
         }
     }
 
@@ -1893,22 +2066,28 @@ void Basic802154::finishSpecific() {
             declareOutput("Media de Tempo Duracao da Selecao de Coop");
             collectOutput("Media de Tempo Duracao da Selecao de Coop", "", media/times.size());
 
-            contabilizarMsgRetransmissores();//Suelen
+            if(!useRetransIndependent){
+                contabilizarMsgRetransmissores();//Suelen
 
-            int cont = 1;
-            declareOutput("Mensagens Individuais retransmitidas");
+                int cont1 = 1;
+                declareOutput("Mensagens Individuais retransmitidas");
 
-            for(int i = 1; i < (int)msgRecuperadas.size(); i++){
-                collectOutput("Mensagens Individuais retransmitidas", cont, "Mensagens", msgRecuperadas[i]);
-                trace()<<"nodo: "<<i<<"recuperou "<< msgRecuperadas[i];
-                cont++;
+                for(int i = 1; i < (int)msgRecuperadas.size(); i++){
+                    collectOutput("Mensagens Individuais retransmitidas", cont1, "Mensagens", msgRecuperadas[i]);
+                    trace()<<"nodo: "<<i<<"recuperou "<< msgRecuperadas[i];
+                    cont1++;
 
+                }
+                 declareOutput("Overhead de retransmissoes");
+                collectOutput("Overhead de retransmissoes", "", retransmissoesRepetidas.size());
             }
-             declareOutput("Overhead de retransmissoes");
-            collectOutput("Overhead de retransmissoes", "", retransmissoesRepetidas.size());
 
-            declareOutput("Numero de Cooperantes Selecionados");
-            collectOutput("Numero de Cooperantes Selecionados", "", numCoopSel);
+            double mediaCoopSelec = 0.0;
+            mediaCoopSelec = numCoopSel/numSelRealizadas;
+            trace()<<"mediaCoopSelec: "<<mediaCoopSelec<<endl;
+            /*Número medio de coop selecionados em cada selecao*/
+            declareOutput("Numero medio de Cooperantes Selecionados");
+            collectOutput("Numero medio de Cooperantes Selecionados", "", mediaCoopSelec);
 
 
         }
@@ -1917,23 +2096,25 @@ void Basic802154::finishSpecific() {
         collectOutput("Beacons sent", "", sentBeacons);
 
         //Suelen
-        declareOutput("Msg's Recebidas");
-        collectOutput("Msg's Recebidas", "", msgRecebidas);
+        if(!useRetransIndependent){
+            declareOutput("Msg's Recebidas");
+            collectOutput("Msg's Recebidas", "", msgRecebidas);
 
-        // Mensagens que foram recebidas por retransmissão, mesmo que não tenha sido útil
-        declareOutput("Msg's Recebidas Retransmissao");
-        collectOutput("Msg's Recebidas Retransmissao", "", msgRtrans);
+            // Mensagens que foram recebidas por retransmissão, mesmo que não tenha sido útil
+            declareOutput("Msg's Recebidas Retransmissao");
+            collectOutput("Msg's Recebidas Retransmissao", "", msgRtrans);
 
-        // numero de retransmissões em que alguma mensagem foi recuperada
-        declareOutput("Retransmissoes Uteis");
-        collectOutput("Retransmissoes Uteis", "", retransmissoesEfetivas);
+            // numero de retransmissões em que alguma mensagem foi recuperada
+            declareOutput("Retransmissoes Uteis");
+            collectOutput("Retransmissoes Uteis", "", retransmissoesEfetivas);
 
-        // numero de retransmissões em que nenhuma mensagem foi recuperada
-        declareOutput("Retransmissoes Nao Uteis");
-        collectOutput("Retransmissoes Nao Uteis", "", retransmissoesNaoEfetivas);
+            // numero de retransmissões em que nenhuma mensagem foi recuperada
+            declareOutput("Retransmissoes Nao Uteis");
+            collectOutput("Retransmissoes Nao Uteis", "", retransmissoesNaoEfetivas);
 
-        declareOutput("Msg's Recuperadas");
-        collectOutput("Msg's Recuperadas", "", mensagensRecuperadas);
+            declareOutput("Msg's Recuperadas");
+            collectOutput("Msg's Recuperadas", "", mensagensRecuperadas);
+        }
 
         declareOutput("Numero de Selecoes Realizadas");
         collectOutput("Numero de Selecoes Realizadas", "", numSelRealizadas);
@@ -1963,6 +2144,18 @@ void Basic802154::finishSpecific() {
             }
 
 
+        }
+        if(useRetransIndependent){
+            int cont = 1;
+            /*Retransmissão de uma mensagem por vez, sem codificação*/
+            declareOutput("Mensagens Individuais Recuperadas Retransmissao Independente");
+
+            for(int i = 1; i < numhosts; i++){
+                collectOutput("Mensagens Individuais Recuperadas Retransmissao Independente", cont, "Mensagens", recoverPerNode[i]);
+                trace()<<"nodo: "<<i<<"recuperou "<< recoverPerNode[i];
+                cont++;
+
+            }
         }
 
         fimSim = SIMTIME_DBL(simTime() - inicioSim);
@@ -2161,6 +2354,226 @@ void Basic802154::tratarDivisao(Neighborhood *nodo){
 
 
 }
+
+
+/*Este método permite ao coordenador definir quantos slots de retransmissão cada
+ * cooperante precisará baseado no número de mensagens que o coordenador não
+ * escutou e que cada cooperante escutou*/
+/*void Basic802154:: definirNumeroSlotsCooperantes(Basic802154Packet *beaconPacket){
+  std::vector<int> GACK_msgPerdidas;
+    std::map<int, Neighborhood*>::iterator iterNeighborhood;
+    std::map<int, Neighborhood*>::iterator iter;
+    Neighborhood *nodo;
+    int numvizinhos = 0;
+    bool exist;
+    int count = 0;
+
+    GACK_msgPerdidas.clear();
+    numSlotsPerCoop.clear();
+
+
+    //Armazeno as mensagens que o coord perdeu no vetor GACK_msgPerdidas
+    for(int i = 1; i < (int) GACK.size();i++){
+        if(GACK[i] == 0){
+            GACK_msgPerdidas.push_back(i);
+        }
+    }
+
+    for(int i = 0;i < (int)nodosColaboradores.size();i++){
+        iterNeighborhood = neigmap.find(nodosColaboradores[i]);
+        if(iterNeighborhood != neigmap.end()){
+            nodo = iterNeighborhood->second;
+            numvizinhos = nodo->vizinhos.size();
+            if((numvizinhos > 0) && (GACK_msgPerdidas.size()>0)){
+                count = 0;
+                for(int j = 0; j < (int)GACK_msgPerdidas.size();j++){
+                    exist = false;
+                    exist = std::find(nodo->vizinhos.begin(), nodo->vizinhos.end(), GACK_msgPerdidas[j]) != nodo->vizinhos.end();
+                    if(exist){
+                        count++;
+                    }
+                }
+                numSlotsPerCoop.push_back(count);
+            }
+        }
+    }
+    definirnumSlotsDisponiveis(beaconPacket);
+    setMsgPerCoop();
+}*/
+
+/*Conta a quantidade de bits "1s" de uma variavel de 64 bits*/
+int Basic802154::pop_cnt_64(uint64_t i) {
+  i = i - ((i >> 1) & 0x5555555555555555);
+  i = (i & 0x3333333333333333) + ((i >> 2) & 0x3333333333333333);
+  return (((i + (i >> 4)) & 0x0F0F0F0F0F0F0F0F) *
+          0x0101010101010101) >> 56;
+}
+
+/*
+ * Para atribuir os slots, o coordenador vai fazer um AND com os vizinhos
+ * de cada cooperantes, assim saberá quem vai transmitir a msg e evitar duplicações e
+ * atribuição desnecessária de slots;
+ * EX:
+ * coop 1: |1|0|1|1|1|
+ * coop 3: |0|1|1|1|1|
+ * AND     |0|0|1|1|1| -> o AND resulta o que há de igual
+ *
+ * Neste método é definido a quantidade de slots que cada nodo cooperante
+ * receberá para realizar a retransmissão
+ * Se dois cooperantes escutam a mesma msg, o coord
+ * seleciona apenas um para retransmitir aquela msg em específico*/
+void Basic802154:: setMsgPerCoop(Basic802154Packet *beaconPacket){
+    uint64_t resultAND[2];
+    int soma, totalSlotsRetrans, totalSlots, diferenca, numCoop;
+    soma = 0;
+    totalSlotsRetrans = 0;
+    totalSlots = 0;
+    diferenca = 0;
+    numCoop = (int)nodosColaboradores.size();
+    uint64_t bitmapNeighAux[numCoop][2];
+
+    informRetrans.idCoop.clear();
+    for(int i = 0; i< numhosts; i++){
+        informRetrans.idCoop.push_back(0);
+    }
+
+    /*Copia o bitmap dos cooperante para um auxiliar*/
+    for(int i = 0;i < numCoop;i++){
+        for(int j = 0; j < 2; j++){
+            bitmapNeighAux[i][j] = bitmapNeigh[nodosColaboradores[i]][j];
+        }
+    }
+
+
+    for(int j = 0; j < 2; j++){
+        resultAND[j] = 0x0000;
+    }
+
+    numSlotsPerCoop.clear();
+    for(int i = 0;i < numCoop;i++){
+        numSlotsPerCoop.push_back(0);
+    }
+
+
+    /* Deixa ativo apenas os bits que o coop escuta e que o coordenador perdeu*/
+    for(int i = 1;i < numhosts; i++){
+        if(informRetrans.GACK[i] == 1){ // se o coordenador recebeu retira da vizinhança dos colaboradores
+            for(int j = 0;j < numCoop;j++){
+               int k = (i<63) ? 0 : 1;
+               //cout << std::hex << bitmapNeighAux[j][k] << '\n';
+               int addr = 64 - i + (64*k);
+               bitmapNeighAux[j][k] &= ~(1ULL << (addr%64));
+               //cout << std::hex << bitmapNeighAux[j][k] << '\n';
+            }
+
+        }
+    }
+
+    for(int i = 0;i < numCoop;i++){
+         numSlotsPerCoop[i] = pop_cnt_64(bitmapNeighAux[i][0]) + pop_cnt_64(bitmapNeighAux[i][1]);
+    }
+
+    /*Determina qual coop retransmitirá as msg escutadas por vários coop*/
+    for(int i = 0;i < numCoop;i++){
+        for(int j = i+1;j < numCoop;j++){
+            for(int k = 0; k < 2; k++){
+                resultAND[k] =  bitmapNeighAux[i][k] & bitmapNeighAux[j][k];
+                //cout << std::hex << resultAND[k] << '\n';
+                while(resultAND[k] > 0){
+                    cout<<"result: "<< resultAND[k]<<endl;
+                    //int index =  (log(resultAND[k])/log(2));
+                    int index = log2(resultAND[k]);
+                    //cout << std::hex << resultAND[k] << '\n';
+                    resultAND[k] &= ~(1ULL << (index%64));
+                    //cout << std::hex << resultAND[k] << '\n';
+                    //bitmapNeigh[nodosColaboradores[i]][k] &= ~(1ULL << (index%64));
+                    //bitmapNeigh[nodosColaboradores[j]][k] &= ~(1ULL << (index%64));
+                    int addr = 64 - index + (64*k);
+                    if(informRetrans.idCoop[addr] == 0){
+                        informRetrans.idCoop[addr] = nodosColaboradores[i];
+                        numSlotsPerCoop[j]--;
+                    }else{
+                        numSlotsPerCoop[j]--;
+                    }
+
+
+                 }
+
+            }
+        }
+
+    }
+    for(int i = 0;i < numCoop;i++){
+        soma = soma + numSlotsPerCoop[i];
+    }
+    cout <<"soma: "<< soma <<endl;
+    totalSlots = numSuperframeSlots -5 ;
+    totalSlotsRetrans = totalSlots - numhosts;
+
+    /*Verificação para saber se o número de slots requisitado é maior que o disponível*/
+    if(totalSlotsRetrans < soma){
+        diferenca = soma - totalSlotsRetrans;
+        int i = 0;
+
+        while(diferenca > 0){
+            numSlotsPerCoop[i]--;
+            diferenca--;
+            i++;
+        }
+    }
+
+    inserirNumeroSlotsBeacon(beaconPacket);
+
+}
+
+void Basic802154:: inserirNumeroSlotsBeacon(Basic802154Packet *beaconPacket){
+    beaconPacket->setNumSlotPerCoopArraySize(numSlotsPerCoop.size());
+    for(int i = 0; i < (int)numSlotsPerCoop.size(); i++){
+        beaconPacket->setNumSlotPerCoop(i,numSlotsPerCoop[i]);
+    }
+}
+
+ /* Esse método monta o vetor de bit de vizinhos de cada nodo.
+  * Para cada vizinho com endereco addr, é inserido o bit 1 na posicao addr do vetor*/
+void Basic802154:: montarVetorDeBit(int addr){
+    int pos =  addr / 64;
+    int bit_shift = 64 - addr % 64;
+    //printf("\n ack rec %hhx ", ackframe->ackFlags[pos]);
+    //std::cout << std::hex << vetBit[pos] << '\n';
+    vetBit[pos] |= (1ULL << bit_shift);
+    //std::cout << std::hex << vetBit[0] << '\n';
+    //std::cout << std::hex << vetBit[1] << '\n';
+}
+
+
+/*void Basic802154:: definirnumSlotsDisponiveis(Basic802154Packet *beaconPacket){
+    int totalSlots = 0;
+    int totalSlotsRetrans = 0;
+    int somaSlotsNecessarios = 0;
+
+    for(int i = 0; i < (int)numSlotsPerCoop.size(); i++){
+        somaSlotsNecessarios = somaSlotsNecessarios + numSlotsPerCoop[i];
+    }
+    totalSlots = numSuperframeSlots;
+    totalSlotsRetrans = totalSlots - numhosts;
+
+    if(totalSlotsRetrans >= somaSlotsNecessarios){
+        beaconPacket->setNumSlotPerCoopArraySize(numSlotsPerCoop.size());
+        for(int i = 0; i < (int)numSlotsPerCoop.size(); i++){
+            beaconPacket->setNumSlotPerCoop(i,numSlotsPerCoop[i]);
+        }
+    }else{
+        cout<<"Temos um problema!!"<<endl;
+    }
+
+}*/
+
+
+
+
+
+
+
 void Basic802154:: selectCoopAux(){
     /* Preciso saber quem são os cooperantes. (nodosColaboradores)*
      * Para cada cooperante preciso saber quem são os seus vizinhos;
@@ -2846,10 +3259,11 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
             pkt->getSrcID());
     Neighborhood *nodo;
     cout << "Eu sou o: " << SELF_MAC_ADDRESS << "\n";
-    unsigned vizinhos = pkt->getVizinhosOuNodosCooperantesArraySize();
+    int vizinhos = (int)pkt->getVizinhosOuNodosCooperantesArraySize();
     if (pkt->getDadosVizinhoArraySize() == 0) { //verifico se é retransmissao
         //if (rssi > limiteRSSI && !oportunista) {
         if (rssi > limiteRSSI) {
+            montarVetorDeBit(pkt->getSrcID());
             if (iterNeighborhood == neigmap.end()) {
                 nodo = new Neighborhood();
                 nodo->nodeId = pkt->getSrcID();
@@ -2914,6 +3328,19 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
             if(!isPANCoordinator){
                 matrizVizinhancaNodos(pkt);
             }
+
+            if(useRetransIndependent){
+                if(isPANCoordinator){
+                    if(pkt->getVetBitArraySize()>0){
+                        //for(int i = 0; i < numhosts; i++){
+                            for(int j = 0; j < 2; j++){
+                                bitmapNeigh[pkt->getSrcID()][j]= pkt->getVetBit(j);
+                            }
+
+                     //   }
+                    }
+                }
+        }
         }/*else{// se for a tecnica oportunista não preciso verificar a qualidade da comunicação
             if(oportunista){
             if (iterNeighborhood == neigmap.end()) {
@@ -3102,7 +3529,7 @@ void Basic802154::souNodoCooperanteAuxiliar(Basic802154Packet * pkt) {
 
 /*
  * Esse método armazena as mensagens que o coodenador escutou e que chegaram por retransmissão
- *
+ * Além disso chama a decodificação
  * */
 void Basic802154::listarNodosEscutadosRetransmissaoNetworkCoding(Basic802154Packet *rcvPacket){
         int recuperadas = 0;
@@ -3162,15 +3589,27 @@ void Basic802154::listarNodosEscutadosTransmissaoNetworkCoding(Basic802154Packet
     if(isPANCoordinator){
         Basic802154Packet* framedup = rcvPacket->dup();
         if(rcvPacket->getRetransmissao() == false){
-            for(int i =0; i< MSG_SIZE;i++){
-                buffer_msg[framedup->getSrcID()][i] = framedup->getPayload(i);
+            if(useNetworkCoding){
+                for(int i =0; i< MSG_SIZE;i++){
+                    buffer_msg[framedup->getSrcID()][i] = framedup->getPayload(i);
+                }
             }
 
             MessagesNeighborhood *neig = new MessagesNeighborhood();
             neig->setFrameTransmission(framedup);
             neigmapNodosEscutados[framedup->getSrcID()] = neig;
-            codificador->received[framedup->getSrcID()] = 1;
-            GACK[framedup->getSrcID()] = 1;
+            if(useNetworkCoding){
+                codificador->received[framedup->getSrcID()] = 1;
+            }
+            /*if(useRetransIndependent){
+                recoverPerNode[framedup->getSrcID()] = 1;
+            }*/
+            if(useNetworkCoding){
+                GACK[framedup->getSrcID()] = 1;
+            }
+            if(useRetransIndependent){
+                informRetrans.GACK[framedup->getSrcID()] = 1;
+            }
             sucessoMsgDirRecebida++;
             cout << " sucessoMsgCodRecebida trans = " << sucessoMsgDirRecebida << endl;
         }
@@ -3193,8 +3632,6 @@ void Basic802154::listarNodosEscutadosTransmissaoNetworkCoding(Basic802154Packet
 
 
 
-
-// método Ríad
 void Basic802154::listarNodosEscutados(Basic802154Packet *rcvPacket,
         double rssi) {
     int repetido = 0;
@@ -3222,12 +3659,27 @@ void Basic802154::listarNodosEscutados(Basic802154Packet *rcvPacket,
             if(isPANCoordinator){
                 pacotesEscutadosT[rcvPacket->getSrcID()] = pacotesEscutadosT[rcvPacket->getSrcID()] + 1;
             }
-            if(useNetworkCoding){
+            if(userelay){
                 //irá armazenar a mensagem (transmissão) escutada se for coordenador ou cooperante
                 listarNodosEscutadosTransmissaoNetworkCoding(rcvPacket);
             }
         }
 
+    }
+    if(useRetransIndependent){
+        if(rcvPacket->getRetransmissao() == true){
+            if (isPANCoordinator) {
+                if(informRetrans.GACK[rcvPacket->getIdNodoRetransmitido()] == 0){
+                    if(GACKRetrans[rcvPacket->getIdNodoRetransmitido()] == 0){
+                    //if(GACK[rcvPacket->getIdNodoRetransmitido()] == 0){
+                        recoverPerNode[rcvPacket->getIdNodoRetransmitido()] = recoverPerNode[rcvPacket->getIdNodoRetransmitido()] + 1;
+                        //GACK[rcvPacket->getIdNodoRetransmitido()] = 1;
+                        GACKRetrans[rcvPacket->getIdNodoRetransmitido()] = 1;
+                        //informRetrans.GACK[rcvPacket->getIdNodoRetransmitido()] = 1;
+                    }
+                }
+            }
+        }
     }
     if(useNetworkCoding){
         if(rcvPacket->getRetransmissao() == true){
@@ -3604,7 +4056,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
     if (!rcvPacket) {
         return;
     }
-    cout<<"sou o nodo: "<<self<<endl;
+    cout<<"sou o nodo: "<<SELF_MAC_ADDRESS<<endl;
     if(pausado){
         //Colocar o nodo para dormir e deletar o pacote
         //toRadioLayer(createRadioCommand(SET_STATE, SLEEP));
@@ -3646,25 +4098,23 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
 
             trace()<<"Recebi beacon "<< SELF_MAC_ADDRESS;
-            nodosEscutados.clear();
+
             if(useNetworkCoding){
-                neigmapNodosEscutados.clear();
                 neigmapNodosEscutadosRefinamento.clear();
                 neigmapNodosEnviados.clear();
                 neigmapNodosEscutadosSelecionados.clear();
                 vizinhosCoop.clear();
                 secondRetrans = false;
-                GACK.clear();
-                nodesNotReceived.clear();
                 if(useCoopAux){
                     souNodoCooperanteAuxiliar(rcvPacket);
                 }
-
+            }
+            if(useGACK){
+                GACK.clear();
+                nodesNotReceived.clear();
                 for(int i = 0; i< numhosts; i++){
-                 GACK.push_back(0);
-                }
-
-
+                GACK.push_back(0);
+               }
             }
 
 
@@ -3674,6 +4124,18 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                 atualizarVizinhanca = rcvPacket->getTempAtualizVizinhanca();
                 idBeacon = rcvPacket->getIdBeacon();//Verificará se ja é o id de ficar escutando os vizinhos
                 souNodoCooperante(rcvPacket);
+                neigmapNodosEscutados.clear();
+                nodosEscutados.clear();
+
+                if(useRetransIndependent){
+                    primeiraRetransIndepend = true;
+                    timersRetrans.clear();
+                    //if(atualizarVizinhanca){
+                        /*Cada vez de atualizar a vizinhança zero os vetor de bit de vizinhos*/
+                       // vetBit[0] = 0x0000;
+                       // vetBit[1] = 0x0000;
+                    //}
+                }
             }
             recvBeacons++;
 
@@ -3757,35 +4219,11 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                             if (rcvPacket->getGTSlist(i).owner == SELF_MAC_ADDRESS
                                     && associatedPAN == rcvPacket->getPANid()) {
 
-                                //Suelen obs:antes era só o conteudo do else
-                                if (rcvPacket->getGTSlist(i).retransmissor) {
 
-                                    if(useCoopAux){
-                                        GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
-                                                * baseSlotDuration * (1 << frameOrder) * symbolLen;
-                                        GTSendRetrans = GTSstartRetrans
-                                                + rcvPacket->getGTSlist(i).length * baseSlotDuration
-                                                        * (1 << frameOrder) * symbolLen;
-                                        GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
+                                if (rcvPacket->getGTSlist(i).retransmissor) {// Se for retransmissor
 
-                                        cout << "Nodo " << rcvPacket->getGTSlist(i).owner
-                                            << " Usa o GTS slot from "
-                                            << getClock() + GTSstartRetrans << " to "
-                                            << getClock() + GTSendRetrans << " length "
-                                            << GTSlengthRetrans << "\n";
-
-                                    // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
-                                        setTimer(GTS_RETRANS,
-                                            GTSstartRetrans - phyDelaySleep2Tx - offset);
-
-                                    }else{
-
-                                        if(firstCoop){
-                                            cout << "Tamanho Lista: "
-                                                    << (int) rcvPacket->getGTSlistArraySize()
-                                                    << "Lista GTS[" << i << "]: "
-                                                    << rcvPacket->getGTSlist(i).owner
-                                                    << " Cooperante\n";
+                                    if(useNetworkCoding){// se utiliza codificação
+                                        if(useCoopAux){// se utiliza cooperantes auxiliares aos cooperantes principais
                                             GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
                                                     * baseSlotDuration * (1 << frameOrder) * symbolLen;
                                             GTSendRetrans = GTSstartRetrans
@@ -3793,81 +4231,205 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                                                             * (1 << frameOrder) * symbolLen;
                                             GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
 
-
-
-                                            //delayRadio = offset;
-
-                                            //trace()<<"tempo Atual: " << simTime();
-                                            //trace()<<"getClok(): " << getClock();
-                                            //trace()<<"GTSstartRetrans: " << GTSstartRetrans;
-                                            //trace()<<"GTSendRetrans: " << GTSendRetrans;
-                                            //trace()<<"GTSlengthRetrans: " << GTSlengthRetrans;
-
-
-                                            //trace() << "GTS slot from " << getClock() + GTSstartRetrans
-                                              //      << " to " << getClock() + GTSendRetrans
-                                                //    << " length " << GTSlengthRetrans;
                                             cout << "Nodo " << rcvPacket->getGTSlist(i).owner
-                                                    << " Usa o GTS slot from "
-                                                    << getClock() + GTSstartRetrans << " to "
-                                                    << getClock() + GTSendRetrans << " length "
-                                                    << GTSlengthRetrans << "\n";
+                                                << " Usa o GTS slot from "
+                                                << getClock() + GTSstartRetrans << " to "
+                                                << getClock() + GTSendRetrans << " length "
+                                                << GTSlengthRetrans << "\n";
 
-                                            // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
+                                        // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
                                             setTimer(GTS_RETRANS,
-                                                    GTSstartRetrans - phyDelaySleep2Tx - offset);
-                                        }else{
-                                            if(thirdCoop){
-                                                thirdCoop = false;
-                                                third_GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
-                                                        * baseSlotDuration * (1 << frameOrder) * symbolLen;
-                                                third_GTSendRetrans = third_GTSstartRetrans
-                                                        + rcvPacket->getGTSlist(i).length * baseSlotDuration
-                                                                * (1 << frameOrder) * symbolLen;
-                                                third_GTSlengthRetrans = third_GTSendRetrans - third_GTSstartRetrans;
+                                                GTSstartRetrans - phyDelaySleep2Tx - offset);
 
-                                                cout << "Tamanho Lista: "
-                                                    << (int) rcvPacket->getGTSlistArraySize()
-                                                    << "Lista GTS[" << i << "]: "
-                                                    << rcvPacket->getGTSlist(i).owner
-                                                    << " Cooperante\n";
+                                        }else{// Se não utiliza cooperantes auxiliares
+                                            if(useThreeRetransPerCoop){// utiliza três slots de retransmissão
+                                                if(firstCoop){
+                                                    cout << "Tamanho Lista: "
+                                                            << (int) rcvPacket->getGTSlistArraySize()
+                                                            << "Lista GTS[" << i << "]: "
+                                                            << rcvPacket->getGTSlist(i).owner
+                                                            << " Cooperante\n";
+                                                    GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
+                                                            * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                                                    GTSendRetrans = GTSstartRetrans
+                                                            + rcvPacket->getGTSlist(i).length * baseSlotDuration
+                                                                    * (1 << frameOrder) * symbolLen;
+                                                    GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
 
-                                                cout << "Nodo " << rcvPacket->getGTSlist(i).owner
-                                                                << " Usa o GTS slot from "
-                                                                << getClock() + third_GTSstartRetrans << " to "
-                                                                << getClock() + third_GTSendRetrans << " length "
-                                                                << third_GTSlengthRetrans << "\n";
 
-                                                setTimer(GTS_THIRD_RETRANS, third_GTSstartRetrans - phyDelaySleep2Tx - offset);
 
-                                            }
-                                            else{
-                                                firstCoop = true;
-                                                second_GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
-                                                        * baseSlotDuration * (1 << frameOrder) * symbolLen;
-                                                second_GTSendRetrans = second_GTSstartRetrans
-                                                        + rcvPacket->getGTSlist(i).length * baseSlotDuration
-                                                                * (1 << frameOrder) * symbolLen;
-                                                second_GTSlengthRetrans = second_GTSendRetrans - second_GTSstartRetrans;
+                                                    //delayRadio = offset;
 
-                                                cout << "Tamanho Lista: "
-                                                    << (int) rcvPacket->getGTSlistArraySize()
-                                                    << "Lista GTS[" << i << "]: "
-                                                    << rcvPacket->getGTSlist(i).owner
-                                                    << " Cooperante\n";
+                                                    //trace()<<"tempo Atual: " << simTime();
+                                                    //trace()<<"getClok(): " << getClock();
+                                                    //trace()<<"GTSstartRetrans: " << GTSstartRetrans;
+                                                    //trace()<<"GTSendRetrans: " << GTSendRetrans;
+                                                    //trace()<<"GTSlengthRetrans: " << GTSlengthRetrans;
 
-                                                cout << "Nodo " << rcvPacket->getGTSlist(i).owner
-                                                                << " Usa o GTS slot from "
-                                                                << getClock() + second_GTSstartRetrans << " to "
-                                                                << getClock() + second_GTSendRetrans << " length "
-                                                                << second_GTSlengthRetrans << "\n";
 
-                                                setTimer(GTS_SECOND_RETRANS, second_GTSstartRetrans - phyDelaySleep2Tx - offset);
-                                            }
+                                                    //trace() << "GTS slot from " << getClock() + GTSstartRetrans
+                                                      //      << " to " << getClock() + GTSendRetrans
+                                                        //    << " length " << GTSlengthRetrans;
+                                                    cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                                                            << " Usa o GTS slot from "
+                                                            << getClock() + GTSstartRetrans << " to "
+                                                            << getClock() + GTSendRetrans << " length "
+                                                            << GTSlengthRetrans << "\n";
+
+                                                    // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
+                                                    setTimer(GTS_RETRANS,
+                                                            GTSstartRetrans - phyDelaySleep2Tx - offset);
+                                                }else{
+                                                    if(thirdCoop){
+                                                        thirdCoop = false;
+                                                        third_GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
+                                                                * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                                                        third_GTSendRetrans = third_GTSstartRetrans
+                                                                + rcvPacket->getGTSlist(i).length * baseSlotDuration
+                                                                        * (1 << frameOrder) * symbolLen;
+                                                        third_GTSlengthRetrans = third_GTSendRetrans - third_GTSstartRetrans;
+
+                                                        cout << "Tamanho Lista: "
+                                                            << (int) rcvPacket->getGTSlistArraySize()
+                                                            << "Lista GTS[" << i << "]: "
+                                                            << rcvPacket->getGTSlist(i).owner
+                                                            << " Cooperante\n";
+
+                                                        cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                                                                        << " Usa o GTS slot from "
+                                                                        << getClock() + third_GTSstartRetrans << " to "
+                                                                        << getClock() + third_GTSendRetrans << " length "
+                                                                        << third_GTSlengthRetrans << "\n";
+
+                                                        setTimer(GTS_THIRD_RETRANS, third_GTSstartRetrans - phyDelaySleep2Tx - offset);
+
+                                                    }
+                                                    else{
+                                                        firstCoop = true;
+                                                        second_GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
+                                                                * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                                                        second_GTSendRetrans = second_GTSstartRetrans
+                                                                + rcvPacket->getGTSlist(i).length * baseSlotDuration
+                                                                        * (1 << frameOrder) * symbolLen;
+                                                        second_GTSlengthRetrans = second_GTSendRetrans - second_GTSstartRetrans;
+
+                                                        cout << "Tamanho Lista: "
+                                                            << (int) rcvPacket->getGTSlistArraySize()
+                                                            << "Lista GTS[" << i << "]: "
+                                                            << rcvPacket->getGTSlist(i).owner
+                                                            << " Cooperante\n";
+
+                                                        cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                                                                        << " Usa o GTS slot from "
+                                                                        << getClock() + second_GTSstartRetrans << " to "
+                                                                        << getClock() + second_GTSendRetrans << " length "
+                                                                        << second_GTSlengthRetrans << "\n";
+
+                                                        setTimer(GTS_SECOND_RETRANS, second_GTSstartRetrans - phyDelaySleep2Tx - offset);
+                                                    }
+                                                }
+                                        }else{//Utiliza apenas um slot por cooperante
+                                            GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
+                                                    * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                                            GTSendRetrans = GTSstartRetrans
+                                                    + rcvPacket->getGTSlist(i).length * baseSlotDuration
+                                                            * (1 << frameOrder) * symbolLen;
+                                            GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
+
+                                            cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                                                << " Usa o GTS slot from "
+                                                << getClock() + GTSstartRetrans << " to "
+                                                << getClock() + GTSendRetrans << " length "
+                                                << GTSlengthRetrans << "\n";
+
+                                        // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
+                                            setTimer(GTS_RETRANS,
+                                                GTSstartRetrans - phyDelaySleep2Tx - offset);
                                         }
-                                    }
+                                   }
+                                }else{//Não utiliza networkCoding
+                                    if(useRetransIndependent){ // utiliza retransmissão independente para cada mensagem escutada
+                                        cout<<"Sou o nodo: " << SELF_MAC_ADDRESS<< " Uso o slot:" << i <<endl;
+                                        GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
+                                                * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                                        GTSendRetrans = GTSstartRetrans
+                                                + rcvPacket->getGTSlist(i).length * baseSlotDuration
+                                                        * (1 << frameOrder) * symbolLen;
+                                        GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
 
-                                } else {
+                                       /* cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                                                        << " Usa o GTS slot from "
+                                                        << GTSstartRetrans << " to "
+                                                        << GTSendRetrans << " length "
+                                                        << GTSlengthRetrans << "\n";*/
+
+                                        cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                                                        << " Usa o GTS slot from "
+                                                        << getClock() + GTSstartRetrans << " to "
+                                                        << getClock() + GTSendRetrans << " length "
+                                                        << GTSlengthRetrans << "\n";
+
+                                        if(rcvPacket->getGTSlist(i+1).owner == SELF_MAC_ADDRESS){
+                                            RETRANSMISSAO slotRetrans;
+                                            slotRetrans.GTSstartRetrans = GTSstartRetrans;
+                                            slotRetrans.GTSendRetrans  = GTSendRetrans;
+                                            slotRetrans.GTSlengthRetrans = GTSlengthRetrans;
+                                            slotRetrans.phyDelaySleep2Tx = phyDelaySleep2Tx;
+                                            slotRetrans.offset = offset;
+
+                                            timersRetrans.push_back(slotRetrans);
+                                        }else{
+                                            retransAtual.GTSstartRetrans = GTSstartRetrans;
+                                            retransAtual.GTSendRetrans = GTSendRetrans;
+                                            retransAtual.GTSlengthRetrans = GTSlengthRetrans;
+                                            retransAtual.phyDelaySleep2Tx = phyDelaySleep2Tx;
+                                            retransAtual.offset = offset;
+                                            setTimer(GTS_RETRANS, GTSstartRetrans - phyDelaySleep2Tx - offset);
+                                        }
+
+                                       /* if(timersRetrans.empty()){
+                                            RETRANSMISSAO slotRetrans;
+                                            slotRetrans.GTSstartRetrans = GTSstartRetrans;
+                                            slotRetrans.GTSendRetrans  = GTSendRetrans;
+                                            slotRetrans.GTSlengthRetrans = GTSlengthRetrans;
+                                            slotRetrans.phyDelaySleep2Tx = phyDelaySleep2Tx;
+                                            slotRetrans.offset = offset;
+
+                                            timersRetrans.push_back(slotRetrans);
+                                        }else{
+                                            setTimer(GTS_RETRANS, GTSstartRetrans - phyDelaySleep2Tx - offset);
+                                        }*/
+
+                                    }else{//utiliza apenas uma mensagem de retransmissão
+                                        GTSstartRetrans = (rcvPacket->getGTSlist(i).start - 1)
+                                                * baseSlotDuration * (1 << frameOrder) * symbolLen;
+                                        GTSendRetrans = GTSstartRetrans
+                                                + rcvPacket->getGTSlist(i).length * baseSlotDuration
+                                                        * (1 << frameOrder) * symbolLen;
+                                        GTSlengthRetrans = GTSendRetrans - GTSstartRetrans;
+
+                                        /*cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                                            << " Usa o GTS slot from "
+                                            << getClock() + GTSstartRetrans << " to "
+                                            << getClock() + GTSendRetrans << " length "
+                                            << GTSlengthRetrans << "\n";*/
+
+
+                                        cout << "Nodo " << rcvPacket->getGTSlist(i).owner
+                                            << " Usa o GTS slot from "
+                                            << GTSstartRetrans << " to "
+                                            << GTSendRetrans << " length "
+                                            << GTSlengthRetrans << "\n";
+
+                                    // set GTS timer phyDelaySleep2Tx seconds earlier as radio can be sleeping
+                                        setTimer(GTS_RETRANS,
+                                            GTSstartRetrans - phyDelaySleep2Tx - offset);
+                                }
+
+
+                                }
+
+                              } else { //Não é um nodo cooperante
                                     cout << "Tamanho Lista: "
                                             << (int) rcvPacket->getGTSlistArraySize()
                                             << "Lista GTS[" << i << "]: "
@@ -4010,6 +4572,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                                           if((smart || smartPeriodic) && !cooperador){
                                               // se não for cooperante verificará se é o momento de atualizar a vizinhança ou não
                                               if(atualizarVizinhanca){ // verifica se ja está no periodo de escutar os vizinhos
+
                                                   setTimer(WAKE_UP_START, CAPend - phyDelaySleep2Tx - offset);
 
                                               }else{// acorda apenas antes de transmitir (não fica escutando os vizinhos)
@@ -4210,19 +4773,45 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
         }
 
         case MAC_802154_GACK:{
-           cout <<"Sou o nodo: " << SELF_MAC_ADDRESS <<endl;
-           cout <<"Pacote: " << rcvPacket->getMac802154PacketType() <<endl;
-           nodesNotReceived.clear();
-           if(useNetworkCoding){
-                    if (cooperador || cooperanteAuxiliar || cooperanteAuxiliarAuxiliar) {
-                            for(int i = 0; i < rcvPacket->getGackArraySize();i++){
-                                cout<<"Lista GACK: " << rcvPacket->getGack(i)<< endl;
-                                if(rcvPacket->getGack(i) == 0){
-                                    cout << "Coordenador não recebeu a mensagem do nodo: " << i <<endl;
-                                    nodesNotReceived.push_back(i);
-                                }
-                            }
+            if(!isPANCoordinator){
+                   int tamanho = 0;
+                   cout <<"Sou o nodo: " << SELF_MAC_ADDRESS <<endl;
+                   cout <<"Pacote: " << rcvPacket->getMac802154PacketType() <<endl;
+                   nodesNotReceived.clear();
+                   if(useNetworkCoding){
+                       tamanho = (int)rcvPacket->getGackArraySize();
+                   }
+                   if(useRetransIndependent){
+                       tamanho = (int)rcvPacket->getDadosRetransArraySize();
+                       DADOS_RETRANS_GACK infRetrans;
+                       informRetrans.GACK.clear();
+                       informRetrans.idCoop.clear();
+                       for(int j = 0; j < tamanho;j++){
+                           infRetrans = rcvPacket->getDadosRetrans(j);
+                           informRetrans.GACK.push_back(infRetrans.GACK);
+                           informRetrans.idCoop.push_back(infRetrans.idCoop);
+                       }
+                   }
+                   if(useGACK){
+                        if (cooperador || cooperanteAuxiliar || cooperanteAuxiliarAuxiliar) {
+                                for(int i = 0; i < tamanho;i++){
+                                    //cout<<"Lista GACK: " << rcvPacket->getGack(i)<< endl;
+                                    if(useNetworkCoding){
+                                        if(rcvPacket->getGack(i) == 0){
+                                            cout << "Coordenador não recebeu a mensagem do nodo: " << i <<endl;
+                                            nodesNotReceived.push_back(i);
+                                        }
+                                    }
+                                    if(useRetransIndependent){
+                                        if((informRetrans.GACK[i] == 0) && (informRetrans.idCoop[i] == 0 || informRetrans.idCoop[i] == self)){
+                                            cout << "Coordenador não recebeu a mensagem do nodo: " << i <<endl;
+                                            nodesNotReceived.push_back(i);
+                                        }
 
+                                    }
+                                }
+
+                        }
                     }
                 }
            break;
@@ -4544,15 +5133,8 @@ void Basic802154::attemptTransmission(const char * descr) {
 // método Ríad
 void Basic802154::retransmitir(Basic802154Packet *nextPacket) {
     if (nodosEscutados.size() > 0) {
-
-        //vector<int>::iterator v = nodosEscutados.begin();
-        //vector<MENSAGENS_ESCUTADAS>::iterator v = nodosEscutados.begin();
-
-        //int i = 0;
-
         nextPacket->setDadosVizinhoArraySize(nodosEscutados.size());
 
-        //while (i < nodosEscutados.size()) {
         for (int i = 0; i < (int) nodosEscutados.size(); i++) {
 
             nextPacket->setDadosVizinho(i, nodosEscutados[i]);
@@ -4561,7 +5143,6 @@ void Basic802154::retransmitir(Basic802154Packet *nextPacket) {
             cout << "Escutado mens: " << nodosEscutados[i].idMens << "\n";
             trace()<<"Escutado vou retransmitir id: " << nodosEscutados[i].idNodo;
             trace()<<"Escutado mens: " << nodosEscutados[i].idMens;
-            //i++;
         }
     }
     if(useNetworkCoding){
@@ -4656,6 +5237,8 @@ void Basic802154::transmitCurrentPacket() {
         //trace() << "txTime " << txTime << " CAP:"<< (currentFrameStart + CAPend - getClock()) << " GTS:"<< (currentFrameStart + GTSend - getClock());
         trace() << "Transmission of [" << currentPacket->getName()
                 << "] stopped, not enough time";
+        cout<<"Transmission of [" << currentPacket->getName()
+                        << "] stopped, not enough time";
     }
 }
 
@@ -5020,7 +5603,9 @@ void Basic802154::ordenaPossiveisCoop(){
 void Basic802154::inicializeMetric(){
     relayNetworkCoding = 0;
     for(int i = 0; i< numhosts; i++){
-           codificador->recoverPerNode[i] = 0;
+            if(useNetworkCoding){
+                codificador->recoverPerNode[i] = 0;
+            }
            recoverPerNode[i] = 0;
        }
 }

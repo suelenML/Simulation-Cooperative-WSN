@@ -116,7 +116,6 @@ void StaticGTS802154::prepareBeacon_hub(Basic802154Packet *beaconPacket) {
 	int CAPlength = totalSlots;
 	vector<Basic802154GTSspec>::iterator iter;
 
-	//SUELEN
 	// Retira os cooperantes anteriores
 	GTSlist.clear();
     // Deixa a lista de GTS apenas com os nodos transmissores
@@ -137,30 +136,37 @@ void StaticGTS802154::prepareBeacon_hub(Basic802154Packet *beaconPacket) {
                 cout<< "Lista GTS Depois de copiar****Básico*****["<<k<<"]: "<<GTSlist[k].owner<<"\n";
             }*/
 
-        /*Aqui tenho que dar um slot para o coordenador enviar o GACK (talves seja só inserir o primeiro id como zero)e aí sim depois desse os coop recebem slots
-         * ver para dar mais de um slot para os coop*/
-        if(useGACK){
-            gtsRequest_hubRetransmissao(0,1);
-        }
+            /*Aqui tenho que dar um slot para o coordenador enviar o GACK*/
+            if(useGACK){
+                gtsRequest_hubRetransmissao(0,1);
+            }
 
             // Atribui slot GTS para retransmissores
             for (int j = 0; j < (int) beaconPacket->getVizinhosOuNodosCooperantesArraySize(); j++){
-               gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
-               //gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
+                if(useRetransIndependent){
+                    if(beaconPacket->getNumSlotPerCoopArraySize()>0){
+                        for(int k = 0; k < beaconPacket->getNumSlotPerCoop(j); k++){
+                            gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
+                        }
+
+                    }
+                }else{
+                    gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
+                }
+               //gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1); // Aqui foi teste para dar mais de um slot aos cooperantes
                //gtsRequest_hubRetransmissao(beaconPacket->getVizinhosOuNodosCooperantes(j),1);
             }
             /* Aqui estou atribuindo um slot para cada cooperante auxiliar*/
-            if(beaconPacket->getCoopAuxiliaresArraySize() >0){
-                for(int i = 0;i < (int) beaconPacket->getCoopAuxiliaresArraySize();i++){
-                    gtsRequest_hubRetransmissao(beaconPacket->getCoopAuxiliares(i),1);
+            if(useCoopAux){
+                if(beaconPacket->getCoopAuxiliaresArraySize() >0){
+                    for(int i = 0;i < (int) beaconPacket->getCoopAuxiliaresArraySize();i++){
+                        gtsRequest_hubRetransmissao(beaconPacket->getCoopAuxiliares(i),1);
+                    }
                 }
             }
-//            trace()<<"GTS Antes Ordenar";
-//            for (int k = 0; k < (int)GTSlist.size(); k++) {
-//                trace()<< "GTS["<<k<<"]: "<<GTSlist[k].owner<<"\n";
-//                trace()<< "GTS["<<k<<"].start: "<<GTSlist[k].start<<"\n";
-//            }
-            // Ao inserir os slots para os cooperantes eles acabam ficando antes das transmissoes, por isso ordemo para deixar ele para o fim.
+            /* Ao inserir os slots para os cooperantes eles acabam ficando antes das transmissoes,
+             * por isso ordeno para deixar eles para o fim.
+             */
            ordenaListGTS(beaconPacket);
 
     }
@@ -179,6 +185,7 @@ void StaticGTS802154::prepareBeacon_hub(Basic802154Packet *beaconPacket) {
 			beaconPacket->setGTSlist(i, GTSlist[i]);
 		} else {
 			trace() << "Internal ERROR: GTS list corrupted";
+			trace()<< "CAPlength: "<<CAPlength<< "GTSlist[i].length: "<<GTSlist[i].length<<endl;
 			GTSlist.clear(); totalGTS = 0;
 			beaconPacket->setGTSlistArraySize(0);	
 			CAPlength = totalSlots;

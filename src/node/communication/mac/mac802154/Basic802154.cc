@@ -34,6 +34,7 @@ void Basic802154::startup() {
     selecao = par("selecao");
     //Informa qual das seleçoes usará
     smart = par("smart");
+    useRetransID = par("useRetransID");
     smartPeriodic = par("smartPeriodic");
     aleatoria = par("aleatoria");
     oportunista = par("oportunista");
@@ -46,6 +47,7 @@ void Basic802154::startup() {
     //tempAtualizVizinhanca = par("tempAtualizVizinhanca");
     tempConfig = par("tempConfig");
     limitBISelecao = 10; // limito o intervalo de seleção em 10 para não ficar muito tempo sem seleção.
+    QntrecebidosCoordenador = 0;
 
     //Suelen
     beaconsPerdidos = 0;
@@ -97,7 +99,9 @@ void Basic802154::startup() {
     neigmap.clear();
     matrizVizinhos.clear();
 
+    limparmap(&neigmapNodosEscutados);
     neigmapNodosEscutados.clear();//Limpa a lista de mensagens escutadas pelos nodos
+
 
 
     //Variaveis utilizadas para determinar o número de cooperantes
@@ -200,6 +204,7 @@ void Basic802154::startup() {
         num_msg_decod_sucess = 0;
         retransCoded = 0;
         inicializaMatriz();
+        limparmap(&neigmapNodosEscutadosRefinamento);
         neigmapNodosEscutadosRefinamento.clear();
         neigmapNodosEnviados.clear();
         numeroDeCoop = 0;
@@ -443,6 +448,15 @@ void Basic802154::startup() {
 
  }*/
 
+
+void Basic802154::limparmap(map<int, MessagesNeighborhood*> *mapPointer){
+    /*for(std::map<int, MessagesNeighborhood*>::iterator itr = mapPointer->begin(); itr != mapPointer->end(); itr++){
+            delete itr->second;
+            mapPointer->erase(itr);
+    }*/
+
+}
+
 //método usado pelo coordenador para adicionar ao beacon uma lista com os nodos cooperantes.
 void Basic802154::enviarNodosCooperantes(Basic802154Packet *beaconPacket) {
 
@@ -529,15 +543,26 @@ void Basic802154::timerFiredCallback(int index) {
 
             if (userelay) {
                 if(smart){// verifica se a rede é dinamica para atualizacao da selecao de forma mais constantes
-                    if(nodosEscutados.size() > 0){ //&& historicoDeSucessoBeacon.size() >0){
-                        qntdMsgEscutCood = nodosEscutados.size();
-                        //contabilizarRetransmissoes();
-                        txSucessSmart = ((qntdMsgEscutCood*100)/nchildrenAntigos);
-                        trace()<< "txSuceso Smart: "<< txSucessSmart;
-                        cout << "NchildrenActual: "<< nchildrenActual << "\n";
-                        cout << "NchildrenAntigos: "<< nchildrenAntigos << "\n";
-                        cout << "txSuceso Smart: "<< txSucessSmart << "\n";
+                    if(useRetransID){
+                        if(nodosEscutados.size() > 0){ //&& historicoDeSucessoBeacon.size() >0){
+                            qntdMsgEscutCood = nodosEscutados.size();
+                            //contabilizarRetransmissoes();
+                            txSucessSmart = ((qntdMsgEscutCood*100)/nchildrenAntigos);
+                            trace()<< "txSuceso Smart: "<< txSucessSmart;
+                            cout << "NchildrenActual: "<< nchildrenActual << "\n";
+                            cout << "NchildrenAntigos: "<< nchildrenAntigos << "\n";
+                            cout << "txSuceso Smart: "<< txSucessSmart << "\n";
+                        }
+                    }else{
+                        if(QntrecebidosCoordenador > 0){
+                            txSucessSmart = ((QntrecebidosCoordenador*100)/nchildrenAntigos);
+                            trace()<< "txSuceso Smart: "<< txSucessSmart;
+                            cout << "NchildrenActual: "<< nchildrenActual << "\n";
+                            cout << "NchildrenAntigos: "<< nchildrenAntigos << "\n";
+                            cout << "txSuceso Smart: "<< txSucessSmart << "\n";
+                            }
                     }
+
                     if(coopPause){
                         selecao = 2;
                         tempAtualizVizinhanca = true;
@@ -674,7 +699,10 @@ void Basic802154::timerFiredCallback(int index) {
                 //no começo de um novo beacon as mensagens são contabilizadas, a lista de nodos escutada é limpada e novos nodos cooperadores podem ser selecionados
                 //contabilizarMensagens();
                 //verificaRetransmissoesRepetidas();
-                nodosEscutados.clear();
+                if(useRetransID){
+                    nodosEscutados.clear();
+                }
+                limparmap(&neigmapNodosEscutados);
                 neigmapNodosEscutados.clear();
                 historicoDeSucessoBeacon.clear();
                 if(useNetworkCoding){
@@ -790,6 +818,7 @@ void Basic802154::timerFiredCallback(int index) {
                 }
                 //Suelen
                 numdadosrecebidosnogtstransmissao = 0;
+                QntrecebidosCoordenador = 0;
 
 
 
@@ -1260,6 +1289,7 @@ void Basic802154::timerFiredCallback(int index) {
                  }
              }
         }
+
         break;
     }
 
@@ -1482,6 +1512,7 @@ void Basic802154:: retransmissaoNetworkCoding(Basic802154Packet *packetRetrans){
    }
 
    if(useNetworkCoding){
+       limparmap(&neigmapNodosEscutadosRefinamento);
        neigmapNodosEscutadosRefinamento.clear();
         //neigmapNodosEscutados.clear();
     }
@@ -1720,6 +1751,7 @@ void Basic802154::selectMsgNetworkCoding(){
         preSelectMsgNetworkCoding();
     }
 
+    limparmap(&neigmapNodosEscutadosRefinamento);
     neigmapNodosEscutadosRefinamento.clear();
     /*Aqui coloca a mensagem do próprio nodo para codificar*/
     for (iterNodes = neigmapNodosEscutados.begin(); iterNodes != neigmapNodosEscutados.end(); iterNodes++) {
@@ -2043,16 +2075,18 @@ void Basic802154::finishSpecific() {
     } else {
         double fimSim = 0;
         if(userelay){
-            int num = 1;
-            declareOutput("Pacotes Escutados Transmissao");
 
-            for(int i = 1; i < (int)pacotesEscutadosT.size(); i++){
-                collectOutput("Pacotes Escutados Transmissao", num, "Pacotes", pacotesEscutadosT[i]);
-                //trace()<<"Coord recebeu pacote do nodo: "<<i<< "- qnt pacotes: "<<pacotesEscutadosT[i];
-                num++;
+            if(useRetransID){
+                int num = 1;
+                declareOutput("Pacotes Escutados Transmissao");
 
+                for(int i = 1; i < (int)pacotesEscutadosT.size(); i++){
+                    collectOutput("Pacotes Escutados Transmissao", num, "Pacotes", pacotesEscutadosT[i]);
+                    //trace()<<"Coord recebeu pacote do nodo: "<<i<< "- qnt pacotes: "<<pacotesEscutadosT[i];
+                    num++;
+
+                }
             }
-
             int num2 = 1;
             double media = 0;
             declareOutput("Tempo Duracao da Selecao de Coop");
@@ -2066,7 +2100,7 @@ void Basic802154::finishSpecific() {
             declareOutput("Media de Tempo Duracao da Selecao de Coop");
             collectOutput("Media de Tempo Duracao da Selecao de Coop", "", media/times.size());
 
-            if(!useRetransIndependent){
+            if(useRetransID){
                 contabilizarMsgRetransmissores();//Suelen
 
                 int cont1 = 1;
@@ -2096,7 +2130,7 @@ void Basic802154::finishSpecific() {
         collectOutput("Beacons sent", "", sentBeacons);
 
         //Suelen
-        if(!useRetransIndependent){
+        if(useRetransID){
             declareOutput("Msg's Recebidas");
             collectOutput("Msg's Recebidas", "", msgRecebidas);
 
@@ -2146,14 +2180,14 @@ void Basic802154::finishSpecific() {
 
         }
         if(useRetransIndependent){
-            int cont = 1;
+            int cont2 = 1;
             /*Retransmissão de uma mensagem por vez, sem codificação*/
             declareOutput("Mensagens Individuais Recuperadas Retransmissao Independente");
 
             for(int i = 1; i < numhosts; i++){
-                collectOutput("Mensagens Individuais Recuperadas Retransmissao Independente", cont, "Mensagens", recoverPerNode[i]);
+                collectOutput("Mensagens Individuais Recuperadas Retransmissao Independente", cont2, "Mensagens", recoverPerNode[i]);
                 trace()<<"nodo: "<<i<<"recuperou "<< recoverPerNode[i];
-                cont++;
+                cont2++;
 
             }
         }
@@ -2166,6 +2200,7 @@ void Basic802154::finishSpecific() {
 
 
     }
+
 }
 
 /* Helper function to change internal MAC state and print a debug statement if neccesary 
@@ -2431,6 +2466,8 @@ void Basic802154:: setMsgPerCoop(Basic802154Packet *beaconPacket){
     diferenca = 0;
     numCoop = (int)nodosColaboradores.size();
     uint64_t bitmapNeighAux[numCoop][2];
+    vector<int> contarMsg;
+    contarMsg.clear();
 
     informRetrans.idCoop.clear();
     for(int i = 0; i< numhosts; i++){
@@ -2452,6 +2489,7 @@ void Basic802154:: setMsgPerCoop(Basic802154Packet *beaconPacket){
     numSlotsPerCoop.clear();
     for(int i = 0;i < numCoop;i++){
         numSlotsPerCoop.push_back(0);
+        contarMsg.push_back(0);
     }
 
 
@@ -2480,7 +2518,7 @@ void Basic802154:: setMsgPerCoop(Basic802154Packet *beaconPacket){
                 resultAND[k] =  bitmapNeighAux[i][k] & bitmapNeighAux[j][k];
                 //cout << std::hex << resultAND[k] << '\n';
                 while(resultAND[k] > 0){
-                    cout<<"result: "<< resultAND[k]<<endl;
+                    //cout<<"result: "<< resultAND[k]<<endl;
                     //int index =  (log(resultAND[k])/log(2));
                     int index = log2(resultAND[k]);
                     //cout << std::hex << resultAND[k] << '\n';
@@ -2490,10 +2528,23 @@ void Basic802154:: setMsgPerCoop(Basic802154Packet *beaconPacket){
                     //bitmapNeigh[nodosColaboradores[j]][k] &= ~(1ULL << (index%64));
                     int addr = 64 - index + (64*k);
                     if(informRetrans.idCoop[addr] == 0){
-                        informRetrans.idCoop[addr] = nodosColaboradores[i];
-                        numSlotsPerCoop[j]--;
+                        if(contarMsg[i] <= contarMsg[j]){
+                            informRetrans.idCoop[addr] = nodosColaboradores[i];
+                            contarMsg[i]++;
+                            if( numSlotsPerCoop[j]>0){
+                                numSlotsPerCoop[j]--;
+                            }
+                        }else{
+                            informRetrans.idCoop[addr] = nodosColaboradores[j];
+                            contarMsg[j]++;
+                            if( numSlotsPerCoop[i]>0){
+                                numSlotsPerCoop[i]--;
+                            }
+                        }
                     }else{
-                        numSlotsPerCoop[j]--;
+                        if( numSlotsPerCoop[j]>0){
+                            numSlotsPerCoop[j]--;
+                        }
                     }
 
 
@@ -2516,9 +2567,13 @@ void Basic802154:: setMsgPerCoop(Basic802154Packet *beaconPacket){
         int i = 0;
 
         while(diferenca > 0){
-            numSlotsPerCoop[i]--;
-            diferenca--;
-            i++;
+            if(i<numSlotsPerCoop.size()){
+                numSlotsPerCoop[i]--;
+                diferenca--;
+                i++;
+            }else{
+                i=0;
+            }
         }
     }
 
@@ -3260,152 +3315,154 @@ void Basic802154::AtualizarVizinhaca(Basic802154Packet * pkt, double rssi) {
     Neighborhood *nodo;
     cout << "Eu sou o: " << SELF_MAC_ADDRESS << "\n";
     int vizinhos = (int)pkt->getVizinhosOuNodosCooperantesArraySize();
-    if (pkt->getDadosVizinhoArraySize() == 0) { //verifico se é retransmissao
-        //if (rssi > limiteRSSI && !oportunista) {
-        if (rssi > limiteRSSI) {
-            montarVetorDeBit(pkt->getSrcID());
-            if (iterNeighborhood == neigmap.end()) {
-                nodo = new Neighborhood();
-                nodo->nodeId = pkt->getSrcID();
-                nodo->rssi = (rssi / MAX_RSSI);
-//                trace()<<"NAN rssi: "<<rssi;
-//                if(isnan(nodo->rssi)){
-//                    trace()<<"DEU NAN rssi: "<<rssi;
-//                }
-//                trace()<<"SOMASINAIS ANTES.  "<<somaDeSinais;
-                somaDeSinais = somaDeSinais + nodo->rssi;
-//                trace()<<"SOMASINAIS DEPOIS. > "<<somaDeSinais;
-                nodo->energy = pkt->getEnergy();
-                nodo->numeroDevizinhos = vizinhos;
-                nodo->somaRssi = pkt->getSomaSinais(); //atulizar soma de rssi
-//                trace()<<"SomaRSSI> "<<nodo->somaRssi;
-//                if(isnan(nodo->somaRssi)){
-//                  trace()<<"DEU NAN somaRSSI: "<<nodo->somaRssi;
-//                }
-                nodo->txSucesso = taxaDeSucesso(pkt->getSrcID(), 1);
+    if(!pkt->getRetransmissao()){
+        //if (pkt->getDadosVizinhoArraySize() == 0) { //verifico se é retransmissao
+            //if (rssi > limiteRSSI && !oportunista) {
+            if (rssi > limiteRSSI) {
+                montarVetorDeBit(pkt->getSrcID());
+                if (iterNeighborhood == neigmap.end()) {
+                    nodo = new Neighborhood();
+                    nodo->nodeId = pkt->getSrcID();
+                    nodo->rssi = (rssi / MAX_RSSI);
+    //                trace()<<"NAN rssi: "<<rssi;
+    //                if(isnan(nodo->rssi)){
+    //                    trace()<<"DEU NAN rssi: "<<rssi;
+    //                }
+    //                trace()<<"SOMASINAIS ANTES.  "<<somaDeSinais;
+                    somaDeSinais = somaDeSinais + nodo->rssi;
+    //                trace()<<"SOMASINAIS DEPOIS. > "<<somaDeSinais;
+                    nodo->energy = pkt->getEnergy();
+                    nodo->numeroDevizinhos = vizinhos;
+                    nodo->somaRssi = pkt->getSomaSinais(); //atulizar soma de rssi
+    //                trace()<<"SomaRSSI> "<<nodo->somaRssi;
+    //                if(isnan(nodo->somaRssi)){
+    //                  trace()<<"DEU NAN somaRSSI: "<<nodo->somaRssi;
+    //                }
+                    nodo->txSucesso = taxaDeSucesso(pkt->getSrcID(), 1);
 
-                if (isPANCoordinator && vizinhos > 0) {
-                    //atualizar lista de vinhos
-                    int i;
-                    for (i = 0; i < vizinhos; i++) {
-                        nodo->vizinhos.push_back(
-                                pkt->getVizinhosOuNodosCooperantes(i));
-                    }
-                }
-                neigmap[pkt->getSrcID()] = nodo;
-            } else {            //se o nodo já está na lista atualiza os dados
-                nodo = iterNeighborhood->second;
-                somaDeSinais = somaDeSinais - nodo->rssi;
-                nodo->rssi = (rssi / MAX_RSSI);
-//                trace()<<"NAN rssi: "<<rssi;
-//                if(isnan(nodo->rssi)){
-//                   trace()<<"DEU NAN rssi: "<<rssi;
-//                }
-//                trace()<<"SOMASINAIS ANTES. "<<somaDeSinais;
-
-                somaDeSinais = somaDeSinais + nodo->rssi;
-
-//                trace()<<"SOMASINAIS DEPOIS. "<<somaDeSinais;
-                nodo->energy = pkt->getEnergy();
-                nodo->numeroDevizinhos = vizinhos;
-                nodo->somaRssi = pkt->getSomaSinais();
-//                trace()<<"SomaRSSI> "<<nodo->somaRssi;
-//                if(isnan(nodo->somaRssi)){
-//                    trace()<<"DEU NAN somaRSSI: "<<nodo->somaRssi;
-//                }
-                nodo->txSucesso = taxaDeSucesso(pkt->getSrcID(), 1);
-                if (isPANCoordinator && vizinhos > 0) {
-                    //atualizar lista de vinhos
-                    nodo->vizinhos.clear();
-                    int i;
-                    for (i = 0; i < vizinhos; i++) {
-                        nodo->vizinhos.push_back(
-                                pkt->getVizinhosOuNodosCooperantes(i));
-                    }
-                }
-
-            }
-            if(!isPANCoordinator){
-                matrizVizinhancaNodos(pkt);
-            }
-
-            if(useRetransIndependent){
-                if(isPANCoordinator){
-                    if(pkt->getVetBitArraySize()>0){
-                        //for(int i = 0; i < numhosts; i++){
-                            for(int j = 0; j < 2; j++){
-                                bitmapNeigh[pkt->getSrcID()][j]= pkt->getVetBit(j);
-                            }
-
-                     //   }
-                    }
-                }
-        }
-        }/*else{// se for a tecnica oportunista não preciso verificar a qualidade da comunicação
-            if(oportunista){
-            if (iterNeighborhood == neigmap.end()) {
-                            nodo = new Neighborhood();
-                            nodo->nodeId = pkt->getSrcID();
-                            nodo->rssi = (rssi / MAX_RSSI);
-            //                trace()<<"NAN rssi: "<<rssi;
-            //                if(isnan(nodo->rssi)){
-            //                    trace()<<"DEU NAN rssi: "<<rssi;
-            //                }
-            //                trace()<<"SOMASINAIS ANTES.  "<<somaDeSinais;
-                            somaDeSinais = somaDeSinais + nodo->rssi;
-            //                trace()<<"SOMASINAIS DEPOIS. > "<<somaDeSinais;
-                            nodo->energy = pkt->getEnergy();
-                            nodo->numeroDevizinhos = vizinhos;
-                            nodo->somaRssi = pkt->getSomaSinais(); //atulizar soma de rssi
-            //                trace()<<"SomaRSSI> "<<nodo->somaRssi;
-            //                if(isnan(nodo->somaRssi)){
-            //                  trace()<<"DEU NAN somaRSSI: "<<nodo->somaRssi;
-            //                }
-                            nodo->txSucesso = taxaDeSucesso(pkt->getSrcID(), 1);
-
-                            if (isPANCoordinator && vizinhos > 0) {
-                                //atualizar lista de vinhos
-                                int i;
-                                for (i = 0; i < vizinhos; i++) {
-                                    nodo->vizinhos.push_back(
-                                            pkt->getVizinhosOuNodosCooperantes(i));
-                                }
-                            }
-                            neigmap[pkt->getSrcID()] = nodo;
-                        } else {            //se o nodo já está na lista atualiza os dados
-                            nodo = iterNeighborhood->second;
-                            somaDeSinais = somaDeSinais - nodo->rssi;
-                            nodo->rssi = (rssi / MAX_RSSI);
-            //                trace()<<"NAN rssi: "<<rssi;
-            //                if(isnan(nodo->rssi)){
-            //                   trace()<<"DEU NAN rssi: "<<rssi;
-            //                }
-            //                trace()<<"SOMASINAIS ANTES. "<<somaDeSinais;
-
-                            somaDeSinais = somaDeSinais + nodo->rssi;
-
-            //                trace()<<"SOMASINAIS DEPOIS. "<<somaDeSinais;
-                            nodo->energy = pkt->getEnergy();
-                            nodo->numeroDevizinhos = vizinhos;
-                            nodo->somaRssi = pkt->getSomaSinais();
-            //                trace()<<"SomaRSSI> "<<nodo->somaRssi;
-            //                if(isnan(nodo->somaRssi)){
-            //                    trace()<<"DEU NAN somaRSSI: "<<nodo->somaRssi;
-            //                }
-                            nodo->txSucesso = taxaDeSucesso(pkt->getSrcID(), 1);
-                            if (isPANCoordinator && vizinhos > 0) {
-                                //atualizar lista de vinhos
-                                nodo->vizinhos.clear();
-                                int i;
-                                for (i = 0; i < vizinhos; i++) {
-                                    nodo->vizinhos.push_back(
-                                            pkt->getVizinhosOuNodosCooperantes(i));
-                                }
-                            }
-
+                    if (isPANCoordinator && vizinhos > 0) {
+                        //atualizar lista de vinhos
+                        int i;
+                        for (i = 0; i < vizinhos; i++) {
+                            nodo->vizinhos.push_back(
+                                    pkt->getVizinhosOuNodosCooperantes(i));
                         }
-        }
-     }*/
+                    }
+                    neigmap[pkt->getSrcID()] = nodo;
+                } else {            //se o nodo já está na lista atualiza os dados
+                    nodo = iterNeighborhood->second;
+                    somaDeSinais = somaDeSinais - nodo->rssi;
+                    nodo->rssi = (rssi / MAX_RSSI);
+    //                trace()<<"NAN rssi: "<<rssi;
+    //                if(isnan(nodo->rssi)){
+    //                   trace()<<"DEU NAN rssi: "<<rssi;
+    //                }
+    //                trace()<<"SOMASINAIS ANTES. "<<somaDeSinais;
+
+                    somaDeSinais = somaDeSinais + nodo->rssi;
+
+    //                trace()<<"SOMASINAIS DEPOIS. "<<somaDeSinais;
+                    nodo->energy = pkt->getEnergy();
+                    nodo->numeroDevizinhos = vizinhos;
+                    nodo->somaRssi = pkt->getSomaSinais();
+    //                trace()<<"SomaRSSI> "<<nodo->somaRssi;
+    //                if(isnan(nodo->somaRssi)){
+    //                    trace()<<"DEU NAN somaRSSI: "<<nodo->somaRssi;
+    //                }
+                    nodo->txSucesso = taxaDeSucesso(pkt->getSrcID(), 1);
+                    if (isPANCoordinator && vizinhos > 0) {
+                        //atualizar lista de vinhos
+                        nodo->vizinhos.clear();
+                        int i;
+                        for (i = 0; i < vizinhos; i++) {
+                            nodo->vizinhos.push_back(
+                                    pkt->getVizinhosOuNodosCooperantes(i));
+                        }
+                    }
+
+                }
+                if(!isPANCoordinator){
+                    matrizVizinhancaNodos(pkt);
+                }
+
+                if(useRetransIndependent){
+                    if(isPANCoordinator){
+                        if(pkt->getVetBitArraySize()>0){
+                            //for(int i = 0; i < numhosts; i++){
+                                for(int j = 0; j < 2; j++){
+                                    bitmapNeigh[pkt->getSrcID()][j]= pkt->getVetBit(j);
+                                }
+
+                         //   }
+                        }
+                    }
+            }
+            }/*else{// se for a tecnica oportunista não preciso verificar a qualidade da comunicação
+                if(oportunista){
+                if (iterNeighborhood == neigmap.end()) {
+                                nodo = new Neighborhood();
+                                nodo->nodeId = pkt->getSrcID();
+                                nodo->rssi = (rssi / MAX_RSSI);
+                //                trace()<<"NAN rssi: "<<rssi;
+                //                if(isnan(nodo->rssi)){
+                //                    trace()<<"DEU NAN rssi: "<<rssi;
+                //                }
+                //                trace()<<"SOMASINAIS ANTES.  "<<somaDeSinais;
+                                somaDeSinais = somaDeSinais + nodo->rssi;
+                //                trace()<<"SOMASINAIS DEPOIS. > "<<somaDeSinais;
+                                nodo->energy = pkt->getEnergy();
+                                nodo->numeroDevizinhos = vizinhos;
+                                nodo->somaRssi = pkt->getSomaSinais(); //atulizar soma de rssi
+                //                trace()<<"SomaRSSI> "<<nodo->somaRssi;
+                //                if(isnan(nodo->somaRssi)){
+                //                  trace()<<"DEU NAN somaRSSI: "<<nodo->somaRssi;
+                //                }
+                                nodo->txSucesso = taxaDeSucesso(pkt->getSrcID(), 1);
+
+                                if (isPANCoordinator && vizinhos > 0) {
+                                    //atualizar lista de vinhos
+                                    int i;
+                                    for (i = 0; i < vizinhos; i++) {
+                                        nodo->vizinhos.push_back(
+                                                pkt->getVizinhosOuNodosCooperantes(i));
+                                    }
+                                }
+                                neigmap[pkt->getSrcID()] = nodo;
+                            } else {            //se o nodo já está na lista atualiza os dados
+                                nodo = iterNeighborhood->second;
+                                somaDeSinais = somaDeSinais - nodo->rssi;
+                                nodo->rssi = (rssi / MAX_RSSI);
+                //                trace()<<"NAN rssi: "<<rssi;
+                //                if(isnan(nodo->rssi)){
+                //                   trace()<<"DEU NAN rssi: "<<rssi;
+                //                }
+                //                trace()<<"SOMASINAIS ANTES. "<<somaDeSinais;
+
+                                somaDeSinais = somaDeSinais + nodo->rssi;
+
+                //                trace()<<"SOMASINAIS DEPOIS. "<<somaDeSinais;
+                                nodo->energy = pkt->getEnergy();
+                                nodo->numeroDevizinhos = vizinhos;
+                                nodo->somaRssi = pkt->getSomaSinais();
+                //                trace()<<"SomaRSSI> "<<nodo->somaRssi;
+                //                if(isnan(nodo->somaRssi)){
+                //                    trace()<<"DEU NAN somaRSSI: "<<nodo->somaRssi;
+                //                }
+                                nodo->txSucesso = taxaDeSucesso(pkt->getSrcID(), 1);
+                                if (isPANCoordinator && vizinhos > 0) {
+                                    //atualizar lista de vinhos
+                                    nodo->vizinhos.clear();
+                                    int i;
+                                    for (i = 0; i < vizinhos; i++) {
+                                        nodo->vizinhos.push_back(
+                                                pkt->getVizinhosOuNodosCooperantes(i));
+                                    }
+                                }
+
+                            }
+            }
+         }*/
+       // }
     }
 }
 double Basic802154::taxaDeSucesso(int id, int recebidas) {
@@ -3577,6 +3634,12 @@ void Basic802154::listarNodosEscutadosRetransmissaoNetworkCoding(Basic802154Pack
         for(int i = 1;i < numhosts;i++){
             recoverPerNode[i] = codificador->recoverPerNode[i];
         }
+        QntrecebidosCoordenador = QntrecebidosCoordenador + sucessoMsgCodRecebida;
+
+        neig = NULL;
+        framedup = NULL;
+        delete framedup;
+        delete neig;
 
 }
 /*
@@ -3606,12 +3669,19 @@ void Basic802154::listarNodosEscutadosTransmissaoNetworkCoding(Basic802154Packet
             }*/
             if(useNetworkCoding){
                 GACK[framedup->getSrcID()] = 1;
+
             }
             if(useRetransIndependent){
                 informRetrans.GACK[framedup->getSrcID()] = 1;
             }
+            QntrecebidosCoordenador++;
             sucessoMsgDirRecebida++;
             cout << " sucessoMsgCodRecebida trans = " << sucessoMsgDirRecebida << endl;
+
+            framedup = NULL;
+            neig = NULL;
+            delete framedup;
+            delete neig;
         }
     }else{
         if((cooperador) || (cooperanteAuxiliar) || (cooperanteAuxiliarAuxiliar)){
@@ -3621,7 +3691,10 @@ void Basic802154::listarNodosEscutadosTransmissaoNetworkCoding(Basic802154Packet
                 MessagesNeighborhood *neig = new MessagesNeighborhood();
                 neig->setFrameTransmission(framedup);
                 neigmapNodosEscutados[framedup->getSrcID()] = neig;
-
+                framedup = NULL;
+                neig = NULL;
+                delete framedup;
+                delete neig;
             }
 
 
@@ -3640,32 +3713,37 @@ void Basic802154::listarNodosEscutados(Basic802154Packet *rcvPacket,
                 << rcvPacket->getSeqNum() << " Nodo que enviou: "
                 << rcvPacket->getSrcID() << "\n";
     }
-    if (rcvPacket->getDadosVizinhoArraySize() == 0 && rcvPacket->getRetransmissao() == false
-            && rcvPacket->getSrcID() != 0 ) { // evita que retransmissoes sejam retransmitidas novamente
+    if(useRetransID){
+        if (rcvPacket->getDadosVizinhoArraySize() == 0 && rcvPacket->getRetransmissao() == false
+                && rcvPacket->getSrcID() != 0 ) { // evita que retransmissoes sejam retransmitidas novamente
 
-        for (int i = 0; i < (int) nodosEscutados.size(); i++) {
-            if (nodosEscutados[i].idMens == rcvPacket->getSeqNum()
-                    && nodosEscutados[i].idNodo == rcvPacket->getSrcID()) {
-                repetido = 1;
-                break;
+            for (int i = 0; i < (int) nodosEscutados.size(); i++) {
+                if (nodosEscutados[i].idMens == rcvPacket->getSeqNum()
+                        && nodosEscutados[i].idNodo == rcvPacket->getSrcID()) {
+                    repetido = 1;
+                    break;
+                }
             }
-        }
-        if (repetido == 0 && rssi >= limiteRSSI) { // nodos comuns só escutam seus vizinhos se o rssi for maior que -87Dbm
-            MENSAGENS_ESCUTADAS escutados;
-            escutados.idMens = rcvPacket->getSeqNum();
-            escutados.idNodo = rcvPacket->getSrcID();
-            nodosEscutados.push_back(escutados); // insere nos nodos escutados
-            //cout<<"Inserindo Escutado: "<< nodosEscutados.front() <<"\n";
-            if(isPANCoordinator){
-                pacotesEscutadosT[rcvPacket->getSrcID()] = pacotesEscutadosT[rcvPacket->getSrcID()] + 1;
+            if (repetido == 0 && rssi >= limiteRSSI) { // nodos comuns só escutam seus vizinhos se o rssi for maior que -87Dbm
+                MENSAGENS_ESCUTADAS escutados;
+                escutados.idMens = rcvPacket->getSeqNum();
+                escutados.idNodo = rcvPacket->getSrcID();
+                nodosEscutados.push_back(escutados); // insere nos nodos escutados
+                //cout<<"Inserindo Escutado: "<< nodosEscutados.front() <<"\n";
+                if(isPANCoordinator){
+                    pacotesEscutadosT[rcvPacket->getSrcID()] = pacotesEscutadosT[rcvPacket->getSrcID()] + 1;
+                }
             }
-            if(userelay){
-                //irá armazenar a mensagem (transmissão) escutada se for coordenador ou cooperante
-                listarNodosEscutadosTransmissaoNetworkCoding(rcvPacket);
-            }
-        }
 
+        }
     }
+    if(useNetworkCoding || useRetransIndependent){
+        if(rssi >= limiteRSSI){
+            //irá armazenar a mensagem (transmissão) escutada se for coordenador ou cooperante
+           listarNodosEscutadosTransmissaoNetworkCoding(rcvPacket);
+        }
+    }
+
     if(useRetransIndependent){
         if(rcvPacket->getRetransmissao() == true){
             if (isPANCoordinator) {
@@ -3673,6 +3751,7 @@ void Basic802154::listarNodosEscutados(Basic802154Packet *rcvPacket,
                     if(GACKRetrans[rcvPacket->getIdNodoRetransmitido()] == 0){
                     //if(GACK[rcvPacket->getIdNodoRetransmitido()] == 0){
                         recoverPerNode[rcvPacket->getIdNodoRetransmitido()] = recoverPerNode[rcvPacket->getIdNodoRetransmitido()] + 1;
+                        QntrecebidosCoordenador++;
                         //GACK[rcvPacket->getIdNodoRetransmitido()] = 1;
                         GACKRetrans[rcvPacket->getIdNodoRetransmitido()] = 1;
                         //informRetrans.GACK[rcvPacket->getIdNodoRetransmitido()] = 1;
@@ -4071,7 +4150,9 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
 
                 if (isPANCoordinator) {
                     listarNodosEscutados(rcvPacket, rssi); // insere o nodo que enviou o pacote como escutado
-                    verificarRetransmissao(rcvPacket,rssi);
+                    if(useRetransID){
+                        verificarRetransmissao(rcvPacket,rssi);
+                    }
                 }
 
                 if ((cooperador) ||(cooperanteAuxiliar)|| (cooperanteAuxiliarAuxiliar)) { // essa variavel é setada ao ouvir o beacon
@@ -4100,8 +4181,10 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
             trace()<<"Recebi beacon "<< SELF_MAC_ADDRESS;
 
             if(useNetworkCoding){
+                limparmap(&neigmapNodosEscutadosRefinamento);
                 neigmapNodosEscutadosRefinamento.clear();
                 neigmapNodosEnviados.clear();
+                limparmap(&neigmapNodosEscutadosSelecionados);
                 neigmapNodosEscutadosSelecionados.clear();
                 vizinhosCoop.clear();
                 secondRetrans = false;
@@ -4124,6 +4207,7 @@ void Basic802154::fromRadioLayer(cPacket * pkt, double rssi, double lqi) {
                 atualizarVizinhanca = rcvPacket->getTempAtualizVizinhanca();
                 idBeacon = rcvPacket->getIdBeacon();//Verificará se ja é o id de ficar escutando os vizinhos
                 souNodoCooperante(rcvPacket);
+                limparmap(&neigmapNodosEscutados);
                 neigmapNodosEscutados.clear();
                 nodosEscutados.clear();
 
@@ -5132,17 +5216,19 @@ void Basic802154::attemptTransmission(const char * descr) {
 }
 // método Ríad
 void Basic802154::retransmitir(Basic802154Packet *nextPacket) {
-    if (nodosEscutados.size() > 0) {
-        nextPacket->setDadosVizinhoArraySize(nodosEscutados.size());
+    if(useRetransID){
+        if (nodosEscutados.size() > 0) {
+            nextPacket->setDadosVizinhoArraySize(nodosEscutados.size());
 
-        for (int i = 0; i < (int) nodosEscutados.size(); i++) {
+            for (int i = 0; i < (int) nodosEscutados.size(); i++) {
 
-            nextPacket->setDadosVizinho(i, nodosEscutados[i]);
+                nextPacket->setDadosVizinho(i, nodosEscutados[i]);
 
-            cout << "Escutado vou retransmitir id: " << nodosEscutados[i].idNodo << "\n";
-            cout << "Escutado mens: " << nodosEscutados[i].idMens << "\n";
-            trace()<<"Escutado vou retransmitir id: " << nodosEscutados[i].idNodo;
-            trace()<<"Escutado mens: " << nodosEscutados[i].idMens;
+                cout << "Escutado vou retransmitir id: " << nodosEscutados[i].idNodo << "\n";
+                cout << "Escutado mens: " << nodosEscutados[i].idMens << "\n";
+                trace()<<"Escutado vou retransmitir id: " << nodosEscutados[i].idNodo;
+                trace()<<"Escutado mens: " << nodosEscutados[i].idMens;
+            }
         }
     }
     if(useNetworkCoding){
@@ -5155,8 +5241,10 @@ void Basic802154::retransmitir(Basic802154Packet *nextPacket) {
             nextPacket->setCoeficiente(i,0);
         }
     }
-//após enviar o nome dos nodos que foram escutados a lista local é apagada
-    nodosEscutados.clear();
+    if(useRetransID){
+        //após enviar o nome dos nodos que foram escutados a lista local é apagada
+        nodosEscutados.clear();
+    }
 
 }
 

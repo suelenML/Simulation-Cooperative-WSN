@@ -25,7 +25,7 @@ extern "C" {
 
 }
 #define MSG_SIZE 127
-#define N_NODES 101
+#define N_NODES 21
 
 #define absLocal(x) ((x)<0 ? (-x) : (x))
 /*
@@ -368,6 +368,7 @@ class Basic802154: public VirtualMac {
 	    void souNodoCooperanteAuxiliar(Basic802154Packet * pkt);
 	    void selectMsgCoopAux();
 	    void selectMsgNetworkCodingAux();
+	    void limparmap(map<int, MessagesNeighborhood*> *mapPointer);
 
 	    /*Metodos para a retransmissão sem codificação*/
 	    void  definirNumeroSlotsCooperantes(Basic802154Packet *beaconPacket);
@@ -398,6 +399,7 @@ class Basic802154: public VirtualMac {
 	    double limiteRSSI;
 	    bool userelay;
 	    bool smart;
+	    bool useRetransID;
 	    bool smartPeriodic;
 	    bool aleatoria;
 	    bool oportunista;
@@ -518,6 +520,7 @@ class Basic802154: public VirtualMac {
         uint64_t bitmapNeigh[N_NODES][2];
         vector<int> GACKRetrans;
         RETRANS_GACK informRetrans;
+        int QntrecebidosCoordenador;
 
 
 

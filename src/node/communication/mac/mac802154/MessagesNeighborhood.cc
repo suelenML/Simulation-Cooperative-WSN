@@ -13,6 +13,8 @@ MessagesNeighborhood:: MessagesNeighborhood(){
 }
 
 MessagesNeighborhood::~MessagesNeighborhood(){
+    delete frametrans;
+    delete frameretrans;
 
 }
 

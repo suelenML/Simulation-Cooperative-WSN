@@ -91,7 +91,7 @@ simple Basic802154 like node.communication.mac.iMac {
     bool useGACK = default(false); // o coordenador enviará um GACK após receber as transmissões diretas
     bool useThreeRetransPerCoop = default(false); // cada cooperante enviará três msg de retransmissão codificada
     bool useRetransIndependent = default(false); // Cada cooperante enviará uma msg de retransmissão por vez
-	
+	bool useRetransID = default(false);
 	
 	
 	
